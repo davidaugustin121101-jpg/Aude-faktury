@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Audeflow Faktury (MVP)
 
-## Getting Started
+AI zpracování přijatých faktur → schválení → odeslání do iDokladu nebo Fakturoidu.
 
-First, run the development server:
+Produkční URL: **https://faktury.audeflow.cz**
+
+## Funkce MVP
+
+- PDF upload (jednotlivě i hromadně)
+- Claude extrakce + návrh účetního kódu
+- Paměť kódů per dodavatel
+- Detekce duplicit
+- Fronta + hromadné schválení
+- Režim pro účetní (více klientů / workspace)
+- iDoklad + Fakturoid (API klíče, Fakturoid OAuth na produkci)
+
+## Lokální vývoj
 
 ```bash
+cp .env.example .env.local
+# doplň klíče v .env.local
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Otevři [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deploy na Vercel
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Importuj GitHub repozitář `aude-faktury` do [Vercel](https://vercel.com/new)
+2. Nastav doménu `faktury.audeflow.cz`
+3. V **Settings → Environment Variables** zkopíruj vše z `.env.example` (produkční hodnoty)
+4. `NEXT_PUBLIC_APP_URL` musí být `https://faktury.audeflow.cz`
+5. Deploy
 
-## Learn More
+### Povinné env proměnné (MVP)
 
-To learn more about Next.js, take a look at the following resources:
+| Proměnná | Popis |
+|----------|--------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Stripe webhook, admin operace |
+| `ANTHROPIC_API_KEY` | Claude PDF extrakce |
+| `NEXT_PUBLIC_APP_URL` | `https://faktury.audeflow.cz` |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Volitelné (podle funkcí)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Stripe** – placené plány (`STRIPE_*`)
+- **Resend** – e-mail po odeslání faktury
+- **Fakturoid OAuth** – `FAKTUROID_CLIENT_ID`, `FAKTUROID_CLIENT_SECRET`
 
-## Deploy on Vercel
+### Supabase
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Migrace v `supabase/migrations/` – na produkčním projektu spusť v pořadí 001–005.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+V Supabase Auth → URL Configuration nastav:
+
+- Site URL: `https://faktury.audeflow.cz`
+- Redirect URLs: `https://faktury.audeflow.cz/**`
+
+### Supabase Storage
+
+Bucket `invoice-pdfs` (private) – migrace 004.
+
+### iDoklad / Fakturoid
+
+Každý klient (workspace) má vlastní připojení v **Nastavení → Fakturační systém**.
+
+Fakturoid OAuth redirect: `https://faktury.audeflow.cz/api/accounting/fakturoid/callback`
+
+## Stack
+
+Next.js 14 · TypeScript · Tailwind · Supabase · Claude · Stripe · Vercel
