@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Zap, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { APP_NAME } from '@/lib/brand'
 
@@ -36,9 +36,9 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
           <Link href="/" className="flex items-center gap-2">
-            <div className="h-9 w-9 rounded-xl bg-blue-600 flex items-center justify-center">
-              <Zap className="h-5 w-5 text-white" />
-            </div>
+            <span className="text-2xl" aria-hidden>
+              🧾
+            </span>
             <span className="font-bold text-xl text-gray-900">{APP_NAME}</span>
           </Link>
         </div>

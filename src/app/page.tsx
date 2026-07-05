@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { LandingPage } from '@/components/marketing/landing-page'
+import { JsonLd } from '@/components/seo/json-ld'
+import { landingJsonLd } from '@/lib/seo'
 
 export default async function Home() {
   const supabase = await createClient()
@@ -10,5 +12,10 @@ export default async function Home() {
 
   if (user) redirect('/faktury')
 
-  return <LandingPage />
+  return (
+    <>
+      <JsonLd data={landingJsonLd()} />
+      <LandingPage />
+    </>
+  )
 }

@@ -18,21 +18,13 @@ import { WorkspaceSwitcher } from '@/components/layout/workspace-switcher'
 import { ModeBadge } from '@/components/layout/mode-badge'
 import { SidebarStats } from '@/components/layout/sidebar-stats'
 import { APP_NAME, APP_TAGLINE } from '@/lib/brand'
+import { MAIN_NAV, SETUP_NAV } from '@/lib/nav-config'
 import type { AccountMode } from '@/lib/account-mode'
 import type { AccountingProvider } from '@/lib/accounting-connection'
-import {
-  LayoutDashboard,
-  Receipt,
-  Settings,
-  LogOut,
-  Zap,
-  Users,
-  Link2,
-  CreditCard,
-  ChevronUp,
-} from 'lucide-react'
+import { LogOut, ChevronUp, type LucideIcon } from 'lucide-react'
 
 interface SidebarProps {
+  className?: string
   user: { email?: string }
   isAccountant: boolean
   hasActiveSubscription: boolean
@@ -45,7 +37,18 @@ interface SidebarProps {
   totalInvoices: number
 }
 
+function isNavActive(href: string, pathname: string): boolean {
+  if (href === '/faktury') {
+    return (
+      pathname === '/faktury' ||
+      (pathname.startsWith('/faktury/') && !pathname.startsWith('/faktury/upload'))
+    )
+  }
+  return pathname === href || pathname.startsWith(`${href}/`)
+}
+
 export function Sidebar({
+  className,
   user,
   isAccountant,
   hasActiveSubscription,
@@ -67,18 +70,7 @@ export function Sidebar({
   }
 
   const initials = user.email?.[0].toUpperCase() ?? '?'
-
-  const mainNav = [
-    { href: '/dashboard', label: 'Přehled', icon: LayoutDashboard },
-    { href: '/faktury', label: 'Faktury', icon: Receipt },
-  ]
-
-  const setupNav = [
-    { href: '/settings/accounting', label: 'Fakturační systém', icon: Link2 },
-    ...(isAccountant ? [{ href: '/klienti', label: 'Klienti', icon: Users }] : []),
-    { href: '/settings/predplatne', label: 'Předplatné', icon: CreditCard },
-    { href: '/settings', label: 'Nastavení', icon: Settings },
-  ]
+  const setupNav = SETUP_NAV.filter((item) => !item.accountantOnly || isAccountant)
 
   function NavLink({
     href,
@@ -87,9 +79,9 @@ export function Sidebar({
   }: {
     href: string
     label: string
-    icon: typeof LayoutDashboard
+    icon: LucideIcon
   }) {
-    const active = pathname === href || pathname.startsWith(href + '/')
+    const active = isNavActive(href, pathname)
     return (
       <Link href={href}>
         <div
@@ -116,14 +108,19 @@ export function Sidebar({
   }
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 overflow-y-auto">
+    <aside
+      className={cn(
+        'w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 overflow-y-auto',
+        className
+      )}
+    >
       <div className="h-16 px-5 flex items-center gap-2.5 border-b border-gray-100 shrink-0">
-        <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
-          <Zap className="h-4 w-4 text-white" />
-        </div>
-        <div>
-          <span className="font-bold text-gray-900 text-sm">{APP_NAME}</span>
-          <p className="text-xs text-gray-400 leading-none">{APP_TAGLINE}</p>
+        <span className="text-xl" aria-hidden>
+          🧾
+        </span>
+        <div className="min-w-0">
+          <span className="font-bold text-gray-900 text-sm block truncate">{APP_NAME}</span>
+          <p className="text-xs text-gray-400 leading-none truncate">{APP_TAGLINE}</p>
         </div>
       </div>
 
@@ -152,7 +149,7 @@ export function Sidebar({
             Hlavní
           </p>
           <div className="space-y-0.5">
-            {mainNav.map((item) => (
+            {MAIN_NAV.map((item) => (
               <NavLink key={item.href} {...item} />
             ))}
           </div>
@@ -173,9 +170,7 @@ export function Sidebar({
 
       <div className="p-3 shrink-0">
         <DropdownMenu>
-          <DropdownMenuTrigger
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-left outline-none"
-          >
+          <DropdownMenuTrigger className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-left outline-none">
             <Avatar className="h-8 w-8">
               <AvatarFallback className="bg-blue-100 text-blue-700 text-xs font-semibold">
                 {initials}
@@ -190,9 +185,7 @@ export function Sidebar({
           <DropdownMenuContent align="start" className="w-56">
             <DropdownMenuLabel className="truncate">{user.email}</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push('/settings')}>
-              Nastavení
-            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/settings')}>Nastavení</DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push('/settings/predplatne')}>
               Předplatné
             </DropdownMenuItem>
