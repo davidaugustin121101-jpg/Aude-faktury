@@ -33,6 +33,17 @@ export async function POST(req: NextRequest) {
 
   const supabase = getAdminClient()
 
+  const { data: claimed, error: claimErr } = await supabase.rpc('claim_stripe_webhook_event', {
+    p_event_id: event.id,
+    p_event_type: event.type,
+  })
+
+  if (claimErr) {
+    console.warn('[stripe webhook] idempotency unavailable, continuing:', claimErr.message)
+  } else if (claimed === false) {
+    return NextResponse.json({ received: true, duplicate: true })
+  }
+
   try {
     switch (event.type) {
       case 'checkout.session.completed': {

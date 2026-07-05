@@ -8,11 +8,13 @@ import { SettingsNav } from '@/components/settings/SettingsNav'
 import { APP_NAME } from '@/lib/brand'
 import {
   getAccountMode,
-  getInvoiceLimit,
+  getInvoiceLimitLabel,
   getPlanLabel,
   MODE_LABELS,
   hasActiveAccountantSubscription,
 } from '@/lib/account-mode'
+import { InvoiceSettingsPanel } from '@/components/settings/InvoiceSettingsPanel'
+import { ExportProfileSettingsSection } from '@/components/settings/ExportProfileSettingsSection'
 import type { CountryCode } from '@/lib/accounting-codes'
 
 export default async function SettingsPage() {
@@ -30,7 +32,7 @@ export default async function SettingsPage() {
 
   const accountMode = getAccountMode(profile)
   const isAccountant = hasActiveAccountantSubscription(profile)
-  const invoiceLimit = getInvoiceLimit(profile)
+  const invoiceLimitLabel = getInvoiceLimitLabel(profile)
   const planLabel = getPlanLabel(profile)
   const country = ((profile as { country?: string } | null)?.country ?? 'cz') as CountryCode
 
@@ -77,9 +79,7 @@ export default async function SettingsPage() {
             </div>
             <div>
               <p className="text-xs text-gray-400 mb-0.5">Limit faktur</p>
-              <p className="font-medium text-gray-900">
-                {invoiceLimit >= 999_999 ? 'Neomezeně' : `${invoiceLimit} / měsíc`}
-              </p>
+              <p className="font-medium text-gray-900">{invoiceLimitLabel}</p>
             </div>
             <div>
               <p className="text-xs text-gray-400 mb-0.5">Faktur tento měsíc</p>
@@ -106,6 +106,10 @@ export default async function SettingsPage() {
       </Link>
 
       <CountrySelector initialCountry={country} />
+
+      <InvoiceSettingsPanel />
+
+      <ExportProfileSettingsSection />
 
       <div className="space-y-2">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">Napojení</p>

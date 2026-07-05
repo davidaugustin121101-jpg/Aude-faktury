@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { validateIdokladConnection } from '@/lib/idoklad'
-import { validateFakturoidToken, validateFakturoidClientCredentials, validateFakturoidExpenseWrite } from '@/lib/fakturoid'
+import {
+  validateFakturoidToken,
+  validateFakturoidClientCredentials,
+  validateFakturoidExpenseWrite,
+} from '@/lib/fakturoid'
 import { validateSuperFakturaConnection } from '@/lib/superfaktura'
 import { getActiveWorkspace } from '@/lib/workspace'
+import { storeVaultSecret } from '@/lib/vault-secrets'
 import type { CountryCode } from '@/lib/accounting-codes'
 
 export async function POST(req: NextRequest) {
@@ -126,6 +131,9 @@ export async function POST(req: NextRequest) {
     profile?.full_name
   )
 
+  const admin = createAdminClient()
+  const vaultPrefix = `acct_${user.id}_${workspace.id}_${provider}`
+
   const connData: Record<string, unknown> = {
     user_id: user.id,
     workspace_id: workspace.id,
@@ -134,39 +142,75 @@ export async function POST(req: NextRequest) {
     country: connCountry,
     last_tested_at: new Date().toISOString(),
     last_test_ok: true,
+    idoklad_client_secret: null,
+    fakturoid_oauth_token: null,
+    fakturoid_client_secret: null,
+    superfaktura_api_key: null,
   }
 
   if (provider === 'idoklad') {
+    const secret = clientSecret ?? apiKey ?? ''
     connData.idoklad_client_id = clientId ?? null
-    connData.idoklad_client_secret = clientSecret ?? apiKey ?? ''
-    connData.fakturoid_oauth_token = null
+    const secretId = await storeVaultSecret(
+      admin,
+      secret,
+      `${vaultPrefix}_idoklad_secret`,
+      'iDoklad client secret'
+    )
+    if (secretId) {
+      connData.idoklad_client_secret_id = secretId
+    } else {
+      connData.idoklad_client_secret = secret
+    }
     connData.fakturoid_account_slug = null
     connData.superfaktura_api_email = null
-    connData.superfaktura_api_key = null
     connData.superfaktura_company_id = null
   } else if (provider === 'superfaktura') {
     connData.superfaktura_api_email = apiEmail ?? null
-    connData.superfaktura_api_key = apiKey ?? null
+    const keyId = await storeVaultSecret(
+      admin,
+      apiKey ?? '',
+      `${vaultPrefix}_superfaktura_key`,
+      'SuperFaktura API key'
+    )
+    if (keyId) {
+      connData.superfaktura_api_key_id = keyId
+    } else {
+      connData.superfaktura_api_key = apiKey ?? null
+    }
     connData.superfaktura_company_id = companyId ?? ''
     connData.idoklad_client_id = null
-    connData.idoklad_client_secret = null
-    connData.fakturoid_oauth_token = null
     connData.fakturoid_account_slug = null
   } else {
+    const token = fakturoidAutoToken ?? apiKey ?? null
+    const secret = clientSecret ?? null
     connData.fakturoid_client_id = clientId ?? null
-    connData.fakturoid_client_secret = clientSecret ?? null
-    connData.fakturoid_oauth_token = fakturoidAutoToken ?? apiKey ?? null
+    if (secret) {
+      const secretId = await storeVaultSecret(
+        admin,
+        secret,
+        `${vaultPrefix}_fakturoid_secret`,
+        'Fakturoid secret'
+      )
+      if (secretId) connData.fakturoid_client_secret_id = secretId
+      else connData.fakturoid_client_secret = secret
+    }
+    if (token) {
+      const tokenId = await storeVaultSecret(
+        admin,
+        token,
+        `${vaultPrefix}_fakturoid_token`,
+        'Fakturoid token'
+      )
+      if (tokenId) connData.fakturoid_oauth_token_id = tokenId
+      else connData.fakturoid_oauth_token = token
+    }
     connData.fakturoid_account_slug = fakturoidAutoSlug ?? accountSlug ?? null
     connData.fakturoid_token_expires_at = fakturoidAutoExpires
     connData.idoklad_client_id = null
-    connData.idoklad_client_secret = null
     connData.superfaktura_api_email = null
-    connData.superfaktura_api_key = null
     connData.superfaktura_company_id = null
   }
-
-  // Jeden fakturační systém na workspace — deaktivujeme ostatní (service role)
-  const admin = createAdminClient()
 
   await admin
     .from('accounting_connections')

@@ -9,6 +9,9 @@ import { getDefaultCurrency } from '@/lib/accounting-codes'
 import { runInvoiceAudit } from '@/lib/invoice-audit/run-audit'
 import { getSupplierRule } from '@/lib/supplier-rules'
 import { insertAuditLog } from '@/lib/audit-log'
+import { sendNewInvoiceNotification } from '@/lib/notifications'
+import { sendInvoiceToAccounting } from '@/lib/send-invoice'
+import type { ProcessedInvoice } from '@/types/invoices'
 
 const ALLOWED_VAT_RATES = [0, 10, 12, 20, 21] as const
 
@@ -59,6 +62,12 @@ export async function POST(req: NextRequest) {
     user.email ?? '',
     (profile as { full_name?: string } | null)?.full_name
   )
+
+  const { data: invoiceSettings } = await supabase
+    .from('invoice_settings')
+    .select('auto_approve_below, notify_on_new, notify_email')
+    .eq('user_id', user.id)
+    .maybeSingle()
 
   const formData = await req.formData()
   const file = formData.get('file') as File | null
@@ -176,11 +185,32 @@ export async function POST(req: NextRequest) {
   }
 
   if (allowance.source === 'credit') {
-    const credits = profile?.invoice_credits ?? 0
-    await admin
-      .from('user_profiles')
-      .update({ invoice_credits: Math.max(0, credits - 1) })
-      .eq('id', user.id)
+    const { data: newBalance, error: creditErr } = await admin.rpc('decrement_invoice_credit', {
+      p_user_id: user.id,
+    })
+
+    if (creditErr || newBalance === -1 || newBalance === null) {
+      if (creditErr) {
+        const credits = profile?.invoice_credits ?? 0
+        if (credits <= 0) {
+          await admin.from('processed_invoices').delete().eq('id', invoice.id)
+          return NextResponse.json(
+            { error: 'Nedostatek kreditů. Dokupte balíček Standard.' },
+            { status: 429 }
+          )
+        }
+        await admin
+          .from('user_profiles')
+          .update({ invoice_credits: credits - 1 })
+          .eq('id', user.id)
+      } else {
+        await admin.from('processed_invoices').delete().eq('id', invoice.id)
+        return NextResponse.json(
+          { error: 'Nedostatek kreditů. Dokupte balíček Standard.' },
+          { status: 429 }
+        )
+      }
+    }
   }
 
   await insertAuditLog({
@@ -197,5 +227,56 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  return NextResponse.json({ invoice, audit: auditResult })
+  const notifyEmail =
+    invoiceSettings?.notify_email?.trim() || user.email || null
+  const shouldNotify = invoiceSettings?.notify_on_new !== false && notifyEmail
+
+  const autoThreshold = invoiceSettings?.auto_approve_below
+  const totalAmount = Number(extracted.castka_celkem ?? 0)
+  const canAutoApprove =
+    autoThreshold != null &&
+    !auditResult.hasCritical &&
+    totalAmount <= Number(autoThreshold)
+
+  let finalInvoice = invoice as ProcessedInvoice
+  let autoApproved = false
+
+  if (canAutoApprove) {
+    const sendResult = await sendInvoiceToAccounting({
+      supabase,
+      userId: user.id,
+      userEmail: user.email ?? '',
+      fullName: (profile as { full_name?: string } | null)?.full_name,
+      invoice: finalInvoice,
+      rememberSupplier: true,
+      auditAction: 'auto_approved',
+    })
+
+    if (sendResult.ok) {
+      autoApproved = true
+      const { data: refreshed } = await supabase
+        .from('processed_invoices')
+        .select('*')
+        .eq('id', invoice.id)
+        .single()
+      if (refreshed) finalInvoice = refreshed as ProcessedInvoice
+    }
+  }
+
+  if (shouldNotify && notifyEmail) {
+    await sendNewInvoiceNotification({
+      to: notifyEmail,
+      supplierName: extracted.dodavatel_nazev,
+      amount: totalAmount,
+      currency: extracted.mena ?? getDefaultCurrency(country),
+      invoiceId: invoice.id,
+      autoApproved,
+    })
+  }
+
+  return NextResponse.json({
+    invoice: finalInvoice,
+    audit: auditResult,
+    autoApproved,
+  })
 }

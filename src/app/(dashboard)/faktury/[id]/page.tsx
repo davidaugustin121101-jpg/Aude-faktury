@@ -15,6 +15,7 @@ import {
   mapConnectionRow,
   providerDisplayName,
 } from '@/lib/accounting-connection'
+import { InvoiceExportButtons } from '@/components/invoices/InvoiceExportButtons'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -261,6 +262,8 @@ export default async function InvoiceDetailPage({ params }: Props) {
 
       <InvoiceAuditPanel audit={auditResult} />
 
+      <InvoiceExportButtons invoiceId={inv.id} />
+
       {/* Actions */}
       {canAct && accountingConn && (
         <>
@@ -279,6 +282,7 @@ export default async function InvoiceDetailPage({ params }: Props) {
           )}
           <InvoiceActions
             invoiceId={inv.id}
+            invoice={inv}
             accountingProvider={accountingConn.provider}
             auditHasCritical={auditResult?.hasCritical ?? false}
             supplierName={inv.dodavatel_nazev}

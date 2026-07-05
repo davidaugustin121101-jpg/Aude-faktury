@@ -421,6 +421,16 @@ export async function activateFromCheckoutSession(
 
   if (session.payment_status === 'unpaid') return
 
+  const sessionKey = `checkout_session_${session.id}`
+  const { data: claimed, error: claimErr } = await supabase.rpc('claim_stripe_webhook_event', {
+    p_event_id: sessionKey,
+    p_event_type: 'checkout.session.processed',
+  })
+
+  if (!claimErr && claimed === false) {
+    return
+  }
+
   // Standard = jednorázová platba → kredit faktur
   if (session.mode === 'payment') {
     if (metaPlan === 'starter') {

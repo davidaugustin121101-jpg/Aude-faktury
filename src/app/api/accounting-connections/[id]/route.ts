@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { deleteVaultSecret } from '@/lib/vault-secrets'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -9,7 +10,9 @@ interface Props {
 export async function DELETE(req: NextRequest, { params }: Props) {
   const { id } = await params
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { data: owned } = await supabase
@@ -24,6 +27,21 @@ export async function DELETE(req: NextRequest, { params }: Props) {
   }
 
   const admin = createAdminClient()
+  const { data: row } = await admin
+    .from('accounting_connections')
+    .select(
+      'idoklad_client_secret_id, fakturoid_oauth_token_id, fakturoid_client_secret_id, superfaktura_api_key_id'
+    )
+    .eq('id', id)
+    .maybeSingle()
+
+  if (row) {
+    await deleteVaultSecret(admin, row.idoklad_client_secret_id)
+    await deleteVaultSecret(admin, row.fakturoid_oauth_token_id)
+    await deleteVaultSecret(admin, row.fakturoid_client_secret_id)
+    await deleteVaultSecret(admin, row.superfaktura_api_key_id)
+  }
+
   const { error } = await admin
     .from('accounting_connections')
     .delete()

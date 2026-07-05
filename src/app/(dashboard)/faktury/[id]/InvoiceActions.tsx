@@ -6,9 +6,12 @@ import { CheckCircle2, Pencil, X, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { providerDisplayName } from '@/lib/accounting-connection'
+import { InvoiceEditForm } from '@/components/invoices/InvoiceEditForm'
+import type { ProcessedInvoice } from '@/types/invoices'
 
 interface Props {
   invoiceId: string
+  invoice: ProcessedInvoice
   accountingProvider: string
   auditHasCritical?: boolean
   supplierName?: string | null
@@ -16,6 +19,7 @@ interface Props {
 
 export function InvoiceActions({
   invoiceId,
+  invoice,
   accountingProvider,
   auditHasCritical = false,
   supplierName,
@@ -24,6 +28,7 @@ export function InvoiceActions({
   const [loading, setLoading] = useState<'approve' | 'reject' | null>(null)
   const [rememberSupplier, setRememberSupplier] = useState(true)
   const [forceSend, setForceSend] = useState(false)
+  const [editing, setEditing] = useState(false)
 
   const providerLabel = providerDisplayName(accountingProvider)
   const sendBlocked = auditHasCritical && !forceSend
@@ -59,6 +64,10 @@ export function InvoiceActions({
     setLoading(null)
     toast.success('Faktura byla zamítnuta')
     router.push('/faktury')
+  }
+
+  if (editing) {
+    return <InvoiceEditForm invoice={invoice} onClose={() => setEditing(false)} />
   }
 
   return (
@@ -105,7 +114,7 @@ export function InvoiceActions({
           variant="outline"
           className="flex-1 border-gray-300"
           disabled={loading !== null}
-          onClick={() => toast.info('Editace bude k dispozici brzy')}
+          onClick={() => setEditing(true)}
         >
           <Pencil className="h-4 w-4 mr-2" />
           Upravit před odesláním

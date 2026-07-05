@@ -102,6 +102,16 @@ export function getInvoiceLimit(profile: UserBillingProfile | null | undefined):
   return SOLO_INVOICE_LIMIT
 }
 
+/** Popisek limitu pro UI — kredity nejsou měsíční */
+export function getInvoiceLimitLabel(
+  profile: UserBillingProfile | null | undefined
+): string {
+  if (hasActiveProSubscription(profile)) return 'Neomezeně / měsíc'
+  const credits = getInvoiceCredits(profile)
+  if (credits > 0) return `${credits} kreditů (bez expirace)`
+  return `${SOLO_INVOICE_LIMIT} / měsíc`
+}
+
 export function getFreeMonthlyRemaining(monthlyUsed: number): number {
   return Math.max(0, SOLO_INVOICE_LIMIT - monthlyUsed)
 }

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getActiveWorkspace } from '@/lib/workspace'
+import { hydrateConnectionSecrets } from '@/lib/vault-secrets'
 
 export type AccountingProvider = 'idoklad' | 'fakturoid' | 'superfaktura'
 
@@ -27,7 +27,8 @@ export async function getConnectionWithSecrets(userId: string, workspaceId: stri
     console.error('getConnectionWithSecrets error:', error.message)
   }
 
-  return data
+  if (!data) return null
+  return hydrateConnectionSecrets(admin, data as Record<string, unknown>)
 }
 
 export async function getConnectionForInvoiceWithSecrets(
@@ -39,8 +40,9 @@ export async function getConnectionForInvoiceWithSecrets(
   if (workspaceId) {
     return getConnectionWithSecrets(userId, workspaceId)
   }
-  const supabase = createAdminClient()
-  const workspace = await getActiveWorkspace(supabase, userId, userEmail, fullName)
+  const admin = createAdminClient()
+  const { getActiveWorkspace } = await import('@/lib/workspace')
+  const workspace = await getActiveWorkspace(admin, userId, userEmail, fullName)
   return getConnectionWithSecrets(userId, workspace.id)
 }
 
@@ -72,6 +74,7 @@ export async function getActiveWorkspaceConnection(
   userEmail: string,
   fullName?: string | null
 ) {
+  const { getActiveWorkspace } = await import('@/lib/workspace')
   const workspace = await getActiveWorkspace(supabase, userId, userEmail, fullName)
   const connection = await getWorkspaceConnection(supabase, userId, workspace.id)
   return { workspace, connection }
