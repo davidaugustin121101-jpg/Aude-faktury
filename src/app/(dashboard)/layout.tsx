@@ -1,21 +1,14 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import { Sidebar } from '@/components/layout/sidebar'
 import { MobileNavProvider } from '@/components/layout/mobile-nav'
 import { getDashboardContext } from '@/lib/dashboard-context'
+import { requireUser } from '@/lib/auth-server'
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) redirect('/login')
-
+  const { supabase, user } = await requireUser()
   const ctx = await getDashboardContext(supabase, user.id, user.email ?? '')
 
   return (

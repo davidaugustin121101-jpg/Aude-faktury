@@ -7,10 +7,11 @@
   </defs>
   <rect width="1200" height="630" fill="url(#bg)"/>
   <rect x="80" y="80" width="80" height="80" rx="20" fill="#2563eb"/>
-  <text x="120" y="138" font-size="48" text-anchor="middle">>þ</text>
+  <text x="120" y="138" font-size="48" text-anchor="middle">>ï¿½</text>
   <text x="200" y="130" font-family="system-ui,sans-serif" font-size="48" font-weight="800" fill="#111827">Faktury Audeflow</text>
-  <text x="200" y="190" font-family="system-ui,sans-serif" font-size="28" fill="#4b5563">PDF faktura do úetnictví za 30 sekund</text>
-  <text x="200" y="260" font-family="system-ui,sans-serif" font-size="22" fill="#6b7280">iDoklad · Fakturoid · SuperFaktura · ISDOC · Pohoda · Money · Helios</text>
+  <text x="200" y="190" font-family="system-ui,sans-serif" font-size="28" fill="#4b5563">PDF faktura do ï¿½
+etnictvï¿½ za 30 sekund</text>
+  <text x="200" y="260" font-family="system-ui,sans-serif" font-size="22" fill="#6b7280">iDoklad ï¿½ Fakturoid ï¿½ SuperFaktura ï¿½ ISDOC ï¿½ Pohoda ï¿½ Money ï¿½ Helios</text>
   <rect x="200" y="300" width="280" height="56" rx="12" fill="#2563eb"/>
   <text x="340" y="337" font-family="system-ui,sans-serif" font-size="22" font-weight="600" fill="#fff" text-anchor="middle">faktury.audeflow.cz</text>
 </svg>

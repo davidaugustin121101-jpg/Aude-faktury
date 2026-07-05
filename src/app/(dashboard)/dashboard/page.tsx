@@ -1,5 +1,3 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import {
   FileText,
   Clock,
@@ -14,6 +12,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { getDashboardContext } from '@/lib/dashboard-context'
+import { requireUser } from '@/lib/auth-server'
 import { MODE_LABELS } from '@/lib/account-mode'
 import { cn } from '@/lib/utils'
 import { InvoiceStatusBadge } from '@/components/invoices/InvoiceStatusBadge'
@@ -25,12 +24,7 @@ const PROVIDER_NAMES = {
 }
 
 export default async function DashboardPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
+  const { supabase, user } = await requireUser()
   const ctx = await getDashboardContext(supabase, user.id, user.email ?? '')
 
   const now = new Date()

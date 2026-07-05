@@ -1,7 +1,7 @@
-import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
-import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkspace } from '@/lib/workspace'
+import { requireUser, getUserProfile } from '@/lib/auth-server'
+import { INVOICE_LIST_SELECT } from '@/lib/invoice-list-columns'
 import type { ProcessedInvoice } from '@/types/invoices'
 import { InvoiceList } from '@/components/invoices/InvoiceList'
 import { InvoiceListFilters } from '@/components/invoices/InvoiceListFilters'
@@ -17,70 +17,55 @@ import {
 import Link from 'next/link'
 import { matchesStatusFilter, type InvoiceStatusFilter } from '@/lib/invoice-status'
 import { formatMoney, sumInvoiceAmounts } from '@/lib/invoice-totals'
+import { perfStart } from '@/lib/server-timing'
 
 interface Props {
   searchParams: Promise<{ status?: string }>
 }
 
 export default async function FakturyPage({ searchParams }: Props) {
+  const endPage = perfStart('faktury/page')
   const { status: statusParam } = await searchParams
   const statusFilter = (['all', 'pending', 'approved', 'error'].includes(statusParam ?? '')
     ? statusParam
     : 'all') as InvoiceStatusFilter
 
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('full_name')
-    .eq('id', user.id)
-    .maybeSingle()
+  const { supabase, user } = await requireUser()
+  const profile = await getUserProfile(user.id)
 
   const workspace = await getActiveWorkspace(
     supabase,
     user.id,
     user.email ?? '',
-    profile?.full_name
+    profile?.full_name,
+    profile
   )
 
-  const now = new Date()
-  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
 
-  const [{ data: allInvoices }, { data: thisMonthRows }] = await Promise.all([
-    supabase
-      .from('processed_invoices')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('workspace_id', workspace.id)
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('processed_invoices')
-      .select('id, castka_celkem, castka_dph, castka_bez_dph, status, mena')
-      .eq('user_id', user.id)
-      .eq('workspace_id', workspace.id)
-      .gte('created_at', firstOfMonth),
-  ])
+  const { data: invoiceRows } = await supabase
+    .from('processed_invoices')
+    .select(INVOICE_LIST_SELECT)
+    .eq('user_id', user.id)
+    .eq('workspace_id', workspace.id)
+    .order('created_at', { ascending: false })
 
-  const invoices = (allInvoices ?? []) as ProcessedInvoice[]
+  const invoices = (invoiceRows ?? []) as ProcessedInvoice[]
   const filteredInvoices = invoices.filter((inv) => matchesStatusFilter(inv.status, statusFilter))
 
+  const thisMonthRows = invoices.filter((inv) => inv.created_at >= firstOfMonth)
   const needsAttention = invoices.filter(
     (inv) => inv.status === 'needs_manual_check' || inv.status === 'error'
   )
 
-  const monthApproved = sumInvoiceAmounts(thisMonthRows ?? [], { approvedOnly: true })
-  const totalThisMonth = thisMonthRows?.length ?? 0
-  const sentThisMonth =
-    thisMonthRows?.filter((i) =>
-      ['sent', 'sent_to_accounting', 'approved'].includes(i.status ?? '')
-    ).length ?? 0
+  const monthApproved = sumInvoiceAmounts(thisMonthRows, { approvedOnly: true })
+  const totalThisMonth = thisMonthRows.length
+  const sentThisMonth = thisMonthRows.filter((i) =>
+    ['sent', 'sent_to_accounting', 'approved'].includes(i.status ?? '')
+  ).length
   const savedHours = Math.round((sentThisMonth * 5) / 60 * 10) / 10
 
-  const listInvoices = filteredInvoices
+  endPage()
 
   return (
     <div className="space-y-8">
@@ -162,7 +147,7 @@ export default async function FakturyPage({ searchParams }: Props) {
           {statusFilter === 'all' ? 'Všechny faktury' : 'Filtrované faktury'}
         </h2>
         <InvoiceList
-          invoices={listInvoices}
+          invoices={filteredInvoices}
           emptyMessage="Žádné faktury v tomto filtru"
           compact={statusFilter !== 'all'}
         />

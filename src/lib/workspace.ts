@@ -1,4 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { cache } from 'react'
+import type { UserProfileRow } from '@/lib/auth-server'
 
 export type Workspace = {
   id: string
@@ -7,17 +9,24 @@ export type Workspace = {
   created_at: string
 }
 
-export async function getActiveWorkspace(
+type WorkspaceProfileHint = Pick<UserProfileRow, 'active_workspace_id' | 'full_name'> | null | undefined
+
+async function resolveActiveWorkspace(
   supabase: SupabaseClient,
   userId: string,
   userEmail: string,
-  fullName?: string | null
+  fullName?: string | null,
+  profileHint?: WorkspaceProfileHint
 ): Promise<Workspace> {
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('active_workspace_id, full_name')
-    .eq('id', userId)
-    .single()
+  let profile = profileHint
+  if (!profile) {
+    const { data } = await supabase
+      .from('user_profiles')
+      .select('active_workspace_id, full_name')
+      .eq('id', userId)
+      .single()
+    profile = data
+  }
 
   if (profile?.active_workspace_id) {
     const { data: ws } = await supabase
@@ -60,6 +69,16 @@ export async function getActiveWorkspace(
 
   return created as Workspace
 }
+
+export const getActiveWorkspace = cache(
+  async (
+    supabase: SupabaseClient,
+    userId: string,
+    userEmail: string,
+    fullName?: string | null,
+    profileHint?: WorkspaceProfileHint
+  ): Promise<Workspace> => resolveActiveWorkspace(supabase, userId, userEmail, fullName, profileHint)
+)
 
 export async function listWorkspaces(
   supabase: SupabaseClient,

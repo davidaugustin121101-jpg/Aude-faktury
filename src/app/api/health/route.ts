@@ -17,7 +17,13 @@ export async function GET() {
   const ok = checks.supabase && checks.anthropic
 
   return NextResponse.json(
-    { ok, checks },
+    {
+      ok,
+      checks,
+      perf: {
+        hint: 'Nastavte DEBUG_PERF=1 ve Vercel env pro logy [perf] v Server Logs při navigaci.',
+      },
+    },
     { status: ok ? 200 : 503 }
   )
 }

@@ -1,5 +1,4 @@
-import { notFound, redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { notFound } from 'next/navigation'
 import type { ProcessedInvoice } from '@/types/invoices'
 import { INVOICE_ACTIONABLE_STATUSES } from '@/types/invoices'
 import { FieldRow, ConfidenceBadge } from '@/components/invoices/ConfidenceBadge'
@@ -17,18 +16,17 @@ import {
 } from '@/lib/accounting-connection'
 import { InvoiceExportButtons } from '@/components/invoices/InvoiceExportButtons'
 import { InvoiceDeleteButton } from '@/components/invoices/InvoiceDeleteButton'
+import { requireUser } from '@/lib/auth-server'
+import { perfStart } from '@/lib/server-timing'
 
 interface Props {
   params: Promise<{ id: string }>
 }
 
 export default async function InvoiceDetailPage({ params }: Props) {
+  const endPage = perfStart('faktury/[id]/page')
   const { id } = await params
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const { supabase, user } = await requireUser()
 
   const { data: invoice } = await supabase
     .from('processed_invoices')
@@ -41,14 +39,32 @@ export default async function InvoiceDetailPage({ params }: Props) {
 
   const inv = invoice as ProcessedInvoice
   const problemy = inv.problemy ?? []
-  const { data: lastSentLog } = await supabase
-    .from('invoice_audit_log')
-    .select('details, created_at')
-    .eq('invoice_id', id)
-    .eq('action', 'sent')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+
+  const [{ data: lastSentLog }, { data: lastErrorLog }, connectionRow] = await Promise.all([
+    supabase
+      .from('invoice_audit_log')
+      .select('details, created_at')
+      .eq('invoice_id', id)
+      .eq('action', 'sent')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('invoice_audit_log')
+      .select('details, created_at')
+      .eq('invoice_id', id)
+      .eq('action', 'error')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    getConnectionForInvoice(
+      supabase,
+      user.id,
+      user.email ?? '',
+      null,
+      inv.workspace_id
+    ),
+  ])
 
   const sentProvider =
     lastSentLog?.details &&
@@ -69,15 +85,6 @@ export default async function InvoiceDetailPage({ params }: Props) {
   const canAct =
     !effectivelySent && INVOICE_ACTIONABLE_STATUSES.includes(inv.status)
 
-  const { data: lastErrorLog } = await supabase
-    .from('invoice_audit_log')
-    .select('details, created_at')
-    .eq('invoice_id', id)
-    .eq('action', 'error')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
   const lastSendError =
     lastErrorLog?.details &&
     typeof lastErrorLog.details === 'object' &&
@@ -85,23 +92,11 @@ export default async function InvoiceDetailPage({ params }: Props) {
       ? String((lastErrorLog.details as { error?: string }).error ?? '')
       : null
 
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('full_name')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  const connectionRow = await getConnectionForInvoice(
-    supabase,
-    user.id,
-    user.email ?? '',
-    profile?.full_name,
-    inv.workspace_id
-  )
-
   const accountingConn = connectionRow
     ? mapConnectionRow(connectionRow as Record<string, unknown>)
     : null
+
+  endPage()
 
   const formatDate = (d: string | null) =>
     d ? new Intl.DateTimeFormat('cs-CZ').format(new Date(d)) : null
