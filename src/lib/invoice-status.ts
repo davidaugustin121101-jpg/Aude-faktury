@@ -84,6 +84,22 @@ export function matchesStatusFilter(status: string, filter: InvoiceStatusFilter)
   return getStatusDisplay(status).filter === filter
 }
 
+/** DB status values for list query filter */
+export function statusesForFilter(filter: InvoiceStatusFilter): string[] | null {
+  switch (filter) {
+    case 'pending':
+      return ['pending_review', 'needs_manual_check']
+    case 'approved':
+      return ['sent_to_accounting', 'sent', 'approved']
+    case 'rejected':
+      return ['rejected']
+    case 'error':
+      return ['error']
+    default:
+      return null
+  }
+}
+
 export const APPROVED_STATUSES = ['sent_to_accounting', 'sent', 'approved'] as const
 export const PENDING_STATUSES = ['pending_review', 'needs_manual_check'] as const
 

@@ -8,6 +8,7 @@ import type { ProcessedInvoice } from '@/types/invoices'
 import { upsertSupplierRule } from '@/lib/supplier-rules'
 import type { AuditResult } from '@/lib/invoice-audit/types'
 import { insertAuditLog } from '@/lib/audit-log'
+import { INVOICE_SEND_CLAIM_STATUSES } from '@/lib/invoice-guards'
 
 type AccountingRow = Record<string, unknown> & {
   id: string
@@ -75,6 +76,10 @@ export async function sendInvoiceToAccounting(params: {
     auditAction = 'sent',
   } = params
 
+  if (invoice.status === 'sent_to_accounting' && invoice.accounting_document_id) {
+    return { ok: true, documentId: invoice.accounting_document_id }
+  }
+
   const audit = invoice.audit_result as AuditResult | null
   if (audit?.hasCritical && !forceSend) {
     return {
@@ -98,6 +103,38 @@ export async function sendInvoiceToAccounting(params: {
 
   const conn = accounting as AccountingRow
   const extractedData = buildExtractedDataFromInvoice(invoice)
+
+  const { data: claimed, error: claimError } = await supabase
+    .from('processed_invoices')
+    .update({ status: 'approved' })
+    .eq('id', invoice.id)
+    .eq('user_id', userId)
+    .in('status', [...INVOICE_SEND_CLAIM_STATUSES])
+    .select('id')
+    .maybeSingle()
+
+  if (claimError) {
+    return { ok: false, error: claimError.message, status: 500 }
+  }
+
+  if (!claimed) {
+    const { data: current } = await supabase
+      .from('processed_invoices')
+      .select('status, accounting_document_id')
+      .eq('id', invoice.id)
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (current?.status === 'sent_to_accounting' && current.accounting_document_id) {
+      return { ok: true, documentId: String(current.accounting_document_id) }
+    }
+
+    return {
+      ok: false,
+      error: 'Faktura již byla odeslána nebo se právě zpracovává.',
+      status: 409,
+    }
+  }
 
   try {
     let result: { id: string; documentNumber?: string; number?: string }
@@ -146,9 +183,11 @@ export async function sendInvoiceToAccounting(params: {
         processed_at: new Date().toISOString(),
       })
       .eq('id', invoice.id)
+      .eq('user_id', userId)
+      .eq('status', 'approved')
 
     if (updateError) {
-      throw new Error(`Faktura odeslána, ale stav se nepodařilo uložit: ${updateError.message}`)
+      throw new Error(`Faktura odeslána (${documentId}), ale stav se nepodařilo uložit: ${updateError.message}`)
     }
 
     if (rememberSupplier && invoice.dodavatel_ico && invoice.ucetni_kod) {
@@ -182,6 +221,8 @@ export async function sendInvoiceToAccounting(params: {
       .from('processed_invoices')
       .update({ status: 'error' })
       .eq('id', invoice.id)
+      .eq('user_id', userId)
+      .eq('status', 'approved')
 
     await insertAuditLog({
       invoice_id: invoice.id,

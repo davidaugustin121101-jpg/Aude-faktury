@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { CheckCircle2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -112,6 +112,22 @@ export function AccountingConnectionManager({
 
   const showPicker = !activeConnection || changing
   const adding = picking
+
+  useEffect(() => {
+    const hash = window.location.hash.replace('#', '') as Provider
+    if (!hash || !PROVIDERS.includes(hash)) return
+
+    if (activeConnection) {
+      setChanging(true)
+    }
+    setSfCountry(userCountry)
+    setPicking(hash)
+
+    requestAnimationFrame(() => {
+      document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- deep link on mount only
+  }, [])
 
   function resetForm() {
     setPicking(null)

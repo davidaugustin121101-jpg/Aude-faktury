@@ -11,6 +11,14 @@ import { validateSuperFakturaConnection } from '@/lib/superfaktura'
 import { getActiveWorkspace } from '@/lib/workspace'
 import { storeVaultSecret } from '@/lib/vault-secrets'
 import type { CountryCode } from '@/lib/accounting-codes'
+import { checkRateLimit } from '@/lib/rate-limit'
+
+function vaultStoreFailed() {
+  return NextResponse.json(
+    { error: 'Nepodařilo se bezpečně uložit přihlašovací údaje. Zkuste to znovu nebo kontaktujte podporu.' },
+    { status: 500 }
+  )
+}
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -18,6 +26,14 @@ export async function POST(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const rate = checkRateLimit(`accounting-connect:${user.id}`, 10, 60_000)
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { error: `Příliš mnoho pokusů. Zkuste znovu za ${rate.retryAfterSec ?? 60} s.` },
+      { status: 429 }
+    )
+  }
 
   const body = await req.json()
   const { provider, apiKey, accountSlug, clientId, clientSecret, apiEmail, companyId, country } =
@@ -157,11 +173,8 @@ export async function POST(req: NextRequest) {
       `${vaultPrefix}_idoklad_secret`,
       'iDoklad client secret'
     )
-    if (secretId) {
-      connData.idoklad_client_secret_id = secretId
-    } else {
-      connData.idoklad_client_secret = secret
-    }
+    if (!secretId) return vaultStoreFailed()
+    connData.idoklad_client_secret_id = secretId
     connData.fakturoid_account_slug = null
     connData.superfaktura_api_email = null
     connData.superfaktura_company_id = null
@@ -173,11 +186,8 @@ export async function POST(req: NextRequest) {
       `${vaultPrefix}_superfaktura_key`,
       'SuperFaktura API key'
     )
-    if (keyId) {
-      connData.superfaktura_api_key_id = keyId
-    } else {
-      connData.superfaktura_api_key = apiKey ?? null
-    }
+    if (!keyId) return vaultStoreFailed()
+    connData.superfaktura_api_key_id = keyId
     connData.superfaktura_company_id = companyId ?? ''
     connData.idoklad_client_id = null
     connData.fakturoid_account_slug = null
@@ -192,8 +202,8 @@ export async function POST(req: NextRequest) {
         `${vaultPrefix}_fakturoid_secret`,
         'Fakturoid secret'
       )
-      if (secretId) connData.fakturoid_client_secret_id = secretId
-      else connData.fakturoid_client_secret = secret
+      if (!secretId) return vaultStoreFailed()
+      connData.fakturoid_client_secret_id = secretId
     }
     if (token) {
       const tokenId = await storeVaultSecret(
@@ -202,8 +212,8 @@ export async function POST(req: NextRequest) {
         `${vaultPrefix}_fakturoid_token`,
         'Fakturoid token'
       )
-      if (tokenId) connData.fakturoid_oauth_token_id = tokenId
-      else connData.fakturoid_oauth_token = token
+      if (!tokenId) return vaultStoreFailed()
+      connData.fakturoid_oauth_token_id = tokenId
     }
     connData.fakturoid_account_slug = fakturoidAutoSlug ?? accountSlug ?? null
     connData.fakturoid_token_expires_at = fakturoidAutoExpires

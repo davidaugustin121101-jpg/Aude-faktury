@@ -39,7 +39,8 @@ export async function POST(req: NextRequest) {
   })
 
   if (claimErr) {
-    console.warn('[stripe webhook] idempotency unavailable, continuing:', claimErr.message)
+    console.error('[stripe webhook] idempotency claim failed:', claimErr.message)
+    return NextResponse.json({ error: 'Idempotency check failed' }, { status: 500 })
   } else if (claimed === false) {
     return NextResponse.json({ received: true, duplicate: true })
   }

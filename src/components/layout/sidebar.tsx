@@ -44,6 +44,9 @@ function isNavActive(href: string, pathname: string): boolean {
       (pathname.startsWith('/faktury/') && !pathname.startsWith('/faktury/upload'))
     )
   }
+  if (href === '/settings') {
+    return pathname === '/settings'
+  }
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 

@@ -2,30 +2,42 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { getSupabaseAnonKey, getSupabaseUrl } from '@/lib/supabase/env'
 
+const PROTECTED_PREFIXES = [
+  '/dashboard',
+  '/faktury',
+  '/settings',
+  '/klienti',
+  '/napoveda',
+  '/onboarding',
+]
+
+function isProtectedRoute(pathname: string): boolean {
+  return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+}
+
+function applySecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set('X-Frame-Options', 'DENY')
+  response.headers.set('X-Content-Type-Options', 'nosniff')
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  return response
+}
+
 export async function middleware(request: NextRequest) {
   const supabaseUrl = getSupabaseUrl()
   const supabaseAnonKey = getSupabaseAnonKey()
-
   const { pathname } = request.nextUrl
-  const isProtectedRoute =
-    pathname.startsWith('/dashboard') ||
-    pathname.startsWith('/faktury') ||
-    pathname.startsWith('/settings') ||
-    pathname.startsWith('/klienti') ||
-    pathname.startsWith('/napoveda') ||
-    pathname.startsWith('/onboarding')
+  const isProtected = isProtectedRoute(pathname)
 
-  // Bez Supabase env chráníme privátní routes (fail-closed), veřejné stránky necháme projít
   if (!supabaseUrl || !supabaseAnonKey) {
-    if (isProtectedRoute) {
+    if (isProtected) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
-      return NextResponse.redirect(url)
+      return applySecurityHeaders(NextResponse.redirect(url))
     }
-    return NextResponse.next({ request })
+    return applySecurityHeaders(NextResponse.next({ request }))
   }
 
-  let supabaseResponse = NextResponse.next({ request })
+  let supabaseResponse = applySecurityHeaders(NextResponse.next({ request }))
 
   try {
     const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
@@ -35,7 +47,7 @@ export async function middleware(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({ request })
+          supabaseResponse = applySecurityHeaders(NextResponse.next({ request }))
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           )
@@ -49,19 +61,24 @@ export async function middleware(request: NextRequest) {
 
     const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register')
 
-    if (!user && isProtectedRoute) {
+    if (!user && isProtected) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
-      return NextResponse.redirect(url)
+      return applySecurityHeaders(NextResponse.redirect(url))
     }
 
     if (user && isAuthRoute) {
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
-      return NextResponse.redirect(url)
+      return applySecurityHeaders(NextResponse.redirect(url))
     }
-  } catch {
-    return NextResponse.next({ request })
+  } catch (err) {
+    console.error('[middleware] auth error:', err)
+    if (isProtected) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return applySecurityHeaders(NextResponse.redirect(url))
+    }
   }
 
   return supabaseResponse

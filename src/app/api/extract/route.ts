@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { extractInvoiceFromPdf } from '@/lib/claude'
-import { resolveInvoiceAllowance } from '@/lib/account-mode'
 import { getActiveWorkspace } from '@/lib/workspace'
 import type { CountryCode } from '@/lib/accounting-codes'
 import { getDefaultCurrency } from '@/lib/accounting-codes'
@@ -12,6 +11,16 @@ import { insertAuditLog } from '@/lib/audit-log'
 import { sendNewInvoiceNotification } from '@/lib/notifications'
 import { sendInvoiceToAccounting } from '@/lib/send-invoice'
 import type { ProcessedInvoice } from '@/types/invoices'
+import {
+  confirmFreeInvoiceReservation,
+  releaseInvoiceReservation,
+  reserveInvoiceAllowance,
+  type AllowanceSource,
+} from '@/lib/invoice-allowance'
+import { checkRateLimit } from '@/lib/rate-limit'
+
+export const runtime = 'nodejs'
+export const maxDuration = 60
 
 const ALLOWED_VAT_RATES = [0, 10, 12, 20, 21] as const
 
@@ -32,14 +41,13 @@ export async function POST(req: NextRequest) {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Nepřihlášen' }, { status: 401 })
 
-  const now = new Date()
-  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-
-  const { count } = await supabase
-    .from('processed_invoices')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .gte('created_at', firstOfMonth)
+  const rate = checkRateLimit(`extract:${user.id}`, 12, 60_000)
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { error: `Příliš mnoho nahrání. Zkuste znovu za ${rate.retryAfterSec ?? 60} s.` },
+      { status: 429 }
+    )
+  }
 
   const admin = createAdminClient()
   const { data: profile } = await admin
@@ -48,11 +56,12 @@ export async function POST(req: NextRequest) {
     .eq('id', user.id)
     .maybeSingle()
 
-  const allowance = resolveInvoiceAllowance(profile, count ?? 0)
-
-  if (!allowance.allowed) {
+  const allowance = await reserveInvoiceAllowance(user.id)
+  if (!allowance.ok) {
     return NextResponse.json({ error: allowance.message }, { status: 429 })
   }
+
+  const reservedSource: AllowanceSource = allowance.source
 
   const country = ((profile as { country?: string } | null)?.country ?? 'cz') as CountryCode
 
@@ -73,12 +82,15 @@ export async function POST(req: NextRequest) {
   const file = formData.get('file') as File | null
 
   if (!file) {
+    await releaseInvoiceReservation(user.id, reservedSource)
     return NextResponse.json({ error: 'Chybí soubor' }, { status: 400 })
   }
   if (file.type !== 'application/pdf') {
+    await releaseInvoiceReservation(user.id, reservedSource)
     return NextResponse.json({ error: 'Nahraj prosím PDF soubor' }, { status: 400 })
   }
   if (file.size > 10 * 1024 * 1024) {
+    await releaseInvoiceReservation(user.id, reservedSource)
     return NextResponse.json({ error: 'Soubor je příliš velký (max 10 MB)' }, { status: 400 })
   }
 
@@ -89,6 +101,7 @@ export async function POST(req: NextRequest) {
   try {
     extracted = await extractInvoiceFromPdf(base64, country)
   } catch (err) {
+    await releaseInvoiceReservation(user.id, reservedSource)
     const message = err instanceof Error ? err.message : 'Chyba při vytěžení faktury'
     return NextResponse.json({ error: message }, { status: 500 })
   }
@@ -173,6 +186,7 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (dbErr || !invoice) {
+    await releaseInvoiceReservation(user.id, reservedSource)
     console.error('[extract] DB insert failed:', dbErr?.message, dbErr?.code, dbErr?.details)
     return NextResponse.json(
       {
@@ -184,33 +198,8 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  if (allowance.source === 'credit') {
-    const { data: newBalance, error: creditErr } = await admin.rpc('decrement_invoice_credit', {
-      p_user_id: user.id,
-    })
-
-    if (creditErr || newBalance === -1 || newBalance === null) {
-      if (creditErr) {
-        const credits = profile?.invoice_credits ?? 0
-        if (credits <= 0) {
-          await admin.from('processed_invoices').delete().eq('id', invoice.id)
-          return NextResponse.json(
-            { error: 'Nedostatek kreditů. Dokupte balíček Standard.' },
-            { status: 429 }
-          )
-        }
-        await admin
-          .from('user_profiles')
-          .update({ invoice_credits: credits - 1 })
-          .eq('id', user.id)
-      } else {
-        await admin.from('processed_invoices').delete().eq('id', invoice.id)
-        return NextResponse.json(
-          { error: 'Nedostatek kreditů. Dokupte balíček Standard.' },
-          { status: 429 }
-        )
-      }
-    }
+  if (reservedSource === 'free_monthly') {
+    await confirmFreeInvoiceReservation(user.id)
   }
 
   await insertAuditLog({
@@ -224,6 +213,7 @@ export async function POST(req: NextRequest) {
       source: 'manual_upload',
       audit_score: auditResult.score,
       supplier_rule: !!supplierRule,
+      allowance_source: reservedSource,
     },
   })
 
@@ -232,9 +222,14 @@ export async function POST(req: NextRequest) {
   const shouldNotify = invoiceSettings?.notify_on_new !== false && notifyEmail
 
   const autoThreshold = invoiceSettings?.auto_approve_below
-  const totalAmount = Number(extracted.castka_celkem ?? 0)
+  const totalAmount =
+    extracted.castka_celkem != null && !Number.isNaN(Number(extracted.castka_celkem))
+      ? Number(extracted.castka_celkem)
+      : null
   const canAutoApprove =
     autoThreshold != null &&
+    totalAmount != null &&
+    totalAmount > 0 &&
     !auditResult.hasCritical &&
     totalAmount <= Number(autoThreshold)
 
@@ -263,7 +258,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (shouldNotify && notifyEmail) {
+  if (shouldNotify && notifyEmail && totalAmount != null) {
     await sendNewInvoiceNotification({
       to: notifyEmail,
       supplierName: extracted.dodavatel_nazev,

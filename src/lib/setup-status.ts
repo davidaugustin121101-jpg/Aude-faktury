@@ -10,7 +10,11 @@ export async function getSetupStatus(
   fullName?: string | null
 ): Promise<SetupStatus> {
   const [{ data: profile }, workspace] = await Promise.all([
-    supabase.from('user_profiles').select('country').eq('id', userId).maybeSingle(),
+    supabase
+      .from('user_profiles')
+      .select('country_confirmed_at')
+      .eq('id', userId)
+      .maybeSingle(),
     getActiveWorkspace(supabase, userId, userEmail, fullName),
   ])
 
@@ -28,7 +32,7 @@ export async function getSetupStatus(
   )
 
   return {
-    countrySet: !!profile?.country,
+    countrySet: !!profile?.country_confirmed_at,
     exportProfileSet: !!workspaceRow?.export_company_ico?.trim(),
     accountingConnected: !!connection,
   }

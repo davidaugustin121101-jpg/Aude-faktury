@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useRouter } from 'next/navigation'
 import { FileText, Loader2, Upload } from 'lucide-react'
@@ -11,12 +11,14 @@ export function DropZone() {
   const router = useRouter()
   const [uploading, setUploading] = useState(false)
   const [fileName, setFileName] = useState<string | null>(null)
+  const uploadingRef = useRef(false)
 
   const onDrop = useCallback(
     async (accepted: File[]) => {
       const file = accepted[0]
-      if (!file) return
+      if (!file || uploadingRef.current) return
 
+      uploadingRef.current = true
       setUploading(true)
       setFileName(file.name)
 
@@ -38,6 +40,7 @@ export function DropZone() {
       } catch {
         toast.error('Chyba při nahrávání')
       } finally {
+        uploadingRef.current = false
         setUploading(false)
         setFileName(null)
       }

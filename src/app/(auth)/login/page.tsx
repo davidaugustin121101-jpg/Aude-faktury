@@ -19,6 +19,22 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
 
+  async function handleForgotPassword(e: React.MouseEvent) {
+    e.preventDefault()
+    if (!email.trim()) {
+      toast.error('Nejdřív zadejte e-mail')
+      return
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/callback?next=/settings`,
+    })
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+    toast.success('Odkaz pro obnovení hesla jsme poslali na e-mail')
+  }
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
@@ -64,7 +80,13 @@ export default function LoginPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Heslo</Label>
-                  <a href="#" className="text-xs text-blue-600 hover:underline">Zapomněli jste heslo?</a>
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    Zapomněli jste heslo?
+                  </button>
                 </div>
                 <Input
                   id="password"

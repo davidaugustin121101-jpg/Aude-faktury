@@ -51,10 +51,10 @@ export default async function UploadPage() {
       {!accountingConn && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
           <p className="text-sm text-yellow-800">
-            <strong>Upozornění:</strong> Pro aktivního klienta nemáte připojený fakturační systém.
-            Fakturu sice zpracujeme, ale nebude ji možné odeslat do účetnictví.{' '}
+            <strong>Volitelné:</strong> Pro odeslání jedním klikem do účetnictví připojte fakturační
+            systém. Export souborů (ISDOC, Pohoda) funguje i bez napojení.{' '}
             <Link href="/settings/accounting" className="underline font-medium">
-              Nastavit teď →
+              Nastavit →
             </Link>
           </p>
         </div>

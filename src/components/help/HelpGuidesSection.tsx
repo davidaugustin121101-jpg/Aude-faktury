@@ -1,14 +1,31 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ChevronDown, ExternalLink, ArrowRight, BookOpen, Download, Link2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { GuideLink } from '@/lib/guides'
 import { API_GUIDES, EXPORT_GUIDES } from '@/lib/guides'
 
-function GuideAccordion({ guides, sectionIcon }: { guides: GuideLink[]; sectionIcon: React.ReactNode }) {
+function GuideAccordion({
+  guides,
+  sectionIcon,
+  initialOpenId,
+}: {
+  guides: GuideLink[]
+  sectionIcon: React.ReactNode
+  initialOpenId?: string | null
+}) {
   const [openId, setOpenId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (initialOpenId && guides.some((g) => g.id === initialOpenId)) {
+      setOpenId(initialOpenId)
+      requestAnimationFrame(() => {
+        document.getElementById(initialOpenId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    }
+  }, [initialOpenId, guides])
 
   return (
     <div className="space-y-2">
@@ -84,6 +101,13 @@ function GuideAccordion({ guides, sectionIcon }: { guides: GuideLink[]; sectionI
 }
 
 export function HelpGuidesSection() {
+  const [initialHash, setInitialHash] = useState<string | null>(null)
+
+  useEffect(() => {
+    const hash = window.location.hash.replace('#', '')
+    if (hash) setInitialHash(hash)
+  }, [])
+
   return (
     <div className="space-y-8">
       <div>
@@ -93,7 +117,7 @@ export function HelpGuidesSection() {
             API napojení (iDoklad, Fakturoid, SuperFaktura)
           </p>
         </div>
-        <GuideAccordion guides={API_GUIDES} sectionIcon={<Link2 className="h-3 w-3" />} />
+        <GuideAccordion guides={API_GUIDES} sectionIcon={<Link2 className="h-3 w-3" />} initialOpenId={initialHash} />
       </div>
 
       <div>
@@ -108,7 +132,7 @@ export function HelpGuidesSection() {
           detailu faktury a importujte v ERP. Nastavte export profil pro IČO, středisko a typ
           dokladu.
         </p>
-        <GuideAccordion guides={EXPORT_GUIDES} sectionIcon={<BookOpen className="h-3 w-3" />} />
+        <GuideAccordion guides={EXPORT_GUIDES} sectionIcon={<BookOpen className="h-3 w-3" />} initialOpenId={initialHash} />
       </div>
     </div>
   )

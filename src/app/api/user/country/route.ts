@@ -21,13 +21,14 @@ export async function POST(req: NextRequest) {
     .maybeSingle()
 
   if (existing) {
-    await supabase.from('user_profiles').update({ country }).eq('id', user.id)
+    await supabase.from('user_profiles').update({ country, country_confirmed_at: new Date().toISOString() }).eq('id', user.id)
   } else {
     await supabase.from('user_profiles').insert({
       id: user.id,
       email: user.email ?? '',
       plan: 'free',
       country,
+      country_confirmed_at: new Date().toISOString(),
     })
   }
 

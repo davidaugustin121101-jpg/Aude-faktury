@@ -20,6 +20,9 @@ function isNavActive(href: string, pathname: string): boolean {
       (pathname.startsWith('/faktury/') && !pathname.startsWith('/faktury/upload'))
     )
   }
+  if (href === '/settings') {
+    return pathname === '/settings'
+  }
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
@@ -126,7 +129,7 @@ export function MobileDrawer({
   }
 
   function NavLink({ href, label }: { href: string; label: string }) {
-    const active = pathname === href || pathname.startsWith(href + '/')
+    const active = isNavActive(href, pathname)
     return (
       <Link
         href={href}

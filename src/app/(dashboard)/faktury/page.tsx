@@ -5,6 +5,7 @@ import { INVOICE_LIST_SELECT } from '@/lib/invoice-list-columns'
 import type { ProcessedInvoice } from '@/types/invoices'
 import { InvoiceList } from '@/components/invoices/InvoiceList'
 import { InvoiceListFilters } from '@/components/invoices/InvoiceListFilters'
+import { InvoicePagination } from '@/components/invoices/InvoicePagination'
 import {
   FileText,
   Clock,
@@ -15,21 +16,23 @@ import {
   Receipt,
 } from 'lucide-react'
 import Link from 'next/link'
-import { matchesStatusFilter, type InvoiceStatusFilter } from '@/lib/invoice-status'
+import { type InvoiceStatusFilter, statusesForFilter } from '@/lib/invoice-status'
 import { formatMoney, sumInvoiceAmounts } from '@/lib/invoice-totals'
 import { estimateSavedHours } from '@/lib/stats'
+import { INVOICE_PAGE_SIZE } from '@/lib/invoice-guards'
 import { perfStart } from '@/lib/server-timing'
 
 interface Props {
-  searchParams: Promise<{ status?: string }>
+  searchParams: Promise<{ status?: string; page?: string }>
 }
 
 export default async function FakturyPage({ searchParams }: Props) {
   const endPage = perfStart('faktury/page')
-  const { status: statusParam } = await searchParams
-  const statusFilter = (['all', 'pending', 'approved', 'error'].includes(statusParam ?? '')
+  const { status: statusParam, page: pageParam } = await searchParams
+  const statusFilter = (['all', 'pending', 'approved', 'error', 'rejected'].includes(statusParam ?? '')
     ? statusParam
     : 'all') as InvoiceStatusFilter
+  const page = Math.max(1, parseInt(pageParam ?? '1', 10) || 1)
 
   const { supabase, user } = await requireUser()
   const profile = await getUserProfile(user.id)
@@ -43,28 +46,47 @@ export default async function FakturyPage({ searchParams }: Props) {
   )
 
   const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+  const from = (page - 1) * INVOICE_PAGE_SIZE
+  const to = from + INVOICE_PAGE_SIZE - 1
 
-  const { data: invoiceRows } = await supabase
+  const statusValues = statusesForFilter(statusFilter)
+
+  let listQuery = supabase
     .from('processed_invoices')
-    .select(INVOICE_LIST_SELECT)
+    .select(INVOICE_LIST_SELECT, { count: 'exact' })
     .eq('user_id', user.id)
     .eq('workspace_id', workspace.id)
     .order('created_at', { ascending: false })
 
+  if (statusValues) {
+    listQuery = listQuery.in('status', statusValues)
+  }
+
+  const { data: invoiceRows, count: filteredCount } = await listQuery.range(from, to)
+
+  const { data: monthRows } = await supabase
+    .from('processed_invoices')
+    .select('castka_celkem, castka_dph, status')
+    .eq('user_id', user.id)
+    .eq('workspace_id', workspace.id)
+    .gte('created_at', firstOfMonth)
+
+  const { count: attentionCount } = await supabase
+    .from('processed_invoices')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .eq('workspace_id', workspace.id)
+    .in('status', ['needs_manual_check', 'error'])
+
   const invoices = (invoiceRows ?? []) as ProcessedInvoice[]
-  const filteredInvoices = invoices.filter((inv) => matchesStatusFilter(inv.status, statusFilter))
-
-  const thisMonthRows = invoices.filter((inv) => inv.created_at >= firstOfMonth)
-  const needsAttention = invoices.filter(
-    (inv) => inv.status === 'needs_manual_check' || inv.status === 'error'
-  )
-
-  const monthApproved = sumInvoiceAmounts(thisMonthRows, { approvedOnly: true })
+  const thisMonthRows = monthRows ?? []
+  const monthApproved = sumInvoiceAmounts(thisMonthRows as ProcessedInvoice[], { approvedOnly: true })
   const totalThisMonth = thisMonthRows.length
   const sentThisMonth = thisMonthRows.filter((i) =>
     ['sent', 'sent_to_accounting', 'approved'].includes(i.status ?? '')
   ).length
   const savedHours = estimateSavedHours(sentThisMonth)
+  const totalPages = Math.max(1, Math.ceil((filteredCount ?? 0) / INVOICE_PAGE_SIZE))
 
   endPage()
 
@@ -112,7 +134,7 @@ export default async function FakturyPage({ searchParams }: Props) {
         <StatCard
           icon={<Clock className="h-5 w-5 text-amber-600" />}
           label="Vyžaduje kontrolu"
-          value={String(needsAttention.length)}
+          value={String(attentionCount ?? 0)}
           sub="audit / chyba"
           color="yellow"
         />
@@ -146,12 +168,16 @@ export default async function FakturyPage({ searchParams }: Props) {
       <section>
         <h2 className="text-base font-semibold text-gray-900 mb-3">
           {statusFilter === 'all' ? 'Všechny faktury' : 'Filtrované faktury'}
+          {filteredCount != null && (
+            <span className="text-sm font-normal text-gray-500 ml-2">({filteredCount})</span>
+          )}
         </h2>
         <InvoiceList
-          invoices={filteredInvoices}
+          invoices={invoices}
           emptyMessage="Žádné faktury v tomto filtru"
           compact={statusFilter !== 'all'}
         />
+        <InvoicePagination page={page} totalPages={totalPages} statusFilter={statusFilter} />
       </section>
     </div>
   )

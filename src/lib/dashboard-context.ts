@@ -60,20 +60,24 @@ async function loadDashboardContext(
         .from('processed_invoices')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
+        .eq('workspace_id', workspace.id)
         .gte('created_at', firstOfMonth),
       supabase
         .from('processed_invoices')
         .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId),
+        .eq('user_id', userId)
+        .eq('workspace_id', workspace.id),
       supabase
         .from('processed_invoices')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
+        .eq('workspace_id', workspace.id)
         .eq('status', 'sent_to_accounting'),
       supabase
         .from('processed_invoices')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
+        .eq('workspace_id', workspace.id)
         .in('status', ['needs_manual_check', 'error']),
     ])
 

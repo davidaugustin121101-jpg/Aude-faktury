@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { SettingsNav } from '@/components/settings/SettingsNav'
 import { ExportProfileSettingsSection } from '@/components/settings/ExportProfileSettingsSection'
@@ -26,11 +27,23 @@ export default async function ExportSettingsPage() {
         <ExportProfileSettingsSection />
       </div>
 
+      <div id="money" className="scroll-mt-24 pt-2">
+        <p className="text-xs text-gray-500 px-1">
+          Pro Money S3 nastavte typ dokladu (FP) v export profilu výše.
+        </p>
+      </div>
+
+      <div id="helios" className="scroll-mt-24 pt-2">
+        <p className="text-xs text-gray-500 px-1">
+          Pro Helios Red / iNuvio nastavte středisko a zakázku (STRED / STRED2) v export profilu výše.
+        </p>
+      </div>
+
       <p className="text-xs text-gray-500 px-1">
         Podrobné návody k exportu najdete v{' '}
-        <a href="/napoveda" className="text-blue-600 hover:underline">
+        <Link href="/napoveda" className="text-blue-600 hover:underline">
           Nápovědě
-        </a>
+        </Link>
         .
       </p>
     </div>

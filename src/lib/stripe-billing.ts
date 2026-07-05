@@ -26,12 +26,15 @@ async function findUserIdByEmail(
   supabase: SupabaseClient,
   email: string
 ): Promise<string | null> {
-  const { data } = await supabase
-    .from('user_profiles')
-    .select('id')
-    .eq('email', email)
-    .maybeSingle()
-  return data?.id ?? null
+  const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 })
+  if (error) {
+    console.error('[stripe-billing] listUsers failed:', error.message)
+    return null
+  }
+  const match = data.users.find(
+    (u) => u.email?.toLowerCase() === email.toLowerCase()
+  )
+  return match?.id ?? null
 }
 
 async function resolveUserIdByStripeCustomerEmail(
@@ -130,18 +133,11 @@ export async function addInvoiceCredits(
   amount: number,
   stripeCustomerId?: string | null
 ) {
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('invoice_credits')
-    .eq('id', userId)
-    .maybeSingle()
-
-  const patch: Record<string, number | string> = {
-    invoice_credits: (profile?.invoice_credits ?? 0) + amount,
-  }
-  if (stripeCustomerId) patch.stripe_customer_id = stripeCustomerId
-
-  const { error } = await supabase.from('user_profiles').update(patch).eq('id', userId)
+  const { error } = await supabase.rpc('add_invoice_credits', {
+    p_user_id: userId,
+    p_amount: amount,
+    p_stripe_customer_id: stripeCustomerId ?? null,
+  })
   if (error) throw new Error(error.message)
 }
 

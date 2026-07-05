@@ -4,6 +4,7 @@ import { INVOICE_ACTIONABLE_STATUSES, type ProcessedInvoice } from '@/types/invo
 import { runInvoiceAudit } from '@/lib/invoice-audit/run-audit'
 import type { CountryCode } from '@/lib/accounting-codes'
 import { insertAuditLog } from '@/lib/audit-log'
+import { INVOICE_DELETABLE_STATUSES } from '@/lib/invoice-guards'
 
 export async function DELETE(
   _req: NextRequest,
@@ -18,17 +19,18 @@ export async function DELETE(
 
   const { data: existing } = await supabase
     .from('processed_invoices')
-    .select('id, dodavatel_nazev, cislo_faktury')
+    .select('id, dodavatel_nazev, cislo_faktury, status')
     .eq('id', id)
     .eq('user_id', user.id)
     .maybeSingle()
 
   if (!existing) return NextResponse.json({ error: 'Faktura nenalezena' }, { status: 404 })
 
-  const { error } = await supabase.from('processed_invoices').delete().eq('id', id).eq('user_id', user.id)
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  if (!INVOICE_DELETABLE_STATUSES.includes(existing.status as (typeof INVOICE_DELETABLE_STATUSES)[number])) {
+    return NextResponse.json(
+      { error: 'Odeslanou fakturu nelze smazat. Kontaktujte podporu.' },
+      { status: 400 }
+    )
   }
 
   await insertAuditLog({
@@ -38,8 +40,15 @@ export async function DELETE(
     details: {
       dodavatel_nazev: existing.dodavatel_nazev,
       cislo_faktury: existing.cislo_faktury,
+      previous_status: existing.status,
     },
   })
+
+  const { error } = await supabase.from('processed_invoices').delete().eq('id', id).eq('user_id', user.id)
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
 
   return NextResponse.json({ ok: true })
 }
@@ -93,7 +102,13 @@ export async function PATCH(
 
   const numericFields = ['castka_bez_dph', 'castka_dph', 'castka_celkem', 'sazba_dph'] as const
   for (const key of numericFields) {
-    if (body[key] !== undefined) patch[key] = Number(body[key])
+    if (body[key] !== undefined) {
+      const num = Number(body[key])
+      if (Number.isNaN(num)) {
+        return NextResponse.json({ error: `Neplatná hodnota pole ${key}` }, { status: 400 })
+      }
+      patch[key] = num
+    }
   }
 
   const { data: profile } = await supabase
@@ -141,6 +156,7 @@ export async function PATCH(
     .from('processed_invoices')
     .update(patch)
     .eq('id', id)
+    .eq('user_id', user.id)
     .select()
     .single()
 

@@ -29,6 +29,7 @@ export default async function DashboardPage() {
       .from('processed_invoices')
       .select('id, dodavatel_nazev, castka_celkem, status, created_at, ucetni_kod')
       .eq('user_id', user.id)
+      .eq('workspace_id', ctx.workspaceId)
       .order('created_at', { ascending: false })
       .limit(5),
     getSetupStatus(supabase, user.id, user.email ?? '', null),
