@@ -1,6 +1,14 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 
-type AuditAction = 'received' | 'extracted' | 'approved' | 'sent' | 'rejected' | 'error' | 'auto_approved'
+type AuditAction =
+  | 'received'
+  | 'extracted'
+  | 'approved'
+  | 'sent'
+  | 'rejected'
+  | 'error'
+  | 'auto_approved'
+  | 'deleted'
 
 export async function insertAuditLog(entry: {
   invoice_id: string

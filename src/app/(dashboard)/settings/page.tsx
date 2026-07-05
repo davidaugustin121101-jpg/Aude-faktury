@@ -15,6 +15,7 @@ import {
 } from '@/lib/account-mode'
 import { InvoiceSettingsPanel } from '@/components/settings/InvoiceSettingsPanel'
 import { ExportProfileSettingsSection } from '@/components/settings/ExportProfileSettingsSection'
+import { SettingsGuidesSection } from '@/components/settings/SettingsGuidesSection'
 import type { CountryCode } from '@/lib/accounting-codes'
 
 export default async function SettingsPage() {
@@ -111,6 +112,8 @@ export default async function SettingsPage() {
 
       <ExportProfileSettingsSection />
 
+      <SettingsGuidesSection />
+
       <div className="space-y-2">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">Napojení</p>
         {isAccountant && (
@@ -136,8 +139,10 @@ export default async function SettingsPage() {
             <Receipt className="h-5 w-5 text-blue-600" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-semibold text-gray-900">Fakturační systém</p>
-            <p className="text-xs text-gray-500 mt-0.5">Jeden systém — iDoklad, Fakturoid nebo SuperFaktura</p>
+            <p className="text-sm font-semibold text-gray-900">Fakturační systém (API)</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              iDoklad, Fakturoid nebo SuperFaktura — odeslání jedním klikem
+            </p>
           </div>
           <span className="text-xs text-gray-400 group-hover:text-blue-600">→</span>
         </Link>

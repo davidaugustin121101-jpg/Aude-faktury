@@ -6,8 +6,21 @@ export async function middleware(request: NextRequest) {
   const supabaseUrl = getSupabaseUrl()
   const supabaseAnonKey = getSupabaseAnonKey()
 
-  // Bez Supabase env proměnných middleware neblokuje web (Vercel 500 jinak)
+  const { pathname } = request.nextUrl
+  const isProtectedRoute =
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/faktury') ||
+    pathname.startsWith('/settings') ||
+    pathname.startsWith('/klienti') ||
+    pathname.startsWith('/onboarding')
+
+  // Bez Supabase env chráníme privátní routes (fail-closed), veřejné stránky necháme projít
   if (!supabaseUrl || !supabaseAnonKey) {
+    if (isProtectedRoute) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
     return NextResponse.next({ request })
   }
 
@@ -33,15 +46,7 @@ export async function middleware(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser()
 
-    const { pathname } = request.nextUrl
-
     const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register')
-    const isProtectedRoute =
-      pathname.startsWith('/dashboard') ||
-      pathname.startsWith('/faktury') ||
-      pathname.startsWith('/settings') ||
-      pathname.startsWith('/klienti') ||
-      pathname.startsWith('/onboarding')
 
     if (!user && isProtectedRoute) {
       const url = request.nextUrl.clone()

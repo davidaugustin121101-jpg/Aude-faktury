@@ -16,6 +16,7 @@ import {
   providerDisplayName,
 } from '@/lib/accounting-connection'
 import { InvoiceExportButtons } from '@/components/invoices/InvoiceExportButtons'
+import { InvoiceDeleteButton } from '@/components/invoices/InvoiceDeleteButton'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -276,7 +277,7 @@ export default async function InvoiceDetailPage({ params }: Props) {
               <p className="mt-1 text-red-700">{lastSendError}</p>
               <p className="mt-2 text-xs text-red-600">
                 Opravte příčinu (např. nastavení ve {providerDisplayName(accountingConn.provider)})
-                a zkuste odeslat znovu tlačítkem níže.
+                a zkuste odeslat znovu, nebo stáhněte export pro Pohodu / Money / Helios.
               </p>
             </div>
           )}
@@ -290,35 +291,41 @@ export default async function InvoiceDetailPage({ params }: Props) {
         </>
       )}
 
-      {/* Already processed */}
-      {!canAct && (
-        <div className="bg-gray-50 rounded-xl border border-gray-200 p-5 text-center">
-          {displayStatus === 'sent_to_accounting' && (
-            <p className="text-sm text-gray-600">
-              ✅ Faktura byla odeslána do{' '}
-              <strong>
-                {providerDisplayName(inv.accounting_provider ?? sentProvider ?? '')}
-              </strong>
-              {(inv.accounting_document_id ?? sentDocumentId) && (
-                <> · Doklad č. {inv.accounting_document_id ?? sentDocumentId}</>
-              )}
-            </p>
-          )}
-          {inv.status === 'rejected' && (
-            <p className="text-sm text-gray-600">❌ Faktura byla zamítnuta</p>
-          )}
+      {!canAct && displayStatus === 'sent_to_accounting' && (
+        <div className="bg-gray-50 rounded-xl border border-gray-200 p-5 text-center space-y-3">
+          <p className="text-sm text-gray-600">
+            ✅ Faktura byla odeslána do{' '}
+            <strong>
+              {providerDisplayName(inv.accounting_provider ?? sentProvider ?? '')}
+            </strong>
+            {(inv.accounting_document_id ?? sentDocumentId) && (
+              <> · Doklad č. {inv.accounting_document_id ?? sentDocumentId}</>
+            )}
+          </p>
+          <InvoiceDeleteButton
+            invoiceId={inv.id}
+            supplierName={inv.dodavatel_nazev}
+            redirectTo="/faktury"
+            variant="ghost"
+            className="text-gray-500"
+          />
         </div>
       )}
 
       {canAct && !accountingConn && (
-        <div className="bg-yellow-50 rounded-xl border border-yellow-200 p-5 text-center">
-          <p className="text-sm text-yellow-800">
-            Nejprve připojte fakturační systém pro tohoto klienta v{' '}
-            <Link href="/settings/accounting" className="underline font-medium">
+        <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3">
+          <p className="text-sm text-gray-600">
+            Pro odeslání přes API připojte iDoklad, Fakturoid nebo SuperFakturu v{' '}
+            <Link href="/settings/accounting" className="underline font-medium text-blue-600">
               nastavení fakturačního systému
             </Link>
-            .
+            . Pro Pohodu, Money S3 nebo Helios použijte export souborů výše.
           </p>
+          <InvoiceDeleteButton
+            invoiceId={inv.id}
+            supplierName={inv.dodavatel_nazev}
+            redirectTo="/faktury"
+          />
         </div>
       )}
     </div>

@@ -3,7 +3,6 @@ import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveWorkspace } from '@/lib/workspace'
 import type { ProcessedInvoice } from '@/types/invoices'
-import { INVOICE_ACTIONABLE_STATUSES } from '@/types/invoices'
 import { InvoiceList } from '@/components/invoices/InvoiceList'
 import { InvoiceListFilters } from '@/components/invoices/InvoiceListFilters'
 import {
@@ -25,7 +24,7 @@ interface Props {
 
 export default async function FakturyPage({ searchParams }: Props) {
   const { status: statusParam } = await searchParams
-  const statusFilter = (['all', 'pending', 'approved', 'rejected'].includes(statusParam ?? '')
+  const statusFilter = (['all', 'pending', 'approved', 'error'].includes(statusParam ?? '')
     ? statusParam
     : 'all') as InvoiceStatusFilter
 
@@ -69,8 +68,7 @@ export default async function FakturyPage({ searchParams }: Props) {
   const invoices = (allInvoices ?? []) as ProcessedInvoice[]
   const filteredInvoices = invoices.filter((inv) => matchesStatusFilter(inv.status, statusFilter))
 
-  const pendingInvoices = invoices.filter((inv) =>
-    INVOICE_ACTIONABLE_STATUSES.includes(inv.status)
+    (inv) => inv.status === 'needs_manual_check' || inv.status === 'error'
   )
 
   const monthApproved = sumInvoiceAmounts(thisMonthRows ?? [], { approvedOnly: true })
@@ -81,13 +79,7 @@ export default async function FakturyPage({ searchParams }: Props) {
     ).length ?? 0
   const savedHours = Math.round((sentThisMonth * 5) / 60 * 10) / 10
 
-  const showPendingSection = statusFilter === 'all' && pendingInvoices.length > 0
-  const listInvoices =
-    statusFilter === 'all' && showPendingSection
-      ? filteredInvoices.filter(
-          (inv) => !INVOICE_ACTIONABLE_STATUSES.includes(inv.status)
-        )
-      : filteredInvoices
+  const listInvoices = filteredInvoices
 
   return (
     <div className="space-y-8">
@@ -125,30 +117,30 @@ export default async function FakturyPage({ searchParams }: Props) {
         />
         <StatCard
           icon={<CheckCircle2 className="h-5 w-5 text-green-600" />}
-          label="Schváleno"
+          label="Odesláno"
           value={String(sentThisMonth)}
-          sub="odesláno"
+          sub="tento měsíc"
           color="green"
         />
         <StatCard
           icon={<Clock className="h-5 w-5 text-amber-600" />}
-          label="Čeká se schválení"
-          value={String(pendingInvoices.length)}
-          sub="k vyřízení"
+          label="Vyžaduje kontrolu"
+          value={String(needsAttention.length)}
+          sub="audit / chyba"
           color="yellow"
         />
         <StatCard
           icon={<Coins className="h-5 w-5 text-emerald-600" />}
           label="Celkem Kč"
           value={formatMoney(monthApproved.total)}
-          sub="schválené tento měsíc"
+          sub="odeslané tento měsíc"
           color="green"
         />
         <StatCard
           icon={<Receipt className="h-5 w-5 text-violet-600" />}
           label="DPH celkem"
           value={formatMoney(monthApproved.vat)}
-          sub="schválené tento měsíc"
+          sub="odeslané tento měsíc"
           color="purple"
         />
         <StatCard
@@ -163,18 +155,6 @@ export default async function FakturyPage({ searchParams }: Props) {
       <Suspense fallback={<div className="h-9" />}>
         <InvoiceListFilters />
       </Suspense>
-
-      {showPendingSection && (
-        <section>
-          <div className="flex items-center gap-2 mb-3">
-            <h2 className="text-base font-semibold text-gray-900">Čeká se schválení</h2>
-            <span className="h-5 min-w-5 px-1.5 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">
-              {pendingInvoices.length}
-            </span>
-          </div>
-          <InvoiceList invoices={pendingInvoices} />
-        </section>
-      )}
 
       <section>
         <h2 className="text-base font-semibold text-gray-900 mb-3">

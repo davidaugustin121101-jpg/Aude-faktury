@@ -56,10 +56,10 @@ export function InvoiceSettingsPanel() {
       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Faktury</p>
 
       <label className="block text-sm">
-        <span className="text-gray-700 font-medium">Auto-schválení do částky (Kč)</span>
+        <span className="text-gray-700 font-medium">Auto-odeslání do API do částky (Kč)</span>
         <p className="text-xs text-gray-500 mt-0.5 mb-1">
-          Faktury pod touto částkou bez kritického auditu se automaticky odešlou do účetnictví.
-          Prázdné = vypnuto.
+          Faktury pod touto částkou bez kritického auditu se automaticky odešlou do připojeného
+          fakturačního systému (iDoklad / Fakturoid / SuperFaktura). Prázdné = vypnuto.
         </p>
         <input
           type="number"

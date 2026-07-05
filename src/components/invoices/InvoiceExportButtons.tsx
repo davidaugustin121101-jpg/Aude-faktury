@@ -24,7 +24,8 @@ export function InvoiceExportButtons({ invoiceId }: Props) {
     <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3">
       <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Export souborů</p>
       <p className="text-sm text-gray-600">
-        Stáhněte fakturu pro import do Pohody, Money S3 nebo Helios. Export nevyužívá AI tokeny.
+        Stáhněte fakturu pro import do Pohody, Money S3 nebo Helios. Pro cloudové systémy (iDoklad,
+        Fakturoid, SuperFaktura) použijte tlačítko „Odeslat“ níže. Export nevyužívá AI tokeny.
       </p>
       <div className="flex flex-wrap gap-2">
         {FORMATS.map(({ format, recommended }) => (

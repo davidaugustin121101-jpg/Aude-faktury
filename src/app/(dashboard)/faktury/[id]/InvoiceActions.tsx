@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCircle2, Pencil, X, Loader2 } from 'lucide-react'
+import { Send, Pencil, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { providerDisplayName } from '@/lib/accounting-connection'
 import { InvoiceEditForm } from '@/components/invoices/InvoiceEditForm'
+import { InvoiceDeleteButton } from '@/components/invoices/InvoiceDeleteButton'
 import type { ProcessedInvoice } from '@/types/invoices'
 
 interface Props {
@@ -25,7 +26,7 @@ export function InvoiceActions({
   supplierName,
 }: Props) {
   const router = useRouter()
-  const [loading, setLoading] = useState<'approve' | 'reject' | null>(null)
+  const [loading, setLoading] = useState(false)
   const [rememberSupplier, setRememberSupplier] = useState(true)
   const [forceSend, setForceSend] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -33,18 +34,18 @@ export function InvoiceActions({
   const providerLabel = providerDisplayName(accountingProvider)
   const sendBlocked = auditHasCritical && !forceSend
 
-  async function handleApprove() {
+  async function handleSend() {
     if (sendBlocked) {
       toast.error('Opravte kritické položky v auditu, nebo potvrďte odeslání navzdory varování.')
       return
     }
-    setLoading('approve')
+    setLoading(true)
     const res = await fetch('/api/invoices/approve', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ invoiceId, rememberSupplier, forceSend }),
     })
-    setLoading(null)
+    setLoading(false)
     if (res.ok) {
       toast.success(`Faktura odeslána do ${providerLabel}`)
       router.refresh()
@@ -54,25 +55,15 @@ export function InvoiceActions({
     }
   }
 
-  async function handleReject() {
-    setLoading('reject')
-    await fetch('/api/invoices/reject', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ invoiceId }),
-    })
-    setLoading(null)
-    toast.success('Faktura byla zamítnuta')
-    router.push('/faktury')
-  }
-
   if (editing) {
     return <InvoiceEditForm invoice={invoice} onClose={() => setEditing(false)} />
   }
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3">
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Akce</p>
+      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+        Odeslat do {providerLabel}
+      </p>
 
       {auditHasCritical && (
         <label className="flex items-start gap-2 text-sm text-red-800 bg-red-50 border border-red-100 rounded-lg p-3 cursor-pointer">
@@ -97,41 +88,35 @@ export function InvoiceActions({
         Zapamatovat účetní kód pro {supplierName ?? 'tohoto dodavatele'}
       </label>
 
-      <div className="flex flex-col gap-2 sm:flex-row">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         <Button
-          onClick={handleApprove}
-          disabled={loading !== null || sendBlocked}
-          className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+          onClick={handleSend}
+          disabled={loading || sendBlocked}
+          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
         >
-          {loading === 'approve' ? (
+          {loading ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : (
-            <CheckCircle2 className="h-4 w-4 mr-2" />
+            <Send className="h-4 w-4 mr-2" />
           )}
           Odeslat do {providerLabel}
         </Button>
         <Button
           variant="outline"
           className="flex-1 border-gray-300"
-          disabled={loading !== null}
+          disabled={loading}
           onClick={() => setEditing(true)}
         >
           <Pencil className="h-4 w-4 mr-2" />
-          Upravit před odesláním
+          Upravit data
         </Button>
-        <Button
+        <InvoiceDeleteButton
+          invoiceId={invoiceId}
+          supplierName={supplierName}
+          redirectTo="/faktury"
           variant="outline"
-          className="sm:w-auto border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
-          disabled={loading !== null}
-          onClick={handleReject}
-        >
-          {loading === 'reject' ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <X className="h-4 w-4" />
-          )}
-          <span className="sm:hidden ml-2">Zahodit</span>
-        </Button>
+          className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+        />
       </div>
     </div>
   )

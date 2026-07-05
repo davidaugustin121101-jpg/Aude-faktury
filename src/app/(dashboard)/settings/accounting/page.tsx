@@ -7,6 +7,7 @@ import { hasActiveAccountantSubscription } from '@/lib/account-mode'
 import type { CountryCode } from '@/lib/accounting-codes'
 import { getActiveWorkspace } from '@/lib/workspace'
 import { mapConnectionRow } from '@/lib/accounting-connection'
+import { SettingsGuidesSection } from '@/components/settings/SettingsGuidesSection'
 
 export default async function AccountingSettingsPage() {
   const supabase = await createClient()
@@ -63,6 +64,7 @@ export default async function AccountingSettingsPage() {
         isAccountant={hasActiveAccountantSubscription(profile)}
         workspaceName={workspace.name}
       />
+      <SettingsGuidesSection />
     </div>
   )
 }

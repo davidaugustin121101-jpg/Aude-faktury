@@ -30,11 +30,11 @@ export async function sendNewInvoiceNotification(params: {
 
   const subject = params.autoApproved
     ? `${APP_NAME}: Faktura automaticky odeslána`
-    : `${APP_NAME}: Nová faktura ke schválení`
+    : `${APP_NAME}: Nová faktura vytěžena`
 
   const body = params.autoApproved
     ? `Faktura od ${params.supplierName ?? 'dodavatele'} (${amountStr}) byla automaticky odeslána do účetnictví.`
-    : `Nová faktura od ${params.supplierName ?? 'dodavatele'} (${amountStr}) čeká na vaše schválení.`
+    : `Nová faktura od ${params.supplierName ?? 'dodavatele'} (${amountStr}) je připravena — exportujte soubor nebo odešlete do fakturačního systému.`
 
   try {
     await resend.emails.send({

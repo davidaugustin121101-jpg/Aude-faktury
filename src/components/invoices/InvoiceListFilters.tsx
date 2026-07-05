@@ -7,9 +7,9 @@ import type { InvoiceStatusFilter } from '@/lib/invoice-status'
 
 const FILTERS: { id: InvoiceStatusFilter; label: string }[] = [
   { id: 'all', label: 'Vše' },
-  { id: 'pending', label: 'Čeká se schválení' },
-  { id: 'approved', label: 'Schváleno' },
-  { id: 'rejected', label: 'Zrušeno' },
+  { id: 'pending', label: 'Aktivní' },
+  { id: 'approved', label: 'Odesláno' },
+  { id: 'error', label: 'Chyba' },
 ]
 
 export function InvoiceListFilters() {

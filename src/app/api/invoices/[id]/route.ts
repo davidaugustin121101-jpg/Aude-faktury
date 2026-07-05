@@ -3,6 +3,46 @@ import { createClient } from '@/lib/supabase/server'
 import { INVOICE_ACTIONABLE_STATUSES, type ProcessedInvoice } from '@/types/invoices'
 import { runInvoiceAudit } from '@/lib/invoice-audit/run-audit'
 import type { CountryCode } from '@/lib/accounting-codes'
+import { insertAuditLog } from '@/lib/audit-log'
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Nepřihlášen' }, { status: 401 })
+
+  const { data: existing } = await supabase
+    .from('processed_invoices')
+    .select('id, dodavatel_nazev, cislo_faktury')
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (!existing) return NextResponse.json({ error: 'Faktura nenalezena' }, { status: 404 })
+
+  const { error } = await supabase.from('processed_invoices').delete().eq('id', id).eq('user_id', user.id)
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  await insertAuditLog({
+    invoice_id: id,
+    user_id: user.id,
+    action: 'deleted',
+    details: {
+      dodavatel_nazev: existing.dodavatel_nazev,
+      cislo_faktury: existing.cislo_faktury,
+    },
+  })
+
+  return NextResponse.json({ ok: true })
+}
 
 export async function PATCH(
   req: NextRequest,

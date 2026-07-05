@@ -322,6 +322,10 @@ export function AccountingConnectionManager({
 
           {adding === 'idoklad' && (
             <>
+              <p className="text-xs text-gray-500">
+                iDoklad → Nastavení → Aplikace a služby → Moje aplikace → vytvořte OAuth2 aplikaci
+                a zkopírujte Client ID + Client Secret. Nebo použijte Bearer token z iDoklad → API.
+              </p>
               <ModeToggle
                 options={[
                   { id: 'oauth2', label: 'OAuth2' },

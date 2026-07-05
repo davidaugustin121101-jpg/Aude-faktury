@@ -27,9 +27,8 @@ export function normalizeInvoice(
   invoice: ProcessedInvoice,
   profile?: ExportProfile
 ): NormalizedInvoice {
-  const country: CountryCode =
-    profile?.country ??
-    ((invoice.raw_extraction as { country?: string } | null)?.country === 'sk' ? 'sk' : 'cz')
+  const rawCountry = (invoice.raw_extraction as { country?: string } | null)?.country
+  const country: CountryCode = profile?.country ?? (rawCountry === 'sk' ? 'sk' : 'cz')
 
   const sazbaDph = normalizeVatRate(invoice.sazba_dph, country)
   const castkaBezDph = round2(Number(invoice.castka_bez_dph ?? 0))

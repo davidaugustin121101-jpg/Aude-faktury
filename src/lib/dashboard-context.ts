@@ -23,7 +23,7 @@ export type DashboardContext = {
   invoicesRemaining: number
   totalInvoices: number
   sentTotal: number
-  pendingTotal: number
+  attentionTotal: number
 }
 
 export async function getDashboardContext(
@@ -61,7 +61,7 @@ export async function getDashboardContext(
     { count: monthCount },
     { count: totalCount },
     { count: sentCount },
-    { count: pendingCount },
+    { count: attentionCount },
   ] = await Promise.all([
     supabase
       .from('processed_invoices')
@@ -81,7 +81,7 @@ export async function getDashboardContext(
       .from('processed_invoices')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', userId)
-      .in('status', ['pending_review', 'needs_manual_check', 'error']),
+      .in('status', ['needs_manual_check', 'error']),
   ])
 
   const invoicesThisMonth = monthCount ?? 0
@@ -101,6 +101,6 @@ export async function getDashboardContext(
     invoicesRemaining,
     totalInvoices: totalCount ?? 0,
     sentTotal: sentCount ?? 0,
-    pendingTotal: pendingCount ?? 0,
+    attentionTotal: attentionCount ?? 0,
   }
 }

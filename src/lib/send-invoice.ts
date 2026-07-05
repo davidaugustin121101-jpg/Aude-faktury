@@ -180,7 +180,7 @@ export async function sendInvoiceToAccounting(params: {
 
     await supabase
       .from('processed_invoices')
-      .update({ status: 'needs_manual_check' })
+      .update({ status: 'error' })
       .eq('id', invoice.id)
 
     await insertAuditLog({

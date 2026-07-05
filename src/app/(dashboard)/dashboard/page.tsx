@@ -171,7 +171,7 @@ export default async function DashboardPage() {
         <StatCard icon={<FileText className="h-5 w-5 text-blue-600" />} label="Celkem faktur" value={String(ctx.totalInvoices)} sub="za celou dobu" color="blue" />
         <StatCard icon={<FileText className="h-5 w-5 text-indigo-600" />} label="Tento měsíc" value={String(totalThisMonth)} sub="nahráno" color="blue" />
         <StatCard icon={<CheckCircle2 className="h-5 w-5 text-green-600" />} label="Odesláno" value={String(ctx.sentTotal)} sub="do účetnictví" color="green" />
-        <StatCard icon={<Clock className="h-5 w-5 text-yellow-600" />} label="Čeká" value={String(ctx.pendingTotal)} sub="ke schválení" color="yellow" />
+        <StatCard icon={<Clock className="h-5 w-5 text-yellow-600" />} label="Kontrola" value={String(ctx.attentionTotal)} sub="audit / chyba" color="yellow" />
       </div>
 
       <div className="grid sm:grid-cols-3 gap-4">
