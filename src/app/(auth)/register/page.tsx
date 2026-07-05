@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import type { CountryCode } from '@/lib/accounting-codes'
 import { COUNTRY_LABELS } from '@/lib/accounting-codes'
 import { APP_NAME } from '@/lib/brand'
+import { LegalFooter } from '@/components/legal/LegalFooter'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -21,9 +22,14 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [country, setCountry] = useState<CountryCode>('cz')
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
+    if (!acceptedTerms) {
+      toast.error('Musíte souhlasit s obchodními podmínkami')
+      return
+    }
     if (password.length < 8) {
       toast.error('Heslo musí mít alespoň 8 znaků')
       return
@@ -144,7 +150,32 @@ export default function RegisterPage() {
               />
             </div>
 
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-xs text-gray-600 leading-relaxed">
+                Souhlasím s{' '}
+                <Link href="/obchodni-podminky" target="_blank" className="text-blue-600 hover:underline">
+                  obchodními podmínkami
+                </Link>{' '}
+                a{' '}
+                <Link href="/ochrana-udaju" target="_blank" className="text-blue-600 hover:underline">
+                  zásadami ochrany údajů
+                </Link>
+                . Beru na vědomí, že digitální služba je poskytována okamžitě a neposkytuje se vrácení peněz
+                dle podmínek.
+              </span>
+            </label>
+
+            <Button
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-700"
+              disabled={loading || !acceptedTerms}
+            >
               {loading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
@@ -181,6 +212,10 @@ export default function RegisterPage() {
             Přihlásit se
           </Link>
         </p>
+
+        <div className="mt-6 flex justify-center">
+          <LegalFooter compact />
+        </div>
       </div>
     </div>
   )

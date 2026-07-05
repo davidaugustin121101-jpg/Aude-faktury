@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { SettingsNav } from '@/components/settings/SettingsNav'
 import type { AccountingConnection } from '@/types/invoices'
@@ -7,7 +8,7 @@ import { hasActiveAccountantSubscription } from '@/lib/account-mode'
 import type { CountryCode } from '@/lib/accounting-codes'
 import { getActiveWorkspace } from '@/lib/workspace'
 import { mapConnectionRow } from '@/lib/accounting-connection'
-import { SettingsGuidesSection } from '@/components/settings/SettingsGuidesSection'
+import { BookOpen } from 'lucide-react'
 
 export default async function AccountingSettingsPage() {
   const supabase = await createClient()
@@ -58,13 +59,24 @@ export default async function AccountingSettingsPage() {
         </div>
         <SettingsNav />
       </div>
+
+      <Link
+        href="/napoveda"
+        className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm text-blue-900 hover:bg-blue-100 transition-colors"
+      >
+        <BookOpen className="h-4 w-4 shrink-0" />
+        <span>
+          Podrobný návod k napojení API →{' '}
+          <span className="font-semibold">Nápověda</span>
+        </span>
+      </Link>
+
       <AccountingConnectionManager
         connections={mapped}
         userCountry={country}
         isAccountant={hasActiveAccountantSubscription(profile)}
         workspaceName={workspace.name}
       />
-      <SettingsGuidesSection />
     </div>
   )
 }

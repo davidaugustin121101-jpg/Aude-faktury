@@ -41,6 +41,11 @@ export default async function UploadPage() {
         <p className="text-sm text-gray-500 mt-1">
           Přetáhni PDF fakturu – {EXTRACTION_LABEL} navrhne účetní kód do 5 sekund.
         </p>
+        <p className="text-sm mt-2">
+          <Link href="/napoveda" className="text-blue-600 hover:underline font-medium">
+            Nejdřív projděte nápovědu →
+          </Link>
+        </p>
       </div>
 
       {!accountingConn && (

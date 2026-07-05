@@ -1,10 +1,10 @@
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
-import Link from 'next/link'
-import { Receipt, CreditCard } from 'lucide-react'
 import { CountrySelector } from '@/components/settings/CountrySelector'
 import { SettingsNav } from '@/components/settings/SettingsNav'
+import { LegalFooter } from '@/components/legal/LegalFooter'
 import { APP_NAME } from '@/lib/brand'
 import {
   getAccountMode,
@@ -14,8 +14,6 @@ import {
   hasActiveAccountantSubscription,
 } from '@/lib/account-mode'
 import { InvoiceSettingsPanel } from '@/components/settings/InvoiceSettingsPanel'
-import { ExportProfileSettingsSection } from '@/components/settings/ExportProfileSettingsSection'
-import { SettingsGuidesSection } from '@/components/settings/SettingsGuidesSection'
 import type { CountryCode } from '@/lib/accounting-codes'
 
 export default async function SettingsPage() {
@@ -48,7 +46,7 @@ export default async function SettingsPage() {
       <div className="space-y-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Nastavení</h1>
-          <p className="text-sm text-gray-500 mt-1">Správa účtu a napojení</p>
+          <p className="text-sm text-gray-500 mt-1">Správa účtu</p>
         </div>
         <SettingsNav />
       </div>
@@ -90,79 +88,20 @@ export default async function SettingsPage() {
         </div>
       </div>
 
-      <Link
-        href="/settings/predplatne"
-        className="flex items-center gap-4 bg-gradient-to-r from-emerald-50 to-violet-50 border border-gray-200 hover:border-violet-300 rounded-xl p-4 transition-all group"
-      >
-        <div className="h-9 w-9 rounded-lg bg-violet-600 flex items-center justify-center">
-          <CreditCard className="h-5 w-5 text-white" />
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-gray-900">Předplatné</p>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Solo zdarma · Účetní režim 299 Kč/měsíc
-          </p>
-        </div>
-        <span className="text-xs text-violet-600 font-medium group-hover:underline">Zobrazit →</span>
-      </Link>
-
       <CountrySelector initialCountry={country} />
 
       <InvoiceSettingsPanel />
 
-      <ExportProfileSettingsSection />
-
-      <SettingsGuidesSection />
-
-      <div className="space-y-2">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-1">Napojení</p>
-        {isAccountant && (
-          <Link
-            href="/klienti"
-            className="flex items-center gap-4 bg-white border border-gray-200 hover:border-violet-300 hover:bg-violet-50/30 rounded-xl p-4 transition-all group"
-          >
-            <div className="h-9 w-9 rounded-lg bg-violet-50 flex items-center justify-center">
-              <span className="text-lg">👥</span>
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-gray-900">Klienti</p>
-              <p className="text-xs text-gray-500 mt-0.5">Správa firem — každý vlastní fakturační systém</p>
-            </div>
-            <span className="text-xs text-gray-400 group-hover:text-violet-600">→</span>
-          </Link>
-        )}
-        <Link
-          href="/settings/accounting"
-          className="flex items-center gap-4 bg-white border border-gray-200 hover:border-blue-300 hover:bg-blue-50/30 rounded-xl p-4 transition-all group"
-        >
-          <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center">
-            <Receipt className="h-5 w-5 text-blue-600" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-gray-900">Fakturační systém (API)</p>
-            <p className="text-xs text-gray-500 mt-0.5">
-              iDoklad, Fakturoid nebo SuperFaktura — odeslání jedním klikem
-            </p>
-          </div>
-          <span className="text-xs text-gray-400 group-hover:text-blue-600">→</span>
-        </Link>
-      </div>
-
       <Separator />
 
-      <div className="text-xs text-gray-400 space-y-1">
+      <div className="text-xs text-gray-400 space-y-3">
         <p>
           {APP_NAME} ·{' '}
           <a href="https://audeflow.cz" className="underline">
             audeflow.cz
           </a>
         </p>
-        <p>
-          Podpora:{' '}
-          <a href="mailto:podpora@audeflow.cz" className="underline">
-            podpora@audeflow.cz
-          </a>
-        </p>
+        <LegalFooter />
       </div>
     </div>
   )

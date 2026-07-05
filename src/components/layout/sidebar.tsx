@@ -18,7 +18,7 @@ import { WorkspaceSwitcher } from '@/components/layout/workspace-switcher'
 import { ModeBadge } from '@/components/layout/mode-badge'
 import { SidebarStats } from '@/components/layout/sidebar-stats'
 import { APP_NAME, APP_TAGLINE } from '@/lib/brand'
-import { MAIN_NAV, SETUP_NAV } from '@/lib/nav-config'
+import { MAIN_NAV, SETUP_NAV, SETTINGS_SUB_NAV } from '@/lib/nav-config'
 import type { AccountMode } from '@/lib/account-mode'
 import type { AccountingProvider } from '@/lib/accounting-connection'
 import { LogOut, ChevronUp, type LucideIcon } from 'lucide-react'
@@ -156,9 +156,12 @@ export function Sidebar({
         </div>
         <div>
           <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-            Nastavení
+            Další
           </p>
           <div className="space-y-0.5">
+            {SETTINGS_SUB_NAV.map((item) => (
+              <NavLink key={item.href} {...item} />
+            ))}
             {setupNav.map((item) => (
               <NavLink key={item.href} {...item} />
             ))}

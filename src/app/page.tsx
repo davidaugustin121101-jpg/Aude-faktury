@@ -10,7 +10,7 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (user) redirect('/faktury')
+  if (user) redirect('/dashboard')
 
   return (
     <>

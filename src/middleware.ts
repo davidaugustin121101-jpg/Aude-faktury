@@ -12,6 +12,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/faktury') ||
     pathname.startsWith('/settings') ||
     pathname.startsWith('/klienti') ||
+    pathname.startsWith('/napoveda') ||
     pathname.startsWith('/onboarding')
 
   // Bez Supabase env chráníme privátní routes (fail-closed), veřejné stránky necháme projít
@@ -56,7 +57,7 @@ export async function middleware(request: NextRequest) {
 
     if (user && isAuthRoute) {
       const url = request.nextUrl.clone()
-      url.pathname = '/faktury'
+      url.pathname = '/dashboard'
       return NextResponse.redirect(url)
     }
   } catch {

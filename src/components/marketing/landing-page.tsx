@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { BILLING_TIERS, MULTI_CLIENT_ADDON } from '@/lib/account-mode'
 import { LandingHeader } from '@/components/marketing/landing-header'
+import { LegalFooter } from '@/components/legal/LegalFooter'
 import { APP_NAME, APP_TAGLINE, EXTRACTION_LABEL } from '@/lib/brand'
 
 const STEPS = [
@@ -323,12 +324,9 @@ export function LandingPage() {
       </main>
 
       <footer className="border-t border-gray-100 py-8">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-500">
-          <span className="font-semibold text-gray-900">{APP_NAME}</span>
-          <span>© 2026 AUDE FLOW · IČO: 10841067</span>
-          <a href="mailto:podpora@audeflow.cz" className="hover:text-blue-600">
-            podpora@audeflow.cz
-          </a>
+        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <span className="font-semibold text-gray-900 text-sm">{APP_NAME}</span>
+          <LegalFooter />
         </div>
       </footer>
     </div>

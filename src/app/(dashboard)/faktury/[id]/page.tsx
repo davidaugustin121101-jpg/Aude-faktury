@@ -133,6 +133,16 @@ export default async function InvoiceDetailPage({ params }: Props) {
         <InvoiceStatusBadge status={displayStatus} />
       </div>
 
+      <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 flex gap-3">
+        <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+        <p className="text-sm text-amber-900">
+          Vždy zkontrolujte vytěžené údaje před exportem nebo odesláním do účetnictví.{' '}
+          <Link href="/napoveda" className="font-medium underline">
+            Nápověda
+          </Link>
+        </p>
+      </div>
+
       {/* Header card */}
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <div className="px-6 py-5 border-b border-gray-100">

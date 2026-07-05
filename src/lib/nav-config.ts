@@ -5,6 +5,8 @@ import {
   Link2,
   Users,
   CreditCard,
+  BookOpen,
+  Download,
   Upload,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -19,12 +21,24 @@ export type NavItem = {
 export const MAIN_NAV: NavItem[] = [
   { href: '/dashboard', label: 'Přehled', icon: LayoutDashboard },
   { href: '/faktury', label: 'Faktury', icon: Receipt },
-  { href: '/faktury/upload', label: 'Nahrát', icon: Upload },
+  { href: '/napoveda', label: 'Nápověda', icon: BookOpen },
+  { href: '/settings', label: 'Nastavení', icon: Settings },
 ]
 
 export const SETUP_NAV: NavItem[] = [
-  { href: '/settings/accounting', label: 'Fakturační systém', icon: Link2 },
   { href: '/klienti', label: 'Klienti', icon: Users, accountantOnly: true },
+]
+
+export const SETTINGS_TABS = [
+  { href: '/settings', label: 'Účet', exact: true },
+  { href: '/settings/accounting', label: 'Fakturační systém', exact: false },
+  { href: '/settings/export', label: 'Export profil', exact: false },
+  { href: '/settings/predplatne', label: 'Předplatné', exact: false },
+] as const
+
+export const SETTINGS_SUB_NAV: NavItem[] = [
+  { href: '/settings/accounting', label: 'Fakturační systém', icon: Link2 },
+  { href: '/settings/export', label: 'Export profil', icon: Download },
   { href: '/settings/predplatne', label: 'Předplatné', icon: CreditCard },
-  { href: '/settings', label: 'Nastavení', icon: Settings },
+  { href: '/faktury/upload', label: 'Nahrát fakturu', icon: Upload },
 ]

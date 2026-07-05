@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { APP_NAME } from '@/lib/brand'
-import { MAIN_NAV, SETUP_NAV } from '@/lib/nav-config'
+import { MAIN_NAV, SETUP_NAV, SETTINGS_SUB_NAV } from '@/lib/nav-config'
 import type { AccountMode } from '@/lib/account-mode'
 import type { AccountingProvider } from '@/lib/accounting-connection'
 import { ModeBadge } from '@/components/layout/mode-badge'
@@ -74,7 +74,6 @@ export function MobileBottomNav() {
       <div className="flex items-stretch justify-around h-16 max-w-lg mx-auto">
         {MAIN_NAV.map(({ href, label, icon: Icon }) => {
           const active = isNavActive(href, pathname)
-          const isUpload = href === '/faktury/upload'
 
           return (
             <Link
@@ -82,31 +81,14 @@ export function MobileBottomNav() {
               href={href}
               className={cn(
                 'flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors min-w-0 px-1',
-                active ? 'text-blue-600' : 'text-gray-500',
-                isUpload && 'relative -mt-3'
+                active ? 'text-blue-600' : 'text-gray-500'
               )}
             >
-              {isUpload ? (
-                <span className="h-12 w-12 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-200">
-                  <Icon className="h-5 w-5" />
-                </span>
-              ) : (
-                <Icon className={cn('h-5 w-5', active && 'text-blue-600')} />
-              )}
-              <span className={cn(isUpload && 'mt-0.5')}>{label}</span>
+              <Icon className={cn('h-5 w-5', active && 'text-blue-600')} />
+              <span>{label}</span>
             </Link>
           )
         })}
-        <Link
-          href="/settings"
-          className={cn(
-            'flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-medium min-w-0 px-1',
-            pathname.startsWith('/settings') ? 'text-blue-600' : 'text-gray-500'
-          )}
-        >
-          <Menu className="h-5 w-5" />
-          <span>Více</span>
-        </Link>
       </div>
     </nav>
   )
@@ -206,6 +188,9 @@ export function MobileDrawer({
               Nastavení
             </p>
             <div className="space-y-0.5">
+              {SETTINGS_SUB_NAV.map((item) => (
+                <NavLink key={item.href} href={item.href} label={item.label} />
+              ))}
               {setupItems.map((item) => (
                 <NavLink key={item.href} href={item.href} label={item.label} />
               ))}

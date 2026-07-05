@@ -3,7 +3,13 @@ import { SITE_URL } from '@/lib/seo'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date()
-  const publicRoutes = ['', '/login', '/register'] as const
+  const publicRoutes = [
+    '',
+    '/login',
+    '/register',
+    '/obchodni-podminky',
+    '/ochrana-udaju',
+  ] as const
 
   return publicRoutes.map((path) => ({
     url: `${SITE_URL}${path}`,

@@ -284,13 +284,14 @@ export function AccountingConnectionManager({
               return (
                 <button
                   key={provider}
+                  id={provider}
                   type="button"
                   onClick={() => {
                     setSfCountry(userCountry)
                     setPicking(provider)
                   }}
                   className={cn(
-                    'text-left p-4 rounded-xl border-2 transition-all hover:border-blue-300',
+                    'text-left p-4 rounded-xl border-2 transition-all hover:border-blue-300 scroll-mt-24',
                     'border-gray-200 bg-white hover:bg-gray-50'
                   )}
                 >
@@ -312,7 +313,7 @@ export function AccountingConnectionManager({
       )}
 
       {adding && activeCfg && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+        <div id={adding} className="bg-white rounded-xl border border-gray-200 p-5 space-y-4 scroll-mt-24">
           <div className="flex items-center gap-3">
             <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center text-lg', activeCfg.bg)}>
               {activeCfg.emoji}

@@ -17,6 +17,7 @@ import {
 import Link from 'next/link'
 import { matchesStatusFilter, type InvoiceStatusFilter } from '@/lib/invoice-status'
 import { formatMoney, sumInvoiceAmounts } from '@/lib/invoice-totals'
+import { estimateSavedHours } from '@/lib/stats'
 import { perfStart } from '@/lib/server-timing'
 
 interface Props {
@@ -63,7 +64,7 @@ export default async function FakturyPage({ searchParams }: Props) {
   const sentThisMonth = thisMonthRows.filter((i) =>
     ['sent', 'sent_to_accounting', 'approved'].includes(i.status ?? '')
   ).length
-  const savedHours = Math.round((sentThisMonth * 5) / 60 * 10) / 10
+  const savedHours = estimateSavedHours(sentThisMonth)
 
   endPage()
 
