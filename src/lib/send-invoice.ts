@@ -3,6 +3,7 @@ import { sendToIdoklad, type IdokladConnection } from '@/lib/idoklad'
 import { sendToFakturoid } from '@/lib/fakturoid'
 import { sendToSuperFaktura } from '@/lib/superfaktura'
 import { getConnectionForInvoiceWithSecrets } from '@/lib/accounting-connection'
+import { buildPredkontaceFromExtracted } from '@/lib/predkontace'
 import type { ExtractedInvoiceData } from '@/lib/claude'
 import type { ProcessedInvoice } from '@/types/invoices'
 import { upsertSupplierRule } from '@/lib/supplier-rules'
@@ -209,6 +210,7 @@ export async function sendInvoiceToAccounting(params: {
         provider: conn.provider,
         document_id: result.id,
         ucetni_kod: extractedData.ucetni_kod,
+        predkontace: buildPredkontaceFromExtracted(extractedData)?.display ?? null,
         forced: forceSend && !!audit?.hasCritical,
       },
     })

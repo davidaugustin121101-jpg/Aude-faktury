@@ -47,7 +47,7 @@ export function generatePohodaXml(inv: NormalizedInvoice, profile?: ExportProfil
         <inv:paymentType>
           <typ:paymentType>draft</typ:paymentType>
         </inv:paymentType>
-        <inv:note>Export z Faktury Audeflow</inv:note>
+        <inv:note>${escapeXml(inv.predkontace?.comment ?? 'Export z Faktury Audeflow')}</inv:note>
       </inv:invoiceHeader>
       <inv:invoiceDetail>
         <inv:invoiceItem>

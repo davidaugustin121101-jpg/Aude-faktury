@@ -19,6 +19,8 @@ describe('export normalize', () => {
     assert.equal(inv.dodavatelIco, '12345678')
     assert.equal(inv.castkaCelkem, 1210)
     assert.equal(inv.sazbaDph, 21)
+    assert.ok(inv.predkontace)
+    assert.equal(inv.predkontace?.display, '518 / 343 / 321')
   })
 })
 
@@ -89,6 +91,7 @@ describe('export generators golden snippets', () => {
     assert.ok(xml.includes('receivedInvoice'))
     assert.ok(xml.includes('<inv:rateVAT>high</inv:rateVAT>'))
     assert.ok(xml.includes('<typ:ico>12345678</typ:ico>'))
+    assert.ok(xml.includes('Předkontace:'))
   })
 
   it('generates Helios Red CSV headers', () => {

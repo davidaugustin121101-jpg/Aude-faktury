@@ -1,5 +1,6 @@
 import type { ExtractedInvoiceData } from './claude'
 import type { CountryCode } from './accounting-codes'
+import { buildPredkontaceFromExtracted } from './predkontace'
 
 const MODULE_NAME = 'AudeflowFaktury'
 
@@ -67,6 +68,10 @@ export async function sendToSuperFaktura(
 ): Promise<{ id: string; number: string }> {
   const base = BASE_URLS[connection.country]
   const commentPrefix = connection.country === 'sk' ? 'Účtovný kód' : 'Účetní kód'
+  const predkontace = buildPredkontaceFromExtracted(data, { country: connection.country })
+  const expenseComment = predkontace
+    ? predkontace.comment
+    : `${commentPrefix}: ${data.ucetni_kod} – ${data.ucetni_kod_nazev}`
 
   const payload = {
     Expense: {
@@ -80,7 +85,7 @@ export async function sendToSuperFaktura(
       amount: data.castka_bez_dph ?? data.castka_celkem ?? 0,
       version: 'basic',
       type: 'invoice',
-      comment: `${commentPrefix}: ${data.ucetni_kod} – ${data.ucetni_kod_nazev}`,
+      comment: expenseComment,
     },
     Client: {
       name: data.dodavatel_nazev,

@@ -3,6 +3,7 @@ import type { ProcessedInvoice } from '@/types/invoices'
 import { INVOICE_ACTIONABLE_STATUSES } from '@/types/invoices'
 import { FieldRow, ConfidenceBadge } from '@/components/invoices/ConfidenceBadge'
 import { AccountingCodeBadge } from '@/components/invoices/AccountingCodeBadge'
+import { PredkontacePanel } from '@/components/invoices/PredkontacePanel'
 import { InvoiceActions } from './InvoiceActions'
 import { InvoiceAuditPanel } from '@/components/invoices/InvoiceAuditPanel'
 import { InvoiceStatusBadge } from '@/components/invoices/InvoiceStatusBadge'
@@ -18,6 +19,7 @@ import { InvoiceExportButtons } from '@/components/invoices/InvoiceExportButtons
 import { InvoiceDeleteButton } from '@/components/invoices/InvoiceDeleteButton'
 import { requireUser } from '@/lib/auth-server'
 import { perfStart } from '@/lib/server-timing'
+import { predkontaceFromInvoice } from '@/lib/predkontace'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -109,6 +111,7 @@ export default async function InvoiceDetailPage({ params }: Props) {
       : null
 
   const auditResult = (inv.audit_result as AuditResult | null) ?? null
+  const predkontace = predkontaceFromInvoice(inv)
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -252,16 +255,27 @@ export default async function InvoiceDetailPage({ params }: Props) {
 
         {/* Accounting code section */}
         {inv.ucetni_kod && (
-          <div className="px-6 py-4 border-t border-gray-100">
-            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">
-              Navržený účetní kód
-            </p>
-            <AccountingCodeBadge
-              kod={inv.ucetni_kod}
-              nazev={inv.ucetni_kod_nazev ?? ''}
-              duvod={inv.ucetni_kod_duvod ?? ''}
-              confidence={inv.ucetni_kod_confidence ?? 0}
-            />
+          <div className="px-6 py-4 border-t border-gray-100 space-y-4">
+            <div>
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">
+                Navržený účetní kód
+              </p>
+              <AccountingCodeBadge
+                kod={inv.ucetni_kod}
+                nazev={inv.ucetni_kod_nazev ?? ''}
+                duvod={inv.ucetni_kod_duvod ?? ''}
+                confidence={inv.ucetni_kod_confidence ?? 0}
+              />
+            </div>
+
+            {predkontace && (
+              <div>
+                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">
+                  Předkontace
+                </p>
+                <PredkontacePanel predkontace={predkontace} mena={inv.mena} />
+              </div>
+            )}
           </div>
         )}
       </div>

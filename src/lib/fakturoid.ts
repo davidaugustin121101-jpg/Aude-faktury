@@ -1,4 +1,5 @@
 import type { ExtractedInvoiceData } from './claude'
+import { buildPredkontaceFromExtracted } from './predkontace'
 import { FAKTUROID_USER_AGENT, getFakturoidAccessToken, type FakturoidConnectionRow, connectFakturoidWithClientCredentials, tokenExpiresAt } from './fakturoid-auth'
 
 const FAKTUROID_BASE = 'https://app.fakturoid.cz/api/v3'
@@ -60,6 +61,7 @@ export async function sendToFakturoid(
   data: ExtractedInvoiceData
 ): Promise<{ id: string; number: string }> {
   const { token, slug } = await getFakturoidAccessToken(connection)
+  const predkontace = buildPredkontaceFromExtracted(data)
 
   const payload = {
     original_number: data.cislo_faktury || undefined,
@@ -82,7 +84,7 @@ export async function sendToFakturoid(
         vat_rate: String(data.sazba_dph ?? 21),
       },
     ],
-    tags: [data.ucetni_kod ?? '518'],
+    tags: [predkontace?.display ?? data.ucetni_kod ?? '518'],
   }
 
   const res = await fetch(`${FAKTUROID_BASE}/accounts/${slug}/expenses.json`, {

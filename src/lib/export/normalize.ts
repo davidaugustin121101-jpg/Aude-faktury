@@ -1,5 +1,6 @@
 import type { ProcessedInvoice } from '@/types/invoices'
 import type { AuditResult } from '@/lib/invoice-audit/types'
+import { predkontaceFromInvoice } from '@/lib/predkontace'
 import type { CountryCode, ExportProfile, NormalizedInvoice } from './types'
 import { formatDateIso } from './xml-utils'
 
@@ -53,6 +54,7 @@ export function normalizeInvoice(
     iban: invoice.iban?.replace(/\s/g, '') || null,
     ucetniKod: profile?.defaultAccountCode ?? invoice.ucetni_kod ?? '518',
     ucetniKodNazev: invoice.ucetni_kod_nazev,
+    predkontace: predkontaceFromInvoice(invoice, { country }),
     country,
     auditResult: (invoice.audit_result as AuditResult | null) ?? null,
   }

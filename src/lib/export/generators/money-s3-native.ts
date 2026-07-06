@@ -31,7 +31,7 @@ export function generateMoneyNativeXml(inv: NormalizedInvoice, profile?: ExportP
       <UcetniKod>${escapeXml(inv.ucetniKod)}</UcetniKod>
       <Popis>${escapeXml(inv.popisPlneni)}</Popis>
       ${inv.iban ? `<IBAN>${escapeXml(inv.iban)}</IBAN>` : ''}
-      <Poznamka>Export Faktury Audeflow</Poznamka>
+      <Poznamka>${escapeXml(inv.predkontace?.comment ?? 'Export Faktury Audeflow')}</Poznamka>
     </FakturaPrijata>
   </FakturaPrijataList>
 </S5Data>`

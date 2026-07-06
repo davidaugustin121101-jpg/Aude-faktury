@@ -72,7 +72,7 @@ export function generateHeliosRedCsv(
     'FP',
     formatDateHelios(inv.datumSplatnosti),
     inv.dodavatelIco,
-    inv.popisPlneni.slice(0, 200),
+    inv.predkontace?.comment ?? inv.popisPlneni.slice(0, 200),
     profile?.costCenter ?? '',
     profile?.contractCode ?? '',
   ]

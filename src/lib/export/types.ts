@@ -1,3 +1,4 @@
+import type { Predkontace } from './predkontace'
 import type { ProcessedInvoice } from '@/types/invoices'
 import type { AuditResult } from '@/lib/invoice-audit/types'
 
@@ -42,6 +43,7 @@ export type NormalizedInvoice = {
   iban: string | null
   ucetniKod: string
   ucetniKodNazev: string | null
+  predkontace: Predkontace | null
   country: CountryCode
   auditResult: AuditResult | null
 }

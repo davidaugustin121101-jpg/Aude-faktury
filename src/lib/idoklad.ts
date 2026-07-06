@@ -1,4 +1,5 @@
 import type { ExtractedInvoiceData } from './claude'
+import { buildPredkontaceFromExtracted } from './predkontace'
 
 const IDOKLAD_API_BASE = 'https://api.idoklad.cz/v3'
 const IDOKLAD_TOKEN_URL = 'https://app.idoklad.cz/identity/server/connect/token'
@@ -227,6 +228,11 @@ export interface IdokladConnection {
   api_key?: string
 }
 
+/**
+ * Odeslání přijaté faktury do iDoklad API v3.
+ * Účetní metadata: Items[].AccountingCode (náklad), Note (plná předkontace jako text).
+ * iDoklad může vyžadovat ID z vlastní osnovy — AccountingCode jako string funguje u většiny účtů.
+ */
 export async function sendToIdoklad(
   connection: IdokladConnection,
   data: ExtractedInvoiceData
@@ -240,6 +246,8 @@ export async function sendToIdoklad(
 
   const { issue, maturity, receiving } = buildIdokladDates(data)
   const unitPrice = Number(data.castka_bez_dph ?? data.castka_celkem ?? 0)
+  const predkontace = buildPredkontaceFromExtracted(data)
+  const itemName = (data.popis_plneni ?? `Faktura ${data.cislo_faktury ?? ''}`).slice(0, 200)
 
   const [partnerId, currencyId, paymentOptionId, numericSequence] = await Promise.all([
     resolvePartnerId(token, data),
@@ -261,11 +269,12 @@ export async function sendToIdoklad(
     DateOfReceiving: receiving,
     DateOfTaxing: issue,
     Description: data.popis_plneni ?? 'Přijatá faktura',
+    ...(predkontace ? { Note: predkontace.comment } : {}),
     ...(data.variabilni_symbol ? { VariableSymbol: data.variabilni_symbol } : {}),
     ...(data.cislo_faktury ? { OrderNumber: data.cislo_faktury } : {}),
     Items: [
       {
-        Name: (data.popis_plneni ?? `Faktura ${data.cislo_faktury ?? ''}`).slice(0, 200),
+        Name: itemName,
         Amount: 1,
         Unit: 'ks',
         UnitPrice: unitPrice,
@@ -273,22 +282,15 @@ export async function sendToIdoklad(
         VatRateType: mapDphSazba(data.sazba_dph ?? 21),
         DiscountPercentage: 0,
         IsTaxMovement: false,
+        ...(predkontace ? { AccountingCode: predkontace.naklad } : {}),
       },
     ],
   }
-
-  // #region agent log
-  fetch('http://127.0.0.1:7711/ingest/3cd4d8f4-c62c-4feb-9280-e257beb22e7d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'20dbe5'},body:JSON.stringify({sessionId:'20dbe5',location:'idoklad.ts:sendToIdoklad',message:'iDoklad payload ready',data:{partnerId,currencyId,paymentOptionId,numericSequenceId:numericSequence.id,documentSerialNumber:numericSequence.nextSerial,unitPrice,hasOrderNumber:!!data.cislo_faktury},timestamp:Date.now(),hypothesisId:'H1',runId:'payload-fix'})}).catch(()=>{});
-  // #endregion
 
   const result = await idokladRequest<IdokladReceivedInvoice>(token, 'ReceivedInvoices', {
     method: 'POST',
     body: JSON.stringify(payload),
   })
-
-  // #region agent log
-  fetch('http://127.0.0.1:7711/ingest/3cd4d8f4-c62c-4feb-9280-e257beb22e7d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'20dbe5'},body:JSON.stringify({sessionId:'20dbe5',location:'idoklad.ts:sendToIdoklad',message:'iDoklad create success',data:{invoiceId:result?.Id,documentNumber:result?.DocumentNumber??null},timestamp:Date.now(),hypothesisId:'H1',runId:'payload-fix'})}).catch(()=>{});
-  // #endregion
 
   if (!result?.Id) {
     throw new Error('iDoklad nevrátil ID vytvořené faktury')
