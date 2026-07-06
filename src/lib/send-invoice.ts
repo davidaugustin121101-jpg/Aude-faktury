@@ -140,8 +140,9 @@ export async function sendInvoiceToAccounting(params: {
   }
 
   try {
-    let result: { id: string; documentNumber?: string; number?: string; pdfAttached?: boolean }
+    let result: { id: string; documentNumber?: string; number?: string; pdfAttached?: boolean; pdfAttachmentError?: string }
     let pdfAttached = false
+    let pdfAttachmentError: string | undefined
 
     const pdf = await loadInvoicePdfAttachment(
       createAdminClient(),
@@ -158,6 +159,7 @@ export async function sendInvoiceToAccounting(params: {
       const r = await sendToIdoklad(idokladConn, extractedData, pdf)
       result = { id: r.id, documentNumber: r.documentNumber, pdfAttached: r.pdfAttached }
       pdfAttached = r.pdfAttached
+      pdfAttachmentError = r.pdfAttachmentError
     } else if (conn.provider === 'superfaktura') {
       const r = await sendToSuperFaktura(
         {
@@ -225,6 +227,7 @@ export async function sendInvoiceToAccounting(params: {
         predkontace: buildPredkontaceFromExtracted(extractedData)?.display ?? null,
         pdf_attached: pdfAttached,
         pdf_available: !!pdf,
+        ...(pdfAttachmentError ? { pdf_attachment_error: pdfAttachmentError } : {}),
         forced: forceSend && !!audit?.hasCritical,
       },
     })

@@ -5,8 +5,11 @@ import type { InvoicePdfAttachment } from './invoice-pdf-storage'
 const IDOKLAD_API_BASE = 'https://api.idoklad.cz/v3'
 const IDOKLAD_TOKEN_URL = 'https://app.idoklad.cz/identity/server/connect/token'
 
-/** iDoklad DocumentType enum – 1 = přijaté faktury */
-const RECEIVED_INVOICE_DOCUMENT_TYPE = 1
+/** NumericSequence.DocumentType pro přijaté faktury (jiný enum než Attachments) */
+const RECEIVED_INVOICE_NUMERIC_SEQUENCE_TYPE = 1
+
+/** DocumentType enum pro Attachments API – ReceivedInvoice = 5 */
+export const IDOKLAD_ATTACHMENT_RECEIVED_INVOICE_TYPE = 5
 
 /** PriceType: 1 = cena bez DPH */
 const PRICE_TYPE_WITHOUT_VAT = 1
@@ -163,9 +166,9 @@ async function resolveNumericSequence(
 
   const forReceived =
     sequences.find(
-      (s) => s.DocumentType === RECEIVED_INVOICE_DOCUMENT_TYPE && isTruthyDefault(s.IsDefault)
+      (s) => s.DocumentType === RECEIVED_INVOICE_NUMERIC_SEQUENCE_TYPE && isTruthyDefault(s.IsDefault)
     ) ??
-    sequences.find((s) => s.DocumentType === RECEIVED_INVOICE_DOCUMENT_TYPE) ??
+    sequences.find((s) => s.DocumentType === RECEIVED_INVOICE_NUMERIC_SEQUENCE_TYPE) ??
     sequences.find((s) => isTruthyDefault(s.IsDefault)) ??
     sequences[0]
 
@@ -222,30 +225,44 @@ async function resolvePartnerId(token: string, data: ExtractedInvoiceData): Prom
   return created.Id
 }
 
+export function buildIdokladAttachmentPath(documentId: number): string {
+  return `Attachments/${documentId}/${IDOKLAD_ATTACHMENT_RECEIVED_INVOICE_TYPE}`
+}
+
 async function uploadIdokladAttachment(
   token: string,
   documentId: number,
   pdf: InvoicePdfAttachment
 ): Promise<void> {
-  const formData = new FormData()
-  const blob = new Blob([new Uint8Array(pdf.bytes)], { type: 'application/pdf' })
-  formData.append('FileBytes', blob, pdf.filename)
+  const path = buildIdokladAttachmentPath(documentId)
+  const attempts: Array<{ method: 'PUT' | 'POST'; label: string }> = [
+    { method: 'PUT', label: 'PUT FileBytes' },
+    { method: 'POST', label: 'POST FileBytes' },
+  ]
 
-  const res = await fetch(
-    `${IDOKLAD_API_BASE}/Attachments/${documentId}/${RECEIVED_INVOICE_DOCUMENT_TYPE}`,
-    {
-      method: 'PUT',
+  let lastError = 'Neznámá chyba uploadu přílohy'
+
+  for (const attempt of attempts) {
+    const formData = new FormData()
+    const blob = new Blob([new Uint8Array(pdf.bytes)], { type: 'application/pdf' })
+    formData.append('FileBytes', blob, pdf.filename)
+
+    const res = await fetch(`${IDOKLAD_API_BASE}/${path}`, {
+      method: attempt.method,
       headers: {
         Authorization: `Bearer ${token}`,
       },
       body: formData,
-    }
-  )
+    })
 
-  const body = await res.text()
-  if (!res.ok) {
-    throw new Error(parseIdokladError(res.status, body))
+    const body = await res.text()
+    if (res.ok) return
+
+    lastError = parseIdokladError(res.status, body)
+    console.error(`[idoklad] ${attempt.label} selhal:`, lastError)
   }
+
+  throw new Error(lastError)
 }
 
 export interface IdokladConnection {
@@ -264,7 +281,7 @@ export async function sendToIdoklad(
   connection: IdokladConnection,
   data: ExtractedInvoiceData,
   pdf?: InvoicePdfAttachment | null
-): Promise<{ id: string; documentNumber: string; pdfAttached: boolean }> {
+): Promise<{ id: string; documentNumber: string; pdfAttached: boolean; pdfAttachmentError?: string }> {
   let token: string
   if (connection.client_id) {
     token = await getAccessToken(connection.client_id, connection.client_secret)
@@ -325,12 +342,14 @@ export async function sendToIdoklad(
   }
 
   let pdfAttached = false
+  let pdfAttachmentError: string | undefined
   if (pdf) {
     try {
       await uploadIdokladAttachment(token, result.Id, pdf)
       pdfAttached = true
     } catch (err) {
-      console.error('[idoklad] PDF příloha se nepodařila nahrát:', err)
+      pdfAttachmentError = err instanceof Error ? err.message : 'Upload PDF přílohy selhal'
+      console.error('[idoklad] PDF příloha se nepodařila nahrát:', pdfAttachmentError)
     }
   }
 
@@ -338,6 +357,7 @@ export async function sendToIdoklad(
     id: String(result.Id),
     documentNumber: result.DocumentNumber ?? String(result.Id),
     pdfAttached,
+    pdfAttachmentError,
   }
 }
 
