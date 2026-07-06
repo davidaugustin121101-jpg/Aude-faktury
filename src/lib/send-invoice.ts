@@ -4,6 +4,8 @@ import { sendToFakturoid } from '@/lib/fakturoid'
 import { sendToSuperFaktura } from '@/lib/superfaktura'
 import { getConnectionForInvoiceWithSecrets } from '@/lib/accounting-connection'
 import { buildPredkontaceFromExtracted } from '@/lib/predkontace'
+import { loadInvoicePdfAttachment } from '@/lib/invoice-pdf-storage'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { ExtractedInvoiceData } from '@/lib/claude'
 import type { ProcessedInvoice } from '@/types/invoices'
 import { upsertSupplierRule } from '@/lib/supplier-rules'
@@ -138,7 +140,14 @@ export async function sendInvoiceToAccounting(params: {
   }
 
   try {
-    let result: { id: string; documentNumber?: string; number?: string }
+    let result: { id: string; documentNumber?: string; number?: string; pdfAttached?: boolean }
+    let pdfAttached = false
+
+    const pdf = await loadInvoicePdfAttachment(
+      createAdminClient(),
+      invoice.storage_path,
+      invoice.original_filename
+    ).catch(() => null)
 
     if (conn.provider === 'idoklad') {
       const idokladConn: IdokladConnection = {
@@ -146,8 +155,9 @@ export async function sendInvoiceToAccounting(params: {
         client_id: conn.idoklad_client_id ?? null,
         client_secret: conn.idoklad_client_secret ?? '',
       }
-      const r = await sendToIdoklad(idokladConn, extractedData)
-      result = { id: r.id, documentNumber: r.documentNumber }
+      const r = await sendToIdoklad(idokladConn, extractedData, pdf)
+      result = { id: r.id, documentNumber: r.documentNumber, pdfAttached: r.pdfAttached }
+      pdfAttached = r.pdfAttached
     } else if (conn.provider === 'superfaktura') {
       const r = await sendToSuperFaktura(
         {
@@ -156,9 +166,11 @@ export async function sendInvoiceToAccounting(params: {
           companyId: conn.superfaktura_company_id ?? '',
           country: conn.country ?? 'cz',
         },
-        extractedData
+        extractedData,
+        pdf
       )
-      result = { id: r.id, number: r.number }
+      result = { id: r.id, number: r.number, pdfAttached: r.pdfAttached }
+      pdfAttached = r.pdfAttached
     } else {
       const r = await sendToFakturoid(
         {
@@ -211,6 +223,8 @@ export async function sendInvoiceToAccounting(params: {
         document_id: result.id,
         ucetni_kod: extractedData.ucetni_kod,
         predkontace: buildPredkontaceFromExtracted(extractedData)?.display ?? null,
+        pdf_attached: pdfAttached,
+        pdf_available: !!pdf,
         forced: forceSend && !!audit?.hasCritical,
       },
     })

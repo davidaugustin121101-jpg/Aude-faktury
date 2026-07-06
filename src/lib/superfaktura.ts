@@ -1,6 +1,10 @@
 import type { ExtractedInvoiceData } from './claude'
 import type { CountryCode } from './accounting-codes'
 import { buildPredkontaceFromExtracted } from './predkontace'
+import {
+  canAttachToSuperFaktura,
+  type InvoicePdfAttachment,
+} from './invoice-pdf-storage'
 
 const MODULE_NAME = 'AudeflowFaktury'
 
@@ -64,14 +68,22 @@ export async function validateSuperFakturaConnection(
 
 export async function sendToSuperFaktura(
   connection: SuperFakturaConnection,
-  data: ExtractedInvoiceData
-): Promise<{ id: string; number: string }> {
+  data: ExtractedInvoiceData,
+  pdf?: InvoicePdfAttachment | null
+): Promise<{ id: string; number: string; pdfAttached: boolean }> {
   const base = BASE_URLS[connection.country]
   const commentPrefix = connection.country === 'sk' ? 'Účtovný kód' : 'Účetní kód'
   const predkontace = buildPredkontaceFromExtracted(data, { country: connection.country })
   const expenseComment = predkontace
     ? predkontace.comment
     : `${commentPrefix}: ${data.ucetni_kod} – ${data.ucetni_kod_nazev}`
+
+  const includePdf = pdf ? canAttachToSuperFaktura(pdf.bytes.length) : false
+  if (pdf && !includePdf) {
+    console.warn(
+      `[superfaktura] PDF příloha přeskočena (${pdf.bytes.length} B > limit 4 MB)`
+    )
+  }
 
   const payload = {
     Expense: {
@@ -86,6 +98,7 @@ export async function sendToSuperFaktura(
       version: 'basic',
       type: 'invoice',
       comment: expenseComment,
+      ...(includePdf ? { attachment: pdf!.bytes.toString('base64') } : {}),
     },
     Client: {
       name: data.dodavatel_nazev,
@@ -134,5 +147,6 @@ export async function sendToSuperFaktura(
   return {
     id: String(expense.id),
     number: expense.number ?? expense.expense_no ?? expense.id,
+    pdfAttached: includePdf,
   }
 }

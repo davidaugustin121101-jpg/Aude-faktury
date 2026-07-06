@@ -49,6 +49,7 @@ export interface ProcessedInvoice {
   workspace_id: string | null
   original_email_id: string | null
   original_filename: string | null
+  storage_path: string | null
   sender_email: string | null
   received_at: string | null
   created_at: string

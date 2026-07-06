@@ -1,5 +1,6 @@
 import type { ExtractedInvoiceData } from './claude'
 import { buildPredkontaceFromExtracted } from './predkontace'
+import type { InvoicePdfAttachment } from './invoice-pdf-storage'
 
 const IDOKLAD_API_BASE = 'https://api.idoklad.cz/v3'
 const IDOKLAD_TOKEN_URL = 'https://app.idoklad.cz/identity/server/connect/token'
@@ -221,6 +222,32 @@ async function resolvePartnerId(token: string, data: ExtractedInvoiceData): Prom
   return created.Id
 }
 
+async function uploadIdokladAttachment(
+  token: string,
+  documentId: number,
+  pdf: InvoicePdfAttachment
+): Promise<void> {
+  const formData = new FormData()
+  const blob = new Blob([new Uint8Array(pdf.bytes)], { type: 'application/pdf' })
+  formData.append('FileBytes', blob, pdf.filename)
+
+  const res = await fetch(
+    `${IDOKLAD_API_BASE}/Attachments/${documentId}/${RECEIVED_INVOICE_DOCUMENT_TYPE}`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    }
+  )
+
+  const body = await res.text()
+  if (!res.ok) {
+    throw new Error(parseIdokladError(res.status, body))
+  }
+}
+
 export interface IdokladConnection {
   provider: 'idoklad'
   client_id: string | null
@@ -235,8 +262,9 @@ export interface IdokladConnection {
  */
 export async function sendToIdoklad(
   connection: IdokladConnection,
-  data: ExtractedInvoiceData
-): Promise<{ id: string; documentNumber: string }> {
+  data: ExtractedInvoiceData,
+  pdf?: InvoicePdfAttachment | null
+): Promise<{ id: string; documentNumber: string; pdfAttached: boolean }> {
   let token: string
   if (connection.client_id) {
     token = await getAccessToken(connection.client_id, connection.client_secret)
@@ -296,9 +324,20 @@ export async function sendToIdoklad(
     throw new Error('iDoklad nevrátil ID vytvořené faktury')
   }
 
+  let pdfAttached = false
+  if (pdf) {
+    try {
+      await uploadIdokladAttachment(token, result.Id, pdf)
+      pdfAttached = true
+    } catch (err) {
+      console.error('[idoklad] PDF příloha se nepodařila nahrát:', err)
+    }
+  }
+
   return {
     id: String(result.Id),
     documentNumber: result.DocumentNumber ?? String(result.Id),
+    pdfAttached,
   }
 }
 

@@ -32,6 +32,7 @@ export const sampleInvoice: ProcessedInvoice = {
   workspace_id: null,
   original_email_id: null,
   original_filename: 'faktura.pdf',
+  storage_path: '22222222-2222-2222-2222-222222222222/11111111-1111-1111-1111-111111111111.pdf',
   sender_email: null,
   received_at: null,
   created_at: '2024-06-15T10:00:00Z',

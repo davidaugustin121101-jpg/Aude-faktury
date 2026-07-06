@@ -10,6 +10,7 @@ import { getSupplierRule } from '@/lib/supplier-rules'
 import { insertAuditLog } from '@/lib/audit-log'
 import { sendNewInvoiceNotification } from '@/lib/notifications'
 import { sendInvoiceToAccounting } from '@/lib/send-invoice'
+import { saveInvoicePdf } from '@/lib/invoice-pdf-storage'
 import type { ProcessedInvoice } from '@/types/invoices'
 import {
   confirmFreeInvoiceReservation,
@@ -211,6 +212,29 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    let finalInvoice = invoice as ProcessedInvoice
+    try {
+      const storagePath = await saveInvoicePdf(
+        admin,
+        user.id,
+        invoice.id,
+        Buffer.from(buffer)
+      )
+      const { data: withPdf, error: pdfUpdateErr } = await supabase
+        .from('processed_invoices')
+        .update({ storage_path: storagePath })
+        .eq('id', invoice.id)
+        .eq('user_id', user.id)
+        .select('*')
+        .single()
+
+      if (!pdfUpdateErr && withPdf) {
+        finalInvoice = withPdf as ProcessedInvoice
+      }
+    } catch (pdfErr) {
+      console.error('[extract] PDF storage failed:', pdfErr)
+    }
+
     if (reservedSource === 'free_monthly') {
       await confirmFreeInvoiceReservation(user.id)
     }
@@ -246,7 +270,6 @@ export async function POST(req: NextRequest) {
       !auditResult.hasCritical &&
       totalAmount <= Number(autoThreshold)
 
-    let finalInvoice = invoice as ProcessedInvoice
     let autoApproved = false
 
     if (canAutoApprove) {
