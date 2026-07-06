@@ -10,6 +10,25 @@ function mapDphSazba(sazba: number): number {
   return 1
 }
 
+function normalizeIdokladDate(value: string | null | undefined, fallback: string): string {
+  const d = (value ?? '').trim().slice(0, 10)
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : fallback
+}
+
+/** iDoklad vyžaduje DateOfMaturity >= DateOfIssue a povinné DateOfReceiving. */
+function buildIdokladDates(data: ExtractedInvoiceData): {
+  issue: string
+  maturity: string
+  receiving: string
+} {
+  const today = new Date().toISOString().slice(0, 10)
+  const issue = normalizeIdokladDate(data.datum_vystaveni, today)
+  let maturity = normalizeIdokladDate(data.datum_splatnosti, issue)
+  if (maturity < issue) maturity = issue
+  const receiving = issue
+  return { issue, maturity, receiving }
+}
+
 /** Get an OAuth2 access token via client_credentials flow */
 async function getAccessToken(clientId: string, clientSecret: string): Promise<string> {
   const res = await fetch(IDOKLAD_TOKEN_URL, {
@@ -52,9 +71,12 @@ export async function sendToIdoklad(
     token = connection.client_secret
   }
 
+  const { issue, maturity, receiving } = buildIdokladDates(data)
+
   const payload = {
-    DateOfIssue: data.datum_vystaveni,
-    DateOfDuePay: data.datum_splatnosti,
+    DateOfIssue: issue,
+    DateOfMaturity: maturity,
+    DateOfReceiving: receiving,
     VariableSymbol: data.variabilni_symbol,
     Description: data.popis_plneni ?? 'Přijatá faktura',
     AccountingCode: data.ucetni_kod ?? '518',
