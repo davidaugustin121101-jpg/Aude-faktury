@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +15,8 @@ import { getPostAuthUploadPath, hasPendingPdf } from '@/lib/pending-upload'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const hasPending = searchParams.get('pending') === '1'
   const supabase = createClient()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -45,6 +47,16 @@ export default function LoginPage() {
       setLoading(false)
       return
     }
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (!session) {
+      toast.error('Přihlášení se nepodařilo dokončit. Zkuste to znovu.')
+      setLoading(false)
+      return
+    }
+
     const pending = await hasPendingPdf()
     router.push(pending ? getPostAuthUploadPath() : '/dashboard')
     router.refresh()
@@ -64,7 +76,11 @@ export default function LoginPage() {
         <Card className="shadow-sm">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Přihlásit se</CardTitle>
-            <CardDescription>Zadejte své přihlašovací údaje</CardDescription>
+            <CardDescription>
+              {hasPending
+                ? 'Faktura je uložena — po přihlášení ji hned zpracujeme.'
+                : 'Zadejte své přihlašovací údaje'}
+            </CardDescription>
           </CardHeader>
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-4">

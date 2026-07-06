@@ -53,7 +53,7 @@ export async function getWorkspaceConnection(
 ) {
   const { data, error } = await supabase
     .from('accounting_connections')
-    .select('*')
+    .select('id, provider, user_id, workspace_id, is_active, created_at, fakturoid_account_slug, superfaktura_company_id, country')
     .eq('user_id', userId)
     .eq('workspace_id', workspaceId)
     .eq('is_active', true)

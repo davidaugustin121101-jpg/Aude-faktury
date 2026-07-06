@@ -1,10 +1,10 @@
 const DB_NAME = 'audeflow-pending'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const STORE = 'files'
 const KEY = 'invoice-pdf'
 
 type StoredPdf = {
-  blob: Blob
+  data: ArrayBuffer
   name: string
   type: string
   savedAt: number
@@ -34,10 +34,11 @@ function txComplete(tx: IDBTransaction): Promise<void> {
 
 export async function savePendingPdf(file: File): Promise<boolean> {
   try {
+    const data = await file.arrayBuffer()
     const db = await openDb()
     const tx = db.transaction(STORE, 'readwrite')
     const record: StoredPdf = {
-      blob: file,
+      data,
       name: file.name,
       type: file.type || 'application/pdf',
       savedAt: Date.now(),
@@ -61,7 +62,7 @@ export async function hasPendingPdf(): Promise<boolean> {
       req.onerror = () => reject(req.error)
     })
     db.close()
-    return !!result?.blob
+    return !!result?.data && result.data.byteLength > 0
   } catch {
     return false
   }
@@ -77,14 +78,16 @@ export async function takePendingPdf(): Promise<File | null> {
       req.onsuccess = () => resolve(req.result as StoredPdf | undefined)
       req.onerror = () => reject(req.error)
     })
-    if (!record?.blob) {
+    if (!record?.data || record.data.byteLength === 0) {
       db.close()
       return null
     }
     store.delete(KEY)
     await txComplete(tx)
     db.close()
-    return new File([record.blob], record.name, { type: record.type })
+    return new File([record.data], record.name, {
+      type: record.type || 'application/pdf',
+    })
   } catch {
     return null
   }

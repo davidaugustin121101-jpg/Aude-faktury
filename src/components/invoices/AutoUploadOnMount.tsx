@@ -4,8 +4,21 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { createClient } from '@/lib/supabase/client'
 import { uploadInvoicePdf } from '@/lib/invoice-upload'
 import { hasPendingPdf, takePendingPdf } from '@/lib/pending-upload'
+
+async function waitForSession(maxAttempts = 20): Promise<boolean> {
+  const supabase = createClient()
+  for (let i = 0; i < maxAttempts; i++) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (session) return true
+    await new Promise((resolve) => setTimeout(resolve, 150))
+  }
+  return false
+}
 
 export function AutoUploadOnMount() {
   const router = useRouter()
@@ -20,23 +33,27 @@ export function AutoUploadOnMount() {
     async function run() {
       const auto = searchParams.get('auto') === '1'
       const pending = auto || (await hasPendingPdf())
-      // #region agent log
-      fetch('http://127.0.0.1:7711/ingest/3cd4d8f4-c62c-4feb-9280-e257beb22e7d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'20dbe5'},body:JSON.stringify({sessionId:'20dbe5',location:'AutoUploadOnMount.tsx:run-start',message:'auto upload start',data:{auto,pending},timestamp:Date.now(),hypothesisId:'A,C'})}).catch(()=>{});
-      // #endregion
       if (!pending) return
 
+      if (auto) {
+        const sessionReady = await waitForSession()
+        if (!sessionReady) {
+          toast.error('Přihlášení se nepodařilo načíst. Obnovte stránku a zkuste znovu.')
+          return
+        }
+      }
+
       const file = await takePendingPdf()
-      // #region agent log
-      fetch('http://127.0.0.1:7711/ingest/3cd4d8f4-c62c-4feb-9280-e257beb22e7d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'20dbe5'},body:JSON.stringify({sessionId:'20dbe5',location:'AutoUploadOnMount.tsx:take-pdf',message:'pending pdf taken',data:{hasFile:!!file,fileType:file?.type,fileName:file?.name,fileSize:file?.size},timestamp:Date.now(),hypothesisId:'A,E'})}).catch(()=>{});
-      // #endregion
-      if (!file) return
+      if (!file) {
+        if (auto) {
+          toast.error('Uložená faktura se nenašla. Nahrajte PDF znovu.')
+        }
+        return
+      }
 
       setProcessing(true)
       try {
         const result = await uploadInvoicePdf(file)
-        // #region agent log
-        fetch('http://127.0.0.1:7711/ingest/3cd4d8f4-c62c-4feb-9280-e257beb22e7d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'20dbe5'},body:JSON.stringify({sessionId:'20dbe5',location:'AutoUploadOnMount.tsx:upload-result',message:'upload finished',data:{ok:result.ok,error:result.ok?undefined:result.error,invoiceId:result.ok?result.invoiceId:undefined},timestamp:Date.now(),hypothesisId:'B,D,F'})}).catch(()=>{});
-        // #endregion
 
         if (!result.ok) {
           toast.error(result.error)
@@ -46,10 +63,7 @@ export function AutoUploadOnMount() {
         toast.success('Faktura zpracována')
         router.replace(`/faktury/${result.invoiceId}`)
         router.refresh()
-      } catch (err) {
-        // #region agent log
-        fetch('http://127.0.0.1:7711/ingest/3cd4d8f4-c62c-4feb-9280-e257beb22e7d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'20dbe5'},body:JSON.stringify({sessionId:'20dbe5',location:'AutoUploadOnMount.tsx:upload-error',message:'upload threw',data:{error:err instanceof Error?err.message:'unknown'},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
+      } catch {
         toast.error('Nahrání se nezdařilo. Zkuste PDF nahrát znovu.')
       } finally {
         setProcessing(false)

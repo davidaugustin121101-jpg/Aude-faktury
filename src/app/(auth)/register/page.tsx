@@ -217,7 +217,7 @@ export default function RegisterPage() {
 
         <p className="text-sm text-gray-500 text-center mt-4">
           Už máte účet?{' '}
-          <Link href="/login" className="text-blue-600 hover:underline font-medium">
+          <Link href={hasPending ? '/login?pending=1' : '/login'} className="text-blue-600 hover:underline font-medium">
             Přihlásit se
           </Link>
         </p>
