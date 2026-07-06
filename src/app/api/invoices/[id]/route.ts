@@ -27,7 +27,7 @@ export async function DELETE(
 
   if (!INVOICE_DELETABLE_STATUSES.includes(existing.status as (typeof INVOICE_DELETABLE_STATUSES)[number])) {
     return NextResponse.json(
-      { error: 'Odeslanou fakturu nelze smazat. Kontaktujte podporu.' },
+      { error: 'Fakturu v tomto stavu nelze smazat.' },
       { status: 400 }
     )
   }

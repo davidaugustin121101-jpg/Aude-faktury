@@ -41,7 +41,7 @@ export default async function UploadPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Nahrát fakturu</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Přetáhni PDF fakturu – {EXTRACTION_LABEL} navrhne účetní kód do 5 sekund.
+          Přetáhni PDF fakturu — {EXTRACTION_LABEL} navrhne účetní kód a zkontroluje data před odesláním.
         </p>
         <p className="text-sm mt-2">
           <Link href="/napoveda" className="text-blue-600 hover:underline font-medium">

@@ -114,7 +114,7 @@ export function LandingDropZone({ isAuthenticated }: Props) {
         </div>
       </div>
       <p className="text-center text-xs text-blue-800/80 mt-4 font-medium">
-        10 faktur měsíčně zdarma · bez karty
+        Vytěžení + odeslání s PDF přílohou · 10 faktur měsíčně zdarma
       </p>
     </div>
   )

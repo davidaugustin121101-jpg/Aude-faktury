@@ -11,12 +11,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { APP_NAME } from '@/lib/brand'
+import { safeRedirectPath } from '@/lib/safe-redirect'
 import { getPostAuthUploadPath, hasPendingPdf } from '@/lib/pending-upload'
 
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const hasPending = searchParams.get('pending') === '1'
+  const nextPath = safeRedirectPath(searchParams.get('next'), '/dashboard')
   const supabase = createClient()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -58,7 +60,7 @@ export default function LoginPage() {
     }
 
     const pending = await hasPendingPdf()
-    router.push(pending ? getPostAuthUploadPath() : '/dashboard')
+    router.push(pending ? getPostAuthUploadPath() : nextPath)
     router.refresh()
   }
 

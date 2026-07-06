@@ -5,6 +5,9 @@ export const INVOICE_DELETABLE_STATUSES = [
   'needs_manual_check',
   'error',
   'rejected',
+  'approved',
+  'sent_to_accounting',
+  'sent',
 ] as const
 
 export const INVOICE_REJECTABLE_STATUSES = [

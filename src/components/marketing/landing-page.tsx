@@ -14,6 +14,11 @@ import { LandingHeader } from '@/components/marketing/landing-header'
 import { LandingDropZone } from '@/components/marketing/LandingDropZone'
 import { LegalFooter } from '@/components/legal/LegalFooter'
 import { APP_NAME, EXTRACTION_LABEL } from '@/lib/brand'
+import {
+  getLandingPrimaryCtaHref,
+  getLandingTierHref,
+  getMultiClientAddonHref,
+} from '@/lib/landing-links'
 
 const STEPS = [
   {
@@ -22,7 +27,7 @@ const STEPS = [
   },
   {
     title: EXTRACTION_LABEL,
-    desc: 'Automaticky vytěžíme dodavatele, IČO, částku, DPH a navrhneme účetní kód do 10 sekund.',
+    desc: 'Automaticky vytěžíme dodavatele, IČO, částku, DPH a navrhneme český účetní kód.',
   },
   {
     title: 'Audit a kontrola dat',
@@ -30,7 +35,7 @@ const STEPS = [
   },
   {
     title: 'Export nebo odeslání',
-    desc: 'Stáhněte ISDOC/Pohoda/Money/Helios, nebo odešlete do iDokladu, Fakturoidu či SuperFaktury.',
+    desc: 'Stáhněte ISDOC/Pohoda/Money/Helios, nebo odešlete do iDokladu, Fakturoidu či SuperFaktury včetně PDF přílohy.',
   },
   {
     title: 'Faktura v účetnictví',
@@ -71,11 +76,11 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
             </h1>
             <p className="mt-5 text-base sm:text-lg text-gray-600 leading-relaxed max-w-xl">
               Přetáhněte PDF — Audeflow vytěží data, navrhne účetní kód a odešle do iDokladu,
-              Fakturoidu nebo SuperFaktury. 10 faktur měsíčně zdarma, bez kreditní karty. Levnější
-              než ruční přepisování.
+              Fakturoidu nebo SuperFaktury včetně originální PDF přílohy. 10 faktur měsíčně zdarma,
+              bez kreditní karty.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/register">
+              <Link href={getLandingPrimaryCtaHref(isAuthenticated)}>
                 <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
                   Zkusit zdarma
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -88,7 +93,7 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
               </a>
             </div>
             <div className="mt-8 flex flex-wrap gap-2">
-              {['Solo zdarma', '1 fakturační systém', '10 faktur / měsíc', 'České DPH'].map(
+              {['Solo zdarma', '1 fakturační systém', '10 faktur / měsíc', 'PDF příloha v ERP'].map(
                 (tag) => (
                   <span
                     key={tag}
@@ -185,8 +190,8 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
               },
               {
                 icon: Sparkles,
-                title: EXTRACTION_LABEL,
-                desc: 'Automatické čtení dodavatele, IČO, částek a návrh účetního kódu.',
+                title: 'Odeslání s PDF přílohou',
+                desc: 'Do iDokladu a SuperFaktury pošleme fakturu i s originálním PDF — bez ručního nahrávání.',
               },
             ].map(({ icon: Icon, title, desc }) => (
               <div key={title} className="bg-white rounded-2xl border border-gray-200 p-6">
@@ -236,23 +241,32 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
                       </li>
                     ))}
                   </ul>
-                  <Link href="/register">
+                  <Link href={getLandingTierHref(plan, isAuthenticated)}>
                     <Button
                       className={`w-full ${plan.highlighted ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-violet-600 hover:bg-violet-700'}`}
                     >
-                      {plan.id === 'free' ? 'Registrovat zdarma' : `Tarif ${plan.name}`}
+                      {plan.id === 'free'
+                        ? isAuthenticated
+                          ? 'Nahrát fakturu'
+                          : 'Registrovat zdarma'
+                        : `Tarif ${plan.name}`}
                     </Button>
                   </Link>
                 </div>
               ))}
             </div>
-            <div className="rounded-2xl border border-violet-200 bg-violet-50 p-6 max-w-md mx-auto mt-8">
+            <div className="rounded-2xl border border-violet-200 bg-violet-50 p-6 max-w-md mx-auto mt-8 text-center">
               <h3 className="text-lg font-bold text-gray-900">{MULTI_CLIENT_ADDON.name}</h3>
               <p className="text-xs text-gray-600 mt-1 mb-3">{MULTI_CLIENT_ADDON.tagline}</p>
               <p className="text-2xl font-extrabold text-violet-700">
                 +{MULTI_CLIENT_ADDON.price}
                 <span className="text-sm font-normal text-gray-500">{MULTI_CLIENT_ADDON.period}</span>
               </p>
+              <Link href={getMultiClientAddonHref(isAuthenticated)} className="inline-block mt-4">
+                <Button className="bg-violet-600 hover:bg-violet-700">
+                  {isAuthenticated ? 'Aktivovat modul' : 'Přihlásit se a aktivovat'}
+                </Button>
+              </Link>
             </div>
           </div>
         </section>
@@ -291,7 +305,7 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
               systém. Bez kreditní karty.
             </p>
             <div className="flex flex-wrap justify-center gap-3">
-              <Link href="/register">
+              <Link href={getLandingPrimaryCtaHref(isAuthenticated)}>
                 <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
                   Registrovat zdarma
                   <ArrowRight className="ml-2 h-4 w-4" />
