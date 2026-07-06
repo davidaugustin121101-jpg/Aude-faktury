@@ -11,8 +11,9 @@ import {
 import { Button } from '@/components/ui/button'
 import { BILLING_TIERS, MULTI_CLIENT_ADDON } from '@/lib/account-mode'
 import { LandingHeader } from '@/components/marketing/landing-header'
+import { LandingDropZone } from '@/components/marketing/LandingDropZone'
 import { LegalFooter } from '@/components/legal/LegalFooter'
-import { APP_NAME, APP_TAGLINE, EXTRACTION_LABEL } from '@/lib/brand'
+import { APP_NAME, EXTRACTION_LABEL } from '@/lib/brand'
 
 const STEPS = [
   {
@@ -52,10 +53,10 @@ const FAQ = [
   },
 ]
 
-export function LandingPage() {
+export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boolean }) {
   return (
     <div className="min-h-screen bg-white">
-      <LandingHeader />
+      <LandingHeader isAuthenticated={isAuthenticated} />
 
       <main className="pt-14 sm:pt-16">
         <section className="max-w-6xl mx-auto px-4 py-12 sm:py-20 lg:py-28 grid lg:grid-cols-2 gap-10 lg:gap-12 items-center">
@@ -65,13 +66,13 @@ export function LandingPage() {
               Automatické zpracování faktur · CZ + SK
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-gray-900 leading-tight tracking-tight">
-              PDF faktura do účetnictví.{' '}
-              <span className="text-blue-600">Za 30 sekund.</span>
+              Vytěžení faktury{' '}
+              <span className="text-blue-600">od 0 Kč.</span>
             </h1>
             <p className="mt-5 text-base sm:text-lg text-gray-600 leading-relaxed max-w-xl">
-              Nahrajte fakturu z mobilu nebo počítače. Audeflow vytěží data, navrhne účetní kód a
-              odešle do iDokladu, Fakturoidu nebo SuperFaktury — nebo exportuje ISDOC, Pohodu, Money
-              S3 a Helios.
+              Přetáhněte PDF — Audeflow vytěží data, navrhne účetní kód a odešle do iDokladu,
+              Fakturoidu nebo SuperFaktury. 10 faktur měsíčně zdarma, bez kreditní karty. Levnější
+              než ruční přepisování.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/register">
@@ -100,24 +101,7 @@ export function LandingPage() {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-3xl p-8 shadow-sm">
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                { val: '0 Kč', label: 'Solo režim' },
-                { val: '1', label: 'fakturační systém' },
-                { val: '10', label: 'faktur zdarma / měsíc' },
-                { val: '299 Kč', label: 'účetní režim / měsíc' },
-              ].map((s) => (
-                <div
-                  key={s.label}
-                  className="bg-white rounded-2xl p-5 border border-white/80 shadow-sm"
-                >
-                  <p className="text-2xl font-bold text-gray-900">{s.val}</p>
-                  <p className="text-xs text-gray-500 mt-1">{s.label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+          <LandingDropZone isAuthenticated={isAuthenticated} />
         </section>
 
         <section id="jak-funguje" className="bg-gray-50 py-20">

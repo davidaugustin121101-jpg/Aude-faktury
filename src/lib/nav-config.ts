@@ -8,6 +8,7 @@ import {
   BookOpen,
   Download,
   Upload,
+  Home,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -37,6 +38,7 @@ export const SETTINGS_TABS = [
 ] as const
 
 export const SETTINGS_SUB_NAV: NavItem[] = [
+  { href: '/', label: 'Úvod', icon: Home },
   { href: '/settings/accounting', label: 'Fakturační systém', icon: Link2 },
   { href: '/settings/export', label: 'Export profil', icon: Download },
   { href: '/settings/predplatne', label: 'Předplatné', icon: CreditCard },

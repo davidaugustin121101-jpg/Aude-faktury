@@ -23,6 +23,9 @@ function isNavActive(href: string, pathname: string): boolean {
   if (href === '/settings') {
     return pathname === '/settings'
   }
+  if (href === '/') {
+    return pathname === '/'
+  }
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
@@ -125,7 +128,7 @@ export function MobileDrawer({
 
   async function handleSignOut() {
     await supabase.auth.signOut({ scope: 'global' })
-    window.location.href = '/login'
+    window.location.href = '/'
   }
 
   function NavLink({ href, label }: { href: string; label: string }) {
@@ -156,7 +159,9 @@ export function MobileDrawer({
       />
       <aside className="absolute inset-y-0 left-0 w-[min(100%,20rem)] bg-white shadow-xl flex flex-col safe-top safe-bottom">
         <div className="flex items-center justify-between px-4 h-14 border-b border-gray-100">
-          <span className="font-bold text-gray-900">{APP_NAME}</span>
+          <Link href="/" onClick={onClose} className="font-bold text-gray-900 hover:text-blue-600">
+            {APP_NAME}
+          </Link>
           <button
             type="button"
             onClick={onClose}

@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { APP_NAME } from '@/lib/brand'
+import { getPostAuthUploadPath, hasPendingPdf } from '@/lib/pending-upload'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -44,7 +45,8 @@ export default function LoginPage() {
       setLoading(false)
       return
     }
-    router.push('/dashboard')
+    const pending = await hasPendingPdf()
+    router.push(pending ? getPostAuthUploadPath() : '/dashboard')
     router.refresh()
   }
 

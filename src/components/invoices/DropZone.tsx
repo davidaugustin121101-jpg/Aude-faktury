@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { FileText, Loader2, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { uploadInvoicePdf } from '@/lib/invoice-upload'
 
 export function DropZone() {
   const router = useRouter()
@@ -22,20 +23,15 @@ export function DropZone() {
       setUploading(true)
       setFileName(file.name)
 
-      const formData = new FormData()
-      formData.append('file', file)
-
       try {
-        const res = await fetch('/api/extract', { method: 'POST', body: formData })
-        const data = await res.json()
-
-        if (!res.ok) {
-          toast.error(data.error ?? 'Nahrání se nezdařilo')
+        const result = await uploadInvoicePdf(file)
+        if (!result.ok) {
+          toast.error(result.error)
           return
         }
 
         toast.success('Faktura zpracována')
-        router.push(`/faktury/${data.invoice.id}`)
+        router.push(`/faktury/${result.invoiceId}`)
         router.refresh()
       } catch {
         toast.error('Chyba při nahrávání')

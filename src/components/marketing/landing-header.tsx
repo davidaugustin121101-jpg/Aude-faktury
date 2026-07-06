@@ -11,8 +11,64 @@ const NAV_LINKS = [
   { href: '#pricing', label: 'Ceník' },
 ]
 
-export function LandingHeader() {
+interface Props {
+  isAuthenticated?: boolean
+}
+
+export function LandingHeader({ isAuthenticated = false }: Props) {
   const [open, setOpen] = useState(false)
+
+  const authButtons = isAuthenticated ? (
+    <>
+      <Link href="/faktury/upload">
+        <Button variant="ghost" size="sm">
+          Nahrát fakturu
+        </Button>
+      </Link>
+      <Link href="/dashboard">
+        <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+          Přejít do aplikace
+        </Button>
+      </Link>
+    </>
+  ) : (
+    <>
+      <Link href="/login">
+        <Button variant="ghost" size="sm">
+          Přihlásit se
+        </Button>
+      </Link>
+      <Link href="/register">
+        <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+          Registrovat zdarma
+        </Button>
+      </Link>
+    </>
+  )
+
+  const mobileAuthButtons = isAuthenticated ? (
+    <div className="flex flex-col gap-2 pt-2">
+      <Link href="/dashboard" onClick={() => setOpen(false)}>
+        <Button className="w-full bg-blue-600 hover:bg-blue-700">Přejít do aplikace</Button>
+      </Link>
+      <Link href="/faktury/upload" onClick={() => setOpen(false)}>
+        <Button variant="outline" className="w-full">
+          Nahrát fakturu
+        </Button>
+      </Link>
+    </div>
+  ) : (
+    <div className="flex flex-col gap-2 pt-2">
+      <Link href="/login" onClick={() => setOpen(false)}>
+        <Button variant="outline" className="w-full">
+          Přihlásit se
+        </Button>
+      </Link>
+      <Link href="/register" onClick={() => setOpen(false)}>
+        <Button className="w-full bg-blue-600 hover:bg-blue-700">Registrovat zdarma</Button>
+      </Link>
+    </div>
+  )
 
   return (
     <header className="fixed top-0 inset-x-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100 safe-top">
@@ -34,16 +90,7 @@ export function LandingHeader() {
               {link.label}
             </a>
           ))}
-          <Link href="/login">
-            <Button variant="ghost" size="sm">
-              Přihlásit se
-            </Button>
-          </Link>
-          <Link href="/register">
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-              Registrovat zdarma
-            </Button>
-          </Link>
+          {authButtons}
         </nav>
 
         <button
@@ -69,16 +116,7 @@ export function LandingHeader() {
               {link.label}
             </a>
           ))}
-          <div className="flex flex-col gap-2 pt-2">
-            <Link href="/login" onClick={() => setOpen(false)}>
-              <Button variant="outline" className="w-full">
-                Přihlásit se
-              </Button>
-            </Link>
-            <Link href="/register" onClick={() => setOpen(false)}>
-              <Button className="w-full bg-blue-600 hover:bg-blue-700">Registrovat zdarma</Button>
-            </Link>
-          </div>
+          {mobileAuthButtons}
         </div>
       )}
     </header>

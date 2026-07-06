@@ -48,6 +48,9 @@ function isNavActive(href: string, pathname: string): boolean {
   if (href === '/settings') {
     return pathname === '/settings'
   }
+  if (href === '/') {
+    return pathname === '/'
+  }
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
@@ -70,7 +73,7 @@ export function Sidebar({
 
   async function handleSignOut() {
     await supabase.auth.signOut({ scope: 'global' })
-    window.location.href = '/login'
+    window.location.href = '/'
   }
 
   const initials = user.email?.[0].toUpperCase() ?? '?'
@@ -119,13 +122,15 @@ export function Sidebar({
       )}
     >
       <div className="h-16 px-5 flex items-center gap-2.5 border-b border-gray-100 shrink-0">
-        <span className="text-xl" aria-hidden>
-          🧾
-        </span>
-        <div className="min-w-0">
-          <span className="font-bold text-gray-900 text-sm block truncate">{APP_NAME}</span>
-          <p className="text-xs text-gray-400 leading-none truncate">{APP_TAGLINE}</p>
-        </div>
+        <Link href="/" className="flex items-center gap-2.5 min-w-0 hover:opacity-80 transition-opacity">
+          <span className="text-xl" aria-hidden>
+            🧾
+          </span>
+          <div className="min-w-0">
+            <span className="font-bold text-gray-900 text-sm block truncate">{APP_NAME}</span>
+            <p className="text-xs text-gray-400 leading-none truncate">{APP_TAGLINE}</p>
+          </div>
+        </Link>
       </div>
 
       <div className="pt-3 shrink-0">

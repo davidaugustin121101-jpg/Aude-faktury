@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,9 +14,12 @@ import type { CountryCode } from '@/lib/accounting-codes'
 import { COUNTRY_LABELS } from '@/lib/accounting-codes'
 import { APP_NAME } from '@/lib/brand'
 import { LegalFooter } from '@/components/legal/LegalFooter'
+import { getPostAuthUploadPath, hasPendingPdf } from '@/lib/pending-upload'
 
 export default function RegisterPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const hasPending = searchParams.get('pending') === '1'
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
@@ -37,7 +40,8 @@ export default function RegisterPage() {
 
     setLoading(true)
 
-    const redirectTo = `${window.location.origin}/callback?next=/faktury/upload`
+    const uploadNext = encodeURIComponent(getPostAuthUploadPath())
+    const redirectTo = `${window.location.origin}/callback?next=${uploadNext}`
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -78,7 +82,8 @@ export default function RegisterPage() {
         ? 'Účet vytvorený – nastavené Slovensko 🇸🇰'
         : 'Účet vytvořen – nastaveno Česko 🇨🇿'
     )
-    router.push('/faktury/upload')
+    const pending = await hasPendingPdf()
+    router.push(pending ? getPostAuthUploadPath() : '/faktury/upload')
   }
 
   return (
@@ -95,7 +100,11 @@ export default function RegisterPage() {
 
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
           <h1 className="text-xl font-bold text-gray-900 mb-1">Vytvořit účet zdarma</h1>
-          <p className="text-sm text-gray-500 mb-6">10 faktur měsíčně zdarma · Bez kreditní karty</p>
+          <p className="text-sm text-gray-500 mb-6">
+            {hasPending
+              ? 'Faktura je uložena — po registraci ji hned zpracujeme.'
+              : '10 faktur měsíčně zdarma · Bez kreditní karty'}
+          </p>
 
           <form onSubmit={handleRegister} className="space-y-4">
             <div>

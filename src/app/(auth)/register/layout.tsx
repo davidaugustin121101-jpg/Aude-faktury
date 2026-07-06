@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import { pageMetadata } from '@/lib/seo'
 
 export const metadata: Metadata = pageMetadata(
@@ -8,5 +9,5 @@ export const metadata: Metadata = pageMetadata(
 )
 
 export default function RegisterLayout({ children }: { children: React.ReactNode }) {
-  return children
+  return <Suspense fallback={null}>{children}</Suspense>
 }

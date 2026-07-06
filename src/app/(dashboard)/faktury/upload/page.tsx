@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { DropZone } from '@/components/invoices/DropZone'
+import { AutoUploadOnMount } from '@/components/invoices/AutoUploadOnMount'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { getActiveWorkspaceConnection, providerDisplayName } from '@/lib/accounting-connection'
@@ -59,6 +61,10 @@ export default async function UploadPage() {
           </p>
         </div>
       )}
+
+      <Suspense fallback={null}>
+        <AutoUploadOnMount />
+      </Suspense>
 
       <DropZone />
 
