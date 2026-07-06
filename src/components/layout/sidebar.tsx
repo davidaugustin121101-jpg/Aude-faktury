@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -188,8 +189,10 @@ export function Sidebar({
             </div>
             <ChevronUp className="h-4 w-4 text-gray-400 shrink-0" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
-            <DropdownMenuLabel className="truncate">{user.email}</DropdownMenuLabel>
+          <DropdownMenuContent align="start" side="top" className="w-56">
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="truncate">{user.email}</DropdownMenuLabel>
+            </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => router.push('/settings')}>Nastavení</DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push('/settings/predplatne')}>
