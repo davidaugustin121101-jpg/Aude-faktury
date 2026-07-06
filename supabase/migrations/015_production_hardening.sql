@@ -91,9 +91,10 @@ DECLARE
   v_country text;
 BEGIN
   v_country := COALESCE(new.raw_user_meta_data->>'country', 'cz');
-  INSERT INTO public.user_profiles (id, plan, country, country_confirmed_at)
+  INSERT INTO public.user_profiles (id, email, plan, country, country_confirmed_at)
   VALUES (
     new.id,
+    new.email,
     'free',
     v_country,
     CASE WHEN new.raw_user_meta_data->>'country' IS NOT NULL THEN now() ELSE NULL END

@@ -59,7 +59,7 @@ export default function RegisterPage() {
           'Chybná Supabase URL na serveru. Ve Vercelu nastavte NEXT_PUBLIC_SUPABASE_URL na https://rddjtylcmxsnxhwjlvaj.supabase.co (bez /rest/v1).'
         )
       } else {
-        toast.error(error.message)
+        toast.error(error.message || 'Registrace se nezdařila. Zkuste to prosím znovu.')
       }
       return
     }
