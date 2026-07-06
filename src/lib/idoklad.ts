@@ -1,6 +1,6 @@
 import type { ExtractedInvoiceData } from './claude'
 
-const IDOKLAD_BASE = 'https://app.idoklad.cz/v3'
+const IDOKLAD_API_BASE = 'https://api.idoklad.cz/v3'
 const IDOKLAD_TOKEN_URL = 'https://app.idoklad.cz/identity/server/connect/token'
 
 // VatRateType: 3=exempt(0%), 2=reduced(10%/12%), 1=standard(21%)
@@ -76,7 +76,7 @@ export async function sendToIdoklad(
     CurrencyId: data.mena === 'CZK' ? 'CZK' : data.mena,
   }
 
-  const res = await fetch(`${IDOKLAD_BASE}/ReceivedInvoices`, {
+  const res = await fetch(`${IDOKLAD_API_BASE}/ReceivedInvoices`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -106,7 +106,7 @@ export async function validateIdokladConnection(
     } else {
       token = clientSecret
     }
-    const res = await fetch(`${IDOKLAD_BASE}/ReceivedInvoices?page=1&pageSize=1`, {
+    const res = await fetch(`${IDOKLAD_API_BASE}/ReceivedInvoices?page=1&pageSize=1`, {
       headers: { Authorization: `Bearer ${token}` },
     })
     return res.ok

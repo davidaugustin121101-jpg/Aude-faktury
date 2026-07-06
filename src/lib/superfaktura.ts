@@ -91,19 +91,31 @@ export async function sendToSuperFaktura(
     },
   }
 
+  // SuperFaktura API expects form-urlencoded body with JSON in the `data` field (not raw JSON).
+  const body = new URLSearchParams()
+  body.set('data', JSON.stringify(payload))
+
   const res = await fetch(`${base}/expenses/add`, {
     method: 'POST',
     headers: {
       Authorization: buildAuthHeader(connection.email, connection.apiKey, connection.companyId),
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
       Accept: 'application/json',
     },
-    body: JSON.stringify(payload),
+    body: body.toString(),
   })
 
-  const json = (await res.json()) as SuperFakturaResponse<{
+  const raw = await res.text()
+  let json: SuperFakturaResponse<{
     Expense?: { id?: string; number?: string; expense_no?: string }
   }>
+  try {
+    json = JSON.parse(raw) as typeof json
+  } catch {
+    throw new Error(
+      `SuperFaktura API chyba ${res.status}: ${raw.slice(0, 300) || 'neplatná odpověď serveru'}`
+    )
+  }
 
   if (!res.ok || json.error === 1) {
     throw new Error(`SuperFaktura API: ${formatSuperFakturaError(json)}`)
