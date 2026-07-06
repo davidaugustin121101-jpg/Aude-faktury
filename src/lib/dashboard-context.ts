@@ -46,43 +46,31 @@ async function loadDashboardContext(
 
   const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
 
-  const [{ data: connRows }, { count: monthCount }, { count: totalCount }, { count: sentCount }, { count: attentionCount }] =
-    await Promise.all([
-      supabase
-        .from('accounting_connections')
-        .select('provider')
-        .eq('user_id', userId)
-        .eq('workspace_id', workspace.id)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
-        .limit(1),
-      supabase
-        .from('processed_invoices')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('workspace_id', workspace.id)
-        .gte('created_at', firstOfMonth),
-      supabase
-        .from('processed_invoices')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('workspace_id', workspace.id),
-      supabase
-        .from('processed_invoices')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('workspace_id', workspace.id)
-        .eq('status', 'sent_to_accounting'),
-      supabase
-        .from('processed_invoices')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('workspace_id', workspace.id)
-        .in('status', ['needs_manual_check', 'error']),
-    ])
+  const [{ data: connRows }, { data: invoiceRows }] = await Promise.all([
+    supabase
+      .from('accounting_connections')
+      .select('provider')
+      .eq('user_id', userId)
+      .eq('workspace_id', workspace.id)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1),
+    supabase
+      .from('processed_invoices')
+      .select('status, created_at')
+      .eq('user_id', userId)
+      .eq('workspace_id', workspace.id),
+  ])
+
+  const rows = invoiceRows ?? []
+  const invoicesThisMonth = rows.filter((r) => r.created_at >= firstOfMonth).length
+  const totalCount = rows.length
+  const sentCount = rows.filter((r) => r.status === 'sent_to_accounting').length
+  const attentionCount = rows.filter((r) =>
+    r.status === 'needs_manual_check' || r.status === 'error'
+  ).length
 
   const conn = connRows?.[0] ?? null
-  const invoicesThisMonth = monthCount ?? 0
   const hasActiveSub = hasActiveBaseSubscription(profile)
   const invoiceLimit = getInvoiceLimit(profile)
   const invoicesRemaining = getInvoicesRemaining(profile, invoicesThisMonth)
@@ -98,9 +86,9 @@ async function loadDashboardContext(
     invoicesThisMonth,
     invoiceLimit,
     invoicesRemaining,
-    totalInvoices: totalCount ?? 0,
-    sentTotal: sentCount ?? 0,
-    attentionTotal: attentionCount ?? 0,
+    totalInvoices: totalCount,
+    sentTotal: sentCount,
+    attentionTotal: attentionCount,
   }
 }
 

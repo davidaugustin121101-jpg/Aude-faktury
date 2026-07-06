@@ -124,8 +124,8 @@ export function MobileDrawer({
   if (!open) return null
 
   async function handleSignOut() {
-    await supabase.auth.signOut()
-    router.push('/login')
+    await supabase.auth.signOut({ scope: 'global' })
+    window.location.href = '/login'
   }
 
   function NavLink({ href, label }: { href: string; label: string }) {

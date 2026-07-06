@@ -11,8 +11,6 @@ import { requireUser } from '@/lib/auth-server'
 import { MODE_LABELS } from '@/lib/account-mode'
 import { cn } from '@/lib/utils'
 import { InvoiceStatusBadge } from '@/components/invoices/InvoiceStatusBadge'
-import { SetupChecklist } from '@/components/help/SetupChecklist'
-import { getSetupStatus } from '@/lib/setup-status'
 
 const PROVIDER_NAMES = {
   idoklad: 'iDoklad',
@@ -24,16 +22,13 @@ export default async function DashboardPage() {
   const { supabase, user } = await requireUser()
   const ctx = await getDashboardContext(supabase, user.id, user.email ?? '')
 
-  const [{ data: recentInvoices }, setupStatus] = await Promise.all([
-    supabase
-      .from('processed_invoices')
-      .select('id, dodavatel_nazev, castka_celkem, status, created_at, ucetni_kod')
-      .eq('user_id', user.id)
-      .eq('workspace_id', ctx.workspaceId)
-      .order('created_at', { ascending: false })
-      .limit(5),
-    getSetupStatus(supabase, user.id, user.email ?? '', null),
-  ])
+  const { data: recentInvoices } = await supabase
+    .from('processed_invoices')
+    .select('id, dodavatel_nazev, castka_celkem, status, created_at, ucetni_kod')
+    .eq('user_id', user.id)
+    .eq('workspace_id', ctx.workspaceId)
+    .order('created_at', { ascending: false })
+    .limit(5)
 
   const isUnlimited = ctx.invoiceLimit >= 999_999
   const usagePercent = isUnlimited
@@ -112,8 +107,6 @@ export default async function DashboardPage() {
           )}
         </div>
       </div>
-
-      <SetupChecklist status={setupStatus} />
 
       {!isReady && (
         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5">

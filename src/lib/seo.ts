@@ -132,7 +132,7 @@ export function landingJsonLd() {
         '@id': `${SITE_URL}/#organization`,
         name: 'AUDEFLOW',
         url: 'https://audeflow.cz',
-        email: 'podpora@audeflow.cz',
+        email: 'kontakt@audeflow.cz',
         logo: `${SITE_URL}/icon.svg`,
       },
       {

@@ -1,9 +1,7 @@
 import Link from 'next/link'
 import { Upload, Search, Send, AlertTriangle } from 'lucide-react'
 import { requireUser } from '@/lib/auth-server'
-import { SetupChecklist } from '@/components/help/SetupChecklist'
 import { HelpGuidesSection } from '@/components/help/HelpGuidesSection'
-import { getSetupStatus } from '@/lib/setup-status'
 import { COMMON_ISSUES, PRE_SEND_CHECKLIST } from '@/lib/guides'
 
 const STEPS = [
@@ -28,20 +26,7 @@ const STEPS = [
 ]
 
 export default async function NapovedaPage() {
-  const { supabase, user } = await requireUser()
-
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('full_name')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  const setupStatus = await getSetupStatus(
-    supabase,
-    user.id,
-    user.email ?? '',
-    profile?.full_name
-  )
+  await requireUser()
 
   return (
     <div className="max-w-2xl space-y-8">
@@ -72,8 +57,6 @@ export default async function NapovedaPage() {
           ))}
         </div>
       </div>
-
-      <SetupChecklist status={setupStatus} showHelpLink={false} />
 
       <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 flex gap-3">
         <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />

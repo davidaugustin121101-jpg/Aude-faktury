@@ -9,8 +9,6 @@ export function InvoiceSettingsPanel() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [autoApproveBelow, setAutoApproveBelow] = useState('')
-  const [notifyOnNew, setNotifyOnNew] = useState(true)
-  const [notifyEmail, setNotifyEmail] = useState('')
 
   useEffect(() => {
     fetch('/api/invoices/settings')
@@ -20,8 +18,6 @@ export function InvoiceSettingsPanel() {
           setAutoApproveBelow(
             settings.auto_approve_below != null ? String(settings.auto_approve_below) : ''
           )
-          setNotifyOnNew(settings.notify_on_new !== false)
-          setNotifyEmail(settings.notify_email ?? '')
         }
       })
       .finally(() => setLoading(false))
@@ -34,8 +30,6 @@ export function InvoiceSettingsPanel() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         autoApproveBelow: autoApproveBelow ? Number(autoApproveBelow) : null,
-        notifyOnNew,
-        notifyEmail: notifyEmail.trim() || null,
       }),
     })
     setSaving(false)
@@ -68,26 +62,6 @@ export function InvoiceSettingsPanel() {
           onChange={(e) => setAutoApproveBelow(e.target.value)}
           placeholder="např. 5000"
           className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-        />
-      </label>
-
-      <label className="flex items-center gap-2 text-sm cursor-pointer">
-        <input
-          type="checkbox"
-          checked={notifyOnNew}
-          onChange={(e) => setNotifyOnNew(e.target.checked)}
-        />
-        Posílat email při nové faktuře
-      </label>
-
-      <label className="block text-sm">
-        <span className="text-gray-500 text-xs">Email pro notifikace (volitelné)</span>
-        <input
-          type="email"
-          value={notifyEmail}
-          onChange={(e) => setNotifyEmail(e.target.value)}
-          placeholder="Výchozí: váš přihlašovací email"
-          className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
         />
       </label>
 

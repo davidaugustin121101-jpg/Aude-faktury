@@ -4,7 +4,7 @@ export const OCHRANA_UDAJU: LegalSection[] = [
   {
     title: '1. Správce',
     paragraphs: [
-      'Správcem osobních údajů je AUDE FLOW, fyzická osoba podnikající, IČO 10841067, kontakt: podpora@audeflow.cz.',
+      'Správcem osobních údajů je AUDE FLOW, fyzická osoba podnikající, IČO 10841067, kontakt: kontakt@audeflow.cz.',
     ],
   },
   {
@@ -38,7 +38,7 @@ export const OCHRANA_UDAJU: LegalSection[] = [
   {
     title: '6. Vaše práva',
     paragraphs: [
-      'Máte právo na přístup, opravu, výmaz, omezení zpracování, přenositelnost a vznést námitku. Žádosti směřujte na podpora@audeflow.cz.',
+      'Máte právo na přístup, opravu, výmaz, omezení zpracování, přenositelnost a vznést námitku. Žádosti směřujte na kontakt@audeflow.cz.',
       'Stížnost lze podat u Úřadu pro ochranu osobních údajů (uoou.cz).',
     ],
   },

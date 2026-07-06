@@ -37,7 +37,7 @@ export const OBCHODNI_PODMINKY: LegalSection[] = [
     title: '5. Zákaz vrácení peněz',
     paragraphs: [
       'Uživatel bere na vědomí, že po započetí fakturačního období, využití kreditu na vytěžení faktury nebo stažení exportu není nárok na vrácení peněz.',
-      'Reklamace technických vad Služby lze uplatnit e-mailem na podpora@audeflow.cz; Poskytovatel ji vyřídí do 30 dnů. Oprávněná reklamace nezakládá automaticky nárok na vrácení peněz, pokud lze vadu odstranit nebo Služba byla v podstatné míře využita.',
+      'Reklamace technických vad Služby lze uplatnit e-mailem na kontakt@audeflow.cz; Poskytovatel ji vyřídí do 30 dnů. Oprávněná reklamace nezakládá automaticky nárok na vrácení peněz, pokud lze vadu odstranit nebo Služba byla v podstatné míře využita.',
       'V případě duplicitní platby nebo prokazatelné technické chyby na straně Poskytovatele může Poskytovatel vrátit částku dle vlastního uvážení.',
     ],
   },
@@ -80,7 +80,7 @@ export const OBCHODNI_PODMINKY: LegalSection[] = [
     title: '11. Závěrečná ustanovení',
     paragraphs: [
       'Tyto podmínky se řídí právem České republiky. Případné spory budou řešeny u příslušného soudu dle sídla Poskytovatele.',
-      'Kontakt: podpora@audeflow.cz. Poslední aktualizace: červen 2026.',
+      'Kontakt: kontakt@audeflow.cz. Poslední aktualizace: červen 2026.',
     ],
   },
 ]

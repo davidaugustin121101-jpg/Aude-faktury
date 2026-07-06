@@ -92,8 +92,8 @@ function GuideAccordion({
       <p className="text-xs text-gray-400 flex items-center gap-1.5 px-1 pt-1">
         {sectionIcon}
         Potřebujete pomoc?{' '}
-        <a href="mailto:podpora@audeflow.cz" className="underline">
-          podpora@audeflow.cz
+        <a href="mailto:kontakt@audeflow.cz" className="underline">
+          kontakt@audeflow.cz
         </a>
       </p>
     </div>

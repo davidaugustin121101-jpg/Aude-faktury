@@ -55,9 +55,6 @@ function SyncSubscriptionButton() {
     <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl p-4">
       <div>
         <p className="text-sm font-medium text-amber-900">Zaplatili jste, ale tarif se neaktivoval?</p>
-        <p className="text-xs text-amber-800 mt-0.5">
-          Klikněte pro stažení stavu přímo ze Stripe.
-        </p>
       </div>
       <Button variant="outline" size="sm" onClick={handleSync} disabled={loading} className="shrink-0 ml-3">
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Synchronizovat'}

@@ -68,8 +68,8 @@ export function Sidebar({
   const supabase = createClient()
 
   async function handleSignOut() {
-    await supabase.auth.signOut()
-    router.push('/login')
+    await supabase.auth.signOut({ scope: 'global' })
+    window.location.href = '/login'
   }
 
   const initials = user.email?.[0].toUpperCase() ?? '?'
