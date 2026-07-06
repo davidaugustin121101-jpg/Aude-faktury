@@ -3,6 +3,38 @@ import type { ExtractedInvoiceData } from './claude'
 const IDOKLAD_API_BASE = 'https://api.idoklad.cz/v3'
 const IDOKLAD_TOKEN_URL = 'https://app.idoklad.cz/identity/server/connect/token'
 
+/** iDoklad DocumentType enum – 1 = přijaté faktury */
+const RECEIVED_INVOICE_DOCUMENT_TYPE = 1
+
+/** PriceType: 1 = cena bez DPH */
+const PRICE_TYPE_WITHOUT_VAT = 1
+
+type IdokladApiEnvelope<T> = {
+  Data?: T
+  IsSuccess?: boolean
+  Message?: string
+}
+
+type IdokladList<T> = {
+  Items?: T[]
+  TotalItems?: number
+}
+
+type IdokladCurrency = { Id: number; Code?: string }
+type IdokladPaymentOption = { Id: number; IsDefault?: boolean | string }
+type IdokladNumericSequence = {
+  Id: number
+  DocumentType?: number
+  IsDefault?: boolean | string
+  LastNumber?: string | number
+}
+type IdokladContact = {
+  Id: number
+  CompanyName?: string
+  IdentificationNumber?: string
+}
+type IdokladReceivedInvoice = { Id: number; DocumentNumber?: string }
+
 // VatRateType: 3=exempt(0%), 2=reduced(10%/12%), 1=standard(21%)
 function mapDphSazba(sazba: number): number {
   if (sazba === 0) return 3
@@ -15,7 +47,6 @@ function normalizeIdokladDate(value: string | null | undefined, fallback: string
   return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : fallback
 }
 
-/** iDoklad vyžaduje DateOfMaturity >= DateOfIssue a povinné DateOfReceiving. */
 function buildIdokladDates(data: ExtractedInvoiceData): {
   issue: string
   maturity: string
@@ -25,8 +56,61 @@ function buildIdokladDates(data: ExtractedInvoiceData): {
   const issue = normalizeIdokladDate(data.datum_vystaveni, today)
   let maturity = normalizeIdokladDate(data.datum_splatnosti, issue)
   if (maturity < issue) maturity = issue
-  const receiving = issue
-  return { issue, maturity, receiving }
+  return { issue, maturity, receiving: issue }
+}
+
+function isTruthyDefault(value: boolean | string | undefined): boolean {
+  return value === true || value === 'true' || value === 'True'
+}
+
+function parseIdokladError(status: number, body: string): string {
+  try {
+    const json = JSON.parse(body) as IdokladApiEnvelope<unknown>
+    if (json.Message) return `iDoklad API chyba ${status}: ${json.Message}`
+  } catch {
+    // raw text fallback
+  }
+  return `iDoklad API chyba ${status}: ${body.slice(0, 500)}`
+}
+
+async function idokladRequest<T>(
+  token: string,
+  path: string,
+  init?: RequestInit
+): Promise<T> {
+  const res = await fetch(`${IDOKLAD_API_BASE}/${path}`, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...init?.headers,
+    },
+  })
+
+  const body = await res.text()
+  if (!body) {
+    if (!res.ok) throw new Error(`iDoklad API chyba ${res.status}`)
+    return {} as T
+  }
+
+  let json: IdokladApiEnvelope<T>
+  try {
+    json = JSON.parse(body) as IdokladApiEnvelope<T>
+  } catch {
+    throw new Error(parseIdokladError(res.status, body))
+  }
+
+  if (!res.ok || json.IsSuccess === false) {
+    throw new Error(parseIdokladError(res.status, json.Message ?? body))
+  }
+
+  return (json.Data ?? (json as unknown as T)) as T
+}
+
+async function idokladListItems<T>(token: string, resource: string, query = ''): Promise<T[]> {
+  const path = query ? `${resource}?${query}` : resource
+  const data = await idokladRequest<IdokladList<T>>(token, path, { method: 'GET' })
+  return data.Items ?? []
 }
 
 /** Get an OAuth2 access token via client_credentials flow */
@@ -49,13 +133,97 @@ async function getAccessToken(clientId: string, clientSecret: string): Promise<s
   return json.access_token
 }
 
+async function resolveCurrencyId(token: string, mena: string): Promise<number> {
+  const code = (mena || 'CZK').toUpperCase()
+  const currencies = await idokladListItems<IdokladCurrency>(token, 'Currencies', 'pageSize=50')
+  const match = currencies.find((c) => (c.Code ?? '').toUpperCase() === code)
+  if (match?.Id) return match.Id
+  if (code === 'CZK') return 1
+  throw new Error(`iDoklad: měna ${code} není v účtu podporována`)
+}
+
+async function resolvePaymentOptionId(token: string): Promise<number> {
+  const options = await idokladListItems<IdokladPaymentOption>(token, 'PaymentOptions', 'pageSize=50')
+  const preferred = options.find((o) => isTruthyDefault(o.IsDefault))
+  const id = preferred?.Id ?? options[0]?.Id
+  if (!id) throw new Error('iDoklad: v účtu chybí platební metoda')
+  return id
+}
+
+async function resolveNumericSequence(
+  token: string
+): Promise<{ id: number; nextSerial: string }> {
+  const sequences = await idokladListItems<IdokladNumericSequence>(
+    token,
+    'NumericSequences',
+    'pageSize=50'
+  )
+
+  const forReceived =
+    sequences.find(
+      (s) => s.DocumentType === RECEIVED_INVOICE_DOCUMENT_TYPE && isTruthyDefault(s.IsDefault)
+    ) ??
+    sequences.find((s) => s.DocumentType === RECEIVED_INVOICE_DOCUMENT_TYPE) ??
+    sequences.find((s) => isTruthyDefault(s.IsDefault)) ??
+    sequences[0]
+
+  if (!forReceived?.Id) {
+    throw new Error('iDoklad: v účtu chybí číselná řada pro přijaté faktury')
+  }
+
+  const last = parseInt(String(forReceived.LastNumber ?? '0'), 10)
+  const nextSerial = String(Number.isFinite(last) && last >= 0 ? last + 1 : 1)
+  return { id: forReceived.Id, nextSerial }
+}
+
+async function findContactByIco(token: string, ico: string): Promise<number | null> {
+  const normalized = ico.replace(/\D/g, '')
+  if (!normalized) return null
+
+  for (let page = 1; page <= 5; page++) {
+    const items = await idokladListItems<IdokladContact>(
+      token,
+      'Contacts',
+      `page=${page}&pageSize=100`
+    )
+    if (!items.length) break
+
+    const hit = items.find(
+      (c) => String(c.IdentificationNumber ?? '').replace(/\D/g, '') === normalized
+    )
+    if (hit?.Id) return hit.Id
+    if (items.length < 100) break
+  }
+
+  return null
+}
+
+async function resolvePartnerId(token: string, data: ExtractedInvoiceData): Promise<number> {
+  const ico = (data.dodavatel_ico ?? '').replace(/\D/g, '')
+  const existing = await findContactByIco(token, ico)
+  if (existing) return existing
+
+  const created = await idokladRequest<IdokladContact>(token, 'Contacts', {
+    method: 'POST',
+    body: JSON.stringify({
+      CompanyName: data.dodavatel_nazev || 'Neznámý dodavatel',
+      ...(ico ? { IdentificationNumber: ico } : {}),
+      ...(data.dodavatel_dic ? { TaxIdentificationNumber: data.dodavatel_dic } : {}),
+      CountryId: 1,
+    }),
+  })
+
+  if (!created?.Id) {
+    throw new Error('iDoklad: nepodařilo se vytvořit kontakt dodavatele')
+  }
+
+  return created.Id
+}
+
 export interface IdokladConnection {
   provider: 'idoklad'
-  /** OAuth2 Client ID */
   client_id: string | null
-  /** Decrypted client secret */
   client_secret: string
-  /** Legacy Bearer token (used when client_id is not set) */
   api_key?: string
 }
 
@@ -67,53 +235,69 @@ export async function sendToIdoklad(
   if (connection.client_id) {
     token = await getAccessToken(connection.client_id, connection.client_secret)
   } else {
-    // Fall back to direct Bearer token (legacy)
     token = connection.client_secret
   }
 
   const { issue, maturity, receiving } = buildIdokladDates(data)
+  const unitPrice = Number(data.castka_bez_dph ?? data.castka_celkem ?? 0)
+
+  const [partnerId, currencyId, paymentOptionId, numericSequence] = await Promise.all([
+    resolvePartnerId(token, data),
+    resolveCurrencyId(token, data.mena ?? 'CZK'),
+    resolvePaymentOptionId(token),
+    resolveNumericSequence(token),
+  ])
 
   const payload = {
+    PartnerId: partnerId,
+    CurrencyId: currencyId,
+    PaymentOptionId: paymentOptionId,
+    NumericSequenceId: numericSequence.id,
+    DocumentSerialNumber: numericSequence.nextSerial,
+    IsIncomeTax: true,
+    IsEet: false,
     DateOfIssue: issue,
     DateOfMaturity: maturity,
     DateOfReceiving: receiving,
-    VariableSymbol: data.variabilni_symbol,
+    DateOfTaxing: issue,
     Description: data.popis_plneni ?? 'Přijatá faktura',
-    AccountingCode: data.ucetni_kod ?? '518',
-    Supplier: {
-      CompanyName: data.dodavatel_nazev,
-      IdentificationNumber: data.dodavatel_ico,
-      ...(data.dodavatel_dic ? { TaxIdentificationNumber: data.dodavatel_dic } : {}),
-    },
+    ...(data.variabilni_symbol ? { VariableSymbol: data.variabilni_symbol } : {}),
+    ...(data.cislo_faktury ? { OrderNumber: data.cislo_faktury } : {}),
     Items: [
       {
-        Name: (data.popis_plneni ?? 'Přijatá faktura').slice(0, 200),
+        Name: (data.popis_plneni ?? `Faktura ${data.cislo_faktury ?? ''}`).slice(0, 200),
         Amount: 1,
         Unit: 'ks',
-        PriceType: 0,
-        Price: data.castka_bez_dph ?? data.castka_celkem ?? 0,
+        UnitPrice: unitPrice,
+        PriceType: PRICE_TYPE_WITHOUT_VAT,
         VatRateType: mapDphSazba(data.sazba_dph ?? 21),
+        DiscountPercentage: 0,
+        IsTaxMovement: false,
       },
     ],
-    CurrencyId: data.mena === 'CZK' ? 'CZK' : data.mena,
   }
 
-  const res = await fetch(`${IDOKLAD_API_BASE}/ReceivedInvoices`, {
+  // #region agent log
+  fetch('http://127.0.0.1:7711/ingest/3cd4d8f4-c62c-4feb-9280-e257beb22e7d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'20dbe5'},body:JSON.stringify({sessionId:'20dbe5',location:'idoklad.ts:sendToIdoklad',message:'iDoklad payload ready',data:{partnerId,currencyId,paymentOptionId,numericSequenceId:numericSequence.id,documentSerialNumber:numericSequence.nextSerial,unitPrice,hasOrderNumber:!!data.cislo_faktury},timestamp:Date.now(),hypothesisId:'H1',runId:'payload-fix'})}).catch(()=>{});
+  // #endregion
+
+  const result = await idokladRequest<IdokladReceivedInvoice>(token, 'ReceivedInvoices', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
     body: JSON.stringify(payload),
   })
 
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`iDoklad API chyba ${res.status}: ${err}`)
+  // #region agent log
+  fetch('http://127.0.0.1:7711/ingest/3cd4d8f4-c62c-4feb-9280-e257beb22e7d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'20dbe5'},body:JSON.stringify({sessionId:'20dbe5',location:'idoklad.ts:sendToIdoklad',message:'iDoklad create success',data:{invoiceId:result?.Id,documentNumber:result?.DocumentNumber??null},timestamp:Date.now(),hypothesisId:'H1',runId:'payload-fix'})}).catch(()=>{});
+  // #endregion
+
+  if (!result?.Id) {
+    throw new Error('iDoklad nevrátil ID vytvořené faktury')
   }
 
-  const result = (await res.json()) as { Id: string; DocumentNumber: string }
-  return { id: String(result.Id), documentNumber: result.DocumentNumber }
+  return {
+    id: String(result.Id),
+    documentNumber: result.DocumentNumber ?? String(result.Id),
+  }
 }
 
 /** Validate iDoklad credentials (client_credentials or legacy Bearer token) */
