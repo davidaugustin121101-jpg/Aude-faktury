@@ -1,4 +1,4 @@
-import type { Predkontace } from './predkontace'
+import type { Predkontace } from '@/lib/predkontace'
 import type { ProcessedInvoice } from '@/types/invoices'
 import type { AuditResult } from '@/lib/invoice-audit/types'
 
