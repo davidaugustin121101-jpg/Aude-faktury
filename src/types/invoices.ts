@@ -77,7 +77,6 @@ export interface AccountingConnection {
   user_id: string
   provider: 'idoklad' | 'fakturoid' | 'superfaktura'
   account_slug: string | null
-  country?: 'cz' | 'sk'
   is_active: boolean
   created_at: string
 }

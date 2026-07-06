@@ -12,7 +12,6 @@ type ExportProfileForm = {
   export_contract_code: string
   export_money_document_type: string
   export_helios_variant: 'red' | 'inuvio'
-  export_country: 'cz' | 'sk'
 }
 
 const empty: ExportProfileForm = {
@@ -22,7 +21,6 @@ const empty: ExportProfileForm = {
   export_contract_code: '',
   export_money_document_type: 'FP',
   export_helios_variant: 'red',
-  export_country: 'cz',
 }
 
 interface Props {
@@ -47,7 +45,6 @@ export function WorkspaceExportProfileForm({ workspaceId, workspaceName }: Props
             export_contract_code: profile.export_contract_code ?? '',
             export_money_document_type: profile.export_money_document_type ?? 'FP',
             export_helios_variant: profile.export_helios_variant === 'inuvio' ? 'inuvio' : 'red',
-            export_country: profile.export_country === 'sk' ? 'sk' : 'cz',
           })
         }
       })
@@ -110,19 +107,6 @@ export function WorkspaceExportProfileForm({ workspaceId, workspaceName }: Props
           >
             <option value="red">Helios Red (CSV)</option>
             <option value="inuvio">Helios iNuvio (XML)</option>
-          </select>
-        </label>
-        <label className="block">
-          <span className="text-xs text-gray-500">Země exportu</span>
-          <select
-            className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2"
-            value={form.export_country}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, export_country: e.target.value as 'cz' | 'sk' }))
-            }
-          >
-            <option value="cz">Česko</option>
-            <option value="sk">Slovensko</option>
           </select>
         </label>
       </div>

@@ -12,12 +12,10 @@ import { upsertSupplierRule } from '@/lib/supplier-rules'
 import type { AuditResult } from '@/lib/invoice-audit/types'
 import { insertAuditLog } from '@/lib/audit-log'
 import { INVOICE_SEND_CLAIM_STATUSES } from '@/lib/invoice-guards'
-import type { CountryCode } from '@/lib/accounting-codes'
 
 type AccountingRow = Record<string, unknown> & {
   id: string
   provider: string
-  country?: 'cz' | 'sk'
   idoklad_client_id?: string | null
   idoklad_client_secret?: string | null
   fakturoid_oauth_token?: string | null
@@ -157,9 +155,7 @@ export async function sendInvoiceToAccounting(params: {
         client_id: conn.idoklad_client_id ?? null,
         client_secret: conn.idoklad_client_secret ?? '',
       }
-      const r = await sendToIdoklad(idokladConn, extractedData, pdf, {
-        country: (conn.country as CountryCode | undefined) ?? 'cz',
-      })
+      const r = await sendToIdoklad(idokladConn, extractedData, pdf)
       result = { id: r.id, documentNumber: r.documentNumber, pdfAttached: r.pdfAttached }
       pdfAttached = r.pdfAttached
       pdfAttachmentError = r.pdfAttachmentError
@@ -169,7 +165,6 @@ export async function sendInvoiceToAccounting(params: {
           email: conn.superfaktura_api_email ?? '',
           apiKey: conn.superfaktura_api_key ?? '',
           companyId: conn.superfaktura_company_id ?? '',
-          country: conn.country ?? 'cz',
         },
         extractedData,
         pdf

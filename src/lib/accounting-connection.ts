@@ -146,7 +146,6 @@ export function mapConnectionRow(row: Record<string, unknown>) {
     id: row.id as string,
     user_id: row.user_id as string,
     provider: row.provider as AccountingProvider,
-    country: (row.country as 'cz' | 'sk' | undefined) ?? 'cz',
     is_active: row.is_active as boolean,
     created_at: row.created_at as string,
     account_slug:

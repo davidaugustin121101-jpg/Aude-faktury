@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
-import { getAccountingSystemPrompt, type CountryCode } from './accounting-codes'
+import { getAccountingSystemPrompt } from './accounting-codes'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
@@ -97,20 +97,11 @@ function parseFromToolResponse(response: Anthropic.Message): ExtractedInvoiceDat
   return ExtractedInvoiceSchema.parse(JSON.parse(cleaned))
 }
 
-export async function extractInvoiceFromPdf(
-  pdfBase64: string,
-  country: CountryCode = 'cz'
-): Promise<ExtractedInvoiceData> {
-  const systemPrompt = getAccountingSystemPrompt(country)
-  const userPrompt =
-    country === 'sk'
-      ? 'Extrahuj dáta z tejto prijatej faktúry a navrhni účtovný kód. Použi nástroj extract_invoice.'
-      : 'Extrahuj data z této přijaté faktury a navrhni účetní kód. Použij nástroj extract_invoice.'
-
+export async function extractInvoiceFromPdf(pdfBase64: string): Promise<ExtractedInvoiceData> {
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 2000,
-    system: systemPrompt,
+    system: getAccountingSystemPrompt(),
     tools: [EXTRACTION_TOOL],
     tool_choice: { type: 'tool', name: 'extract_invoice' },
     messages: [
@@ -125,7 +116,10 @@ export async function extractInvoiceFromPdf(
               data: pdfBase64,
             },
           },
-          { type: 'text', text: userPrompt },
+          {
+            type: 'text',
+            text: 'Extrahuj data z této přijaté faktury a navrhni účetní kód. Použij nástroj extract_invoice.',
+          },
         ],
       },
     ],

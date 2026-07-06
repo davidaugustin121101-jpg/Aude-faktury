@@ -71,9 +71,6 @@ function heliosRedValidation(inv: NormalizedInvoice, result: ExportValidationRes
   const errors = [...result.errors]
   const warnings = [...result.warnings]
 
-  if (inv.country === 'sk') {
-    errors.push({ code: 'helios_sk_unsupported', message: 'Helios Red export podporuje pouze české faktury (CZK)' })
-  }
   if (inv.mena !== 'CZK') {
     errors.push({ code: 'helios_currency', message: 'Helios Red export vyžaduje měnu CZK' })
   }

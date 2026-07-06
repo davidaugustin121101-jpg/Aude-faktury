@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
-import { CountrySelector } from '@/components/settings/CountrySelector'
 import { SettingsNav } from '@/components/settings/SettingsNav'
 import { LegalFooter } from '@/components/legal/LegalFooter'
 import { APP_NAME } from '@/lib/brand'
@@ -14,7 +13,6 @@ import {
   hasActiveAccountantSubscription,
 } from '@/lib/account-mode'
 import { InvoiceSettingsPanel } from '@/components/settings/InvoiceSettingsPanel'
-import type { CountryCode } from '@/lib/accounting-codes'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -25,7 +23,7 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from('user_profiles')
-    .select('plan, is_accountant, stripe_subscription_id, country')
+    .select('plan, is_accountant, stripe_subscription_id')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -33,7 +31,6 @@ export default async function SettingsPage() {
   const isAccountant = hasActiveAccountantSubscription(profile)
   const invoiceLimitLabel = getInvoiceLimitLabel(profile)
   const planLabel = getPlanLabel(profile)
-  const country = ((profile as { country?: string } | null)?.country ?? 'cz') as CountryCode
 
   const { count } = await supabase
     .from('processed_invoices')
@@ -87,8 +84,6 @@ export default async function SettingsPage() {
           </div>
         </div>
       </div>
-
-      <CountrySelector initialCountry={country} />
 
       <InvoiceSettingsPanel />
 

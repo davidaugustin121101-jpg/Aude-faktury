@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     export_contract_code: fields.export_contract_code || null,
     export_money_document_type: fields.export_money_document_type || 'FP',
     export_helios_variant: fields.export_helios_variant === 'inuvio' ? 'inuvio' : 'red',
-    export_country: fields.export_country === 'sk' ? 'sk' : 'cz',
+    export_country: 'cz',
   }
 
   const { error } = await supabase

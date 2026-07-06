@@ -51,19 +51,7 @@ export async function lookupAres(ico: string): Promise<AresSubject | null> {
   }
 }
 
-export async function checkAres(
-  data: InvoiceAuditInput,
-  country: 'cz' | 'sk'
-): Promise<AuditCheck> {
-  if (country !== 'cz') {
-    return {
-      id: 'ares',
-      label: 'Register firiem',
-      message: 'Overenie IČO cez ARES platí len pre CZ dodávateľov.',
-      severity: 'ok',
-    }
-  }
-
+export async function checkAres(data: InvoiceAuditInput): Promise<AuditCheck> {
   const ico = normalizeIco(data.dodavatel_ico)
   if (!ico) {
     return {

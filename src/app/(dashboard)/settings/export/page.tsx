@@ -76,7 +76,7 @@ export default async function ExportSettingsPage() {
             <div id="pohoda" className="scroll-mt-24">
               <dt className="font-medium text-blue-900">Země exportu</dt>
               <dd className="text-blue-800 mt-0.5">
-                Česko nebo Slovensko — podle toho, v jaké zemi účtujete (ovlivní formát DPH v exportu).
+                České účetnictví — exporty používají české sazby DPH a formáty.
               </dd>
             </div>
           </dl>

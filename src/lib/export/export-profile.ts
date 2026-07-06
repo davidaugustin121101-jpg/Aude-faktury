@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { CountryCode, ExportProfile } from './types'
+import type { ExportProfile } from './types'
 
 type WorkspaceExportRow = {
   export_company_ico?: string | null
@@ -20,7 +20,7 @@ export function mapWorkspaceExportProfile(row: WorkspaceExportRow | null): Expor
     contractCode: row.export_contract_code,
     moneyDocumentType: row.export_money_document_type,
     heliosVariant: row.export_helios_variant === 'inuvio' ? 'inuvio' : 'red',
-    country: row.export_country === 'sk' ? 'sk' : row.export_country === 'cz' ? 'cz' : undefined,
+    country: 'cz',
   }
 }
 
@@ -41,12 +41,9 @@ export async function loadExportProfileForInvoice(
   return mapWorkspaceExportProfile(data as WorkspaceExportRow | null)
 }
 
-export function mergeExportProfile(
-  workspaceProfile: ExportProfile,
-  userCountry?: CountryCode | null
-): ExportProfile {
+export function mergeExportProfile(workspaceProfile: ExportProfile): ExportProfile {
   return {
     ...workspaceProfile,
-    country: workspaceProfile.country ?? userCountry ?? 'cz',
+    country: workspaceProfile.country ?? 'cz',
   }
 }

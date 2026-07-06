@@ -26,7 +26,7 @@ const STEPS = [
   },
   {
     title: 'Audit a kontrola dat',
-    desc: 'Systém zkontroluje matematiku, DPH, IČO v ARES a navrhne účetní kód pro CZ nebo SK.',
+    desc: 'Systém zkontroluje matematiku, DPH, IČO v ARES a navrhne český účetní kód.',
   },
   {
     title: 'Export nebo odeslání',
@@ -63,7 +63,7 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
           <div>
             <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-blue-600 bg-blue-50 border border-blue-100 rounded-full px-3 py-1 mb-6">
               <Sparkles className="h-3.5 w-3.5" />
-              Automatické zpracování faktur · CZ + SK
+              Automatické zpracování faktur · Česko
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-gray-900 leading-tight tracking-tight">
               Vytěžení faktury{' '}
@@ -88,7 +88,7 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
               </a>
             </div>
             <div className="mt-8 flex flex-wrap gap-2">
-              {['Solo zdarma', '1 fakturační systém', '10 faktur / měsíc', 'CZ + SK DPH'].map(
+              {['Solo zdarma', '1 fakturační systém', '10 faktur / měsíc', 'České DPH'].map(
                 (tag) => (
                   <span
                     key={tag}
@@ -180,8 +180,8 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
               },
               {
                 icon: FileText,
-                title: 'CZ i SK účetnictví',
-                desc: 'Různé sazby DPH a účetní kódy pro Česko i Slovensko.',
+                title: 'České účetnictví',
+                desc: 'České sazby DPH, účetní osnova a předkontace 504/343/321.',
               },
               {
                 icon: Sparkles,

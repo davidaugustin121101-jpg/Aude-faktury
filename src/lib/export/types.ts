@@ -1,6 +1,8 @@
-import type { Predkontace } from '@/lib/predkontace'
+export type { CountryCode } from '@/lib/accounting-codes'
+import type { CountryCode } from '@/lib/accounting-codes'
 import type { ProcessedInvoice } from '@/types/invoices'
 import type { AuditResult } from '@/lib/invoice-audit/types'
+import type { Predkontace } from '@/lib/predkontace'
 
 export type ExportFormat =
   | 'isdoc'
@@ -9,8 +11,6 @@ export type ExportFormat =
   | 'money_native'
   | 'helios_red'
   | 'helios_inuvio'
-
-export type CountryCode = 'cz' | 'sk'
 
 export type PohodaRateVat = 'none' | 'low' | 'high' | 'historyHigh'
 

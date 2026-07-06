@@ -1,13 +1,8 @@
-import type { CountryCode, PohodaRateVat } from './types'
+import type { PohodaRateVat } from './types'
 
-/** Pohoda rateVAT enum dle sazby a země */
-export function mapPohodaRateVat(rate: number, country: CountryCode): PohodaRateVat {
+/** Pohoda rateVAT enum dle české sazby DPH */
+export function mapPohodaRateVat(rate: number): PohodaRateVat {
   if (rate === 0) return 'none'
-  if (country === 'sk') {
-    if (rate === 20) return 'high'
-    if (rate === 10) return 'low'
-    return 'high'
-  }
   if (rate === 21) return 'high'
   if (rate === 12 || rate === 10) return 'low'
   return 'high'

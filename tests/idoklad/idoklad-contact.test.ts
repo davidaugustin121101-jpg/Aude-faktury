@@ -14,7 +14,7 @@ describe('idoklad-contact', () => {
     assert.equal(IDOKLAD_COUNTRY_SK, 1)
     assert.equal(inferIdokladCountryId({ dodavatel_dic: 'CZ123' }), 2)
     assert.equal(inferIdokladCountryId({ dodavatel_dic: 'SK123' }), 1)
-    assert.equal(inferIdokladCountryId({ dodavatel_dic: null }, 'cz'), 2)
+    assert.equal(inferIdokladCountryId({ dodavatel_dic: null }), 2)
   })
 
   it('builds street from ARES sidlo', () => {
@@ -37,7 +37,6 @@ describe('idoklad-contact', () => {
         dodavatel_dic: 'CZ12345678',
       } as never,
       {
-        country: 'cz',
         ares: {
           sidlo: {
             kodStatu: 'CZ',

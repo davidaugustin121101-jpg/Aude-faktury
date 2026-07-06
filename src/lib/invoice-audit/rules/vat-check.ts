@@ -1,9 +1,9 @@
-import { getVatRates, type CountryCode } from '@/lib/accounting-codes'
+import { getVatRates } from '@/lib/accounting-codes'
 import type { AuditCheck, InvoiceAuditInput } from '../types'
 
-export function checkVat(data: InvoiceAuditInput, country: CountryCode): AuditCheck {
+export function checkVat(data: InvoiceAuditInput): AuditCheck {
   const rate = data.sazba_dph
-  const allowed = getVatRates(country)
+  const allowed = getVatRates()
 
   if (rate == null) {
     return {
@@ -18,7 +18,7 @@ export function checkVat(data: InvoiceAuditInput, country: CountryCode): AuditCh
     return {
       id: 'vat',
       label: 'Sazba DPH',
-      message: `Sazba ${rate} % není standardní pro ${country === 'sk' ? 'SK' : 'CZ'} (${allowed.join(', ')} %).`,
+      message: `Sazba ${rate} % není standardní pro Česko (${allowed.join(', ')} %).`,
       severity: 'warning',
     }
   }
@@ -44,7 +44,7 @@ export function checkVat(data: InvoiceAuditInput, country: CountryCode): AuditCh
   return {
     id: 'vat',
     label: 'Sazba DPH',
-    message: `Sazba DPH ${rate} % je platná pro ${country === 'sk' ? 'Slovensko' : 'Česko'}.`,
+    message: `Sazba DPH ${rate} % je platná pro Česko.`,
     severity: 'ok',
   }
 }

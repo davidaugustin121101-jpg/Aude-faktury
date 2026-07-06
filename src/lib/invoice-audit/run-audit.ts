@@ -1,5 +1,4 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { CountryCode } from '@/lib/accounting-codes'
 import type { AuditCheck, AuditResult, InvoiceAuditInput } from './types'
 import { checkMath } from './rules/math-check'
 import { checkVat } from './rules/vat-check'
@@ -37,19 +36,18 @@ function scoreChecks(checks: AuditCheck[]): AuditResult {
 
 export async function runInvoiceAudit(
   data: InvoiceAuditInput,
-  country: CountryCode,
   options: RunAuditOptions = {}
 ): Promise<AuditResult> {
   const checks: AuditCheck[] = [
     checkMath(data),
-    checkVat(data, country),
+    checkVat(data),
     checkDates(data),
-    checkIcoFormat(data, country),
-    checkAssetThreshold(data, country),
+    checkIcoFormat(data),
+    checkAssetThreshold(data),
   ]
 
   if (!options.skipAres) {
-    checks.push(await checkAres(data, country))
+    checks.push(await checkAres(data))
   }
 
   if (options.supabase && options.userId) {

@@ -5,7 +5,6 @@ import { SettingsNav } from '@/components/settings/SettingsNav'
 import type { AccountingConnection } from '@/types/invoices'
 import { AccountingConnectionManager } from './AccountingConnectionManager'
 import { hasActiveAccountantSubscription } from '@/lib/account-mode'
-import type { CountryCode } from '@/lib/accounting-codes'
 import { getActiveWorkspace } from '@/lib/workspace'
 import { mapConnectionRow } from '@/lib/accounting-connection'
 import { BookOpen } from 'lucide-react'
@@ -19,7 +18,7 @@ export default async function AccountingSettingsPage() {
 
   const { data: profile } = await supabase
     .from('user_profiles')
-    .select('country, full_name, is_accountant, stripe_subscription_id')
+    .select('full_name, is_accountant, stripe_subscription_id')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -39,8 +38,6 @@ export default async function AccountingSettingsPage() {
     .eq('workspace_id', workspace.id)
     .order('created_at', { ascending: false })
     .limit(1)
-
-  const country = ((profile as { country?: string } | null)?.country ?? 'cz') as CountryCode
 
   const mapped = (connections ?? []).map((c) =>
     mapConnectionRow(c as Record<string, unknown>)
@@ -73,7 +70,6 @@ export default async function AccountingSettingsPage() {
 
       <AccountingConnectionManager
         connections={mapped}
-        userCountry={country}
         isAccountant={hasActiveAccountantSubscription(profile)}
         workspaceName={workspace.name}
       />

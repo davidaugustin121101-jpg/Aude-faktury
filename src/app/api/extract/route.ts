@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { extractInvoiceFromPdf } from '@/lib/claude'
 import { getActiveWorkspace } from '@/lib/workspace'
-import type { CountryCode } from '@/lib/accounting-codes'
 import { getDefaultCurrency } from '@/lib/accounting-codes'
 import { runInvoiceAudit } from '@/lib/invoice-audit/run-audit'
 import { getSupplierRule } from '@/lib/supplier-rules'
@@ -23,11 +22,10 @@ import { checkRateLimit } from '@/lib/rate-limit'
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
-const ALLOWED_VAT_RATES = [0, 10, 12, 20, 21] as const
+const ALLOWED_VAT_RATES = [0, 10, 12, 21] as const
 
-function normalizeVatRate(rate: number | null | undefined, country: CountryCode): number {
-  const fallback = country === 'sk' ? 20 : 21
-  if (rate == null || Number.isNaN(rate)) return fallback
+function normalizeVatRate(rate: number | null | undefined): number {
+  if (rate == null || Number.isNaN(rate)) return 21
   const rounded = Math.round(rate)
   if ((ALLOWED_VAT_RATES as readonly number[]).includes(rounded)) return rounded
   return ALLOWED_VAT_RATES.reduce((best, candidate) =>
@@ -80,7 +78,7 @@ export async function POST(req: NextRequest) {
     const admin = createAdminClient()
     const { data: profile } = await admin
       .from('user_profiles')
-      .select('plan, invoice_credits, is_accountant, stripe_subscription_id, country, full_name')
+      .select('plan, invoice_credits, is_accountant, stripe_subscription_id, full_name')
       .eq('id', user.id)
       .maybeSingle()
 
@@ -90,8 +88,6 @@ export async function POST(req: NextRequest) {
     }
 
     reservedSource = allowance.source
-
-    const country = ((profile as { country?: string } | null)?.country ?? 'cz') as CountryCode
 
     const workspace = await getActiveWorkspace(
       supabase,
@@ -111,7 +107,7 @@ export async function POST(req: NextRequest) {
 
     let extracted
     try {
-      extracted = await extractInvoiceFromPdf(base64, country)
+      extracted = await extractInvoiceFromPdf(base64)
     } catch (err) {
       await releaseInvoiceReservation(user.id, reservedSource)
       reservedSource = null
@@ -136,7 +132,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const sazbaDph = normalizeVatRate(extracted.sazba_dph, country)
+    const sazbaDph = normalizeVatRate(extracted.sazba_dph)
 
     const auditResult = await runInvoiceAudit(
       {
@@ -154,7 +150,6 @@ export async function POST(req: NextRequest) {
         ucetni_kod: extracted.ucetni_kod,
         je_prenesena_dan: extracted.je_prenesena_dan,
       },
-      country,
       {
         supabase,
         userId: user.id,
@@ -180,7 +175,7 @@ export async function POST(req: NextRequest) {
         sazba_dph: sazbaDph,
         castka_dph: extracted.castka_dph,
         castka_celkem: extracted.castka_celkem,
-        mena: extracted.mena ?? getDefaultCurrency(country),
+        mena: extracted.mena ?? getDefaultCurrency(),
         popis_plneni: extracted.popis_plneni,
         iban: extracted.iban,
         ucetni_kod: extracted.ucetni_kod,
@@ -299,7 +294,7 @@ export async function POST(req: NextRequest) {
         to: notifyEmail,
         supplierName: extracted.dodavatel_nazev,
         amount: totalAmount,
-        currency: extracted.mena ?? getDefaultCurrency(country),
+        currency: extracted.mena ?? getDefaultCurrency(),
         invoiceId: invoice.id,
         autoApproved,
       })

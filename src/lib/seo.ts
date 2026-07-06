@@ -5,7 +5,7 @@ export const SITE_URL =
   process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ?? 'https://faktury.audeflow.cz'
 
 export const SITE_DESCRIPTION =
-  'Automatické vytěžení PDF faktur a odeslání do iDokladu, Fakturoidu nebo SuperFaktury. Export ISDOC, Pohoda XML, Money S3 a Helios. Pro OSVČ, firmy i účetní kanceláře v ČR a na SK.'
+  'Automatické vytěžení PDF faktur a odeslání do iDokladu, Fakturoidu nebo SuperFaktury. Export ISDOC, Pohoda XML, Money S3 a Helios. Pro OSVČ, firmy i účetní kanceláře v ČR.'
 
 export const SITE_KEYWORDS = [
   'vytěžení faktury',
@@ -62,7 +62,6 @@ export const rootMetadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'cs_CZ',
-    alternateLocale: ['sk_SK'],
     url: SITE_URL,
     siteName: APP_NAME,
     title: `${APP_NAME} – PDF faktura do účetnictví za 30 sekund`,
@@ -78,7 +77,7 @@ export const rootMetadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${APP_NAME} – Vytěžení faktur pro ČR a SK`,
+    title: `${APP_NAME} – Vytěžení faktur pro ČR`,
     description: SITE_DESCRIPTION,
     images: ['/og-image.svg'],
   },
@@ -148,10 +147,10 @@ export function landingJsonLd() {
         },
         description: SITE_DESCRIPTION,
         url: SITE_URL,
-        inLanguage: ['cs', 'sk'],
+        inLanguage: ['cs'],
         featureList: [
           'Vytěžení PDF faktur',
-          'Návrh účetního kódu CZ/SK',
+          'Návrh českého účetního kódu',
           'Odeslání do iDoklad, Fakturoid, SuperFaktura',
           'Export ISDOC, Pohoda, Money S3, Helios',
         ],

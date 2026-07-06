@@ -1,7 +1,6 @@
 import type { ExtractedInvoiceData } from './claude'
 import { buildPredkontaceFromExtracted } from './predkontace'
 import type { InvoicePdfAttachment } from './invoice-pdf-storage'
-import type { CountryCode } from './accounting-codes'
 import { lookupAres } from './invoice-audit/rules/ares-lookup'
 import {
   buildIdokladContactPayload,
@@ -215,13 +214,12 @@ async function findContactByIco(token: string, ico: string): Promise<number | nu
 
 async function resolvePartnerId(
   token: string,
-  data: ExtractedInvoiceData,
-  country: CountryCode = 'cz'
+  data: ExtractedInvoiceData
 ): Promise<number> {
   const ico = (data.dodavatel_ico ?? '').replace(/\D/g, '')
   const existingId = await findContactByIco(token, ico)
-  const ares = country === 'cz' && ico ? await lookupAres(ico).catch(() => null) : null
-  const contactPayload = buildIdokladContactPayload(data, { country, ares })
+  const ares = ico ? await lookupAres(ico).catch(() => null) : null
+  const contactPayload = buildIdokladContactPayload(data, { ares })
 
   if (existingId) {
     try {
@@ -307,8 +305,7 @@ export interface IdokladConnection {
 export async function sendToIdoklad(
   connection: IdokladConnection,
   data: ExtractedInvoiceData,
-  pdf?: InvoicePdfAttachment | null,
-  options?: { country?: CountryCode }
+  pdf?: InvoicePdfAttachment | null
 ): Promise<{ id: string; documentNumber: string; pdfAttached: boolean; pdfAttachmentError?: string }> {
   let token: string
   if (connection.client_id) {
@@ -323,7 +320,7 @@ export async function sendToIdoklad(
   const itemName = (data.popis_plneni ?? `Faktura ${data.cislo_faktury ?? ''}`).slice(0, 200)
 
   const [partnerId, currencyId, paymentOptionId, numericSequence] = await Promise.all([
-    resolvePartnerId(token, data, options?.country ?? 'cz'),
+    resolvePartnerId(token, data),
     resolveCurrencyId(token, data.mena ?? 'CZK'),
     resolvePaymentOptionId(token),
     resolveNumericSequence(token),

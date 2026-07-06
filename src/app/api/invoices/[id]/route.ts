@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { INVOICE_ACTIONABLE_STATUSES, type ProcessedInvoice } from '@/types/invoices'
 import { runInvoiceAudit } from '@/lib/invoice-audit/run-audit'
-import type { CountryCode } from '@/lib/accounting-codes'
 import { insertAuditLog } from '@/lib/audit-log'
 import { INVOICE_DELETABLE_STATUSES } from '@/lib/invoice-guards'
 
@@ -111,14 +110,6 @@ export async function PATCH(
     }
   }
 
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('country')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  const country = ((profile as { country?: string } | null)?.country ?? 'cz') as CountryCode
-
   const merged = { ...inv, ...patch } as ProcessedInvoice
 
   const auditResult = await runInvoiceAudit(
@@ -139,7 +130,6 @@ export async function PATCH(
         (merged.raw_extraction as Record<string, unknown> | null)?.je_prenesena_dan
       ),
     },
-    country,
     {
       supabase,
       userId: user.id,

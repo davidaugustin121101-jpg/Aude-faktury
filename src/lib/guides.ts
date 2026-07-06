@@ -46,9 +46,9 @@ export const API_GUIDES: GuideLink[] = [
   },
   {
     id: 'superfaktura',
-    title: 'SuperFaktura / SuperFaktúra — API',
+    title: 'SuperFaktura — API',
     icon: '📋',
-    summary: 'Funguje pro ČR i SK. Odesílání přijatých faktur přes API.',
+    summary: 'Odesílání přijatých faktur přes API pro české účetnictví.',
     steps: [
       'SuperFaktura → Nástroje → API přístup → vytvořte API uživatele s rolí Administrátor.',
       'Zkopírujte email API účtu a API klíč.',
@@ -56,7 +56,7 @@ export const API_GUIDES: GuideLink[] = [
       'Company ID je volitelné — vyplňte jen pokud máte více firem pod jedním účtem.',
       'V Audeflow vyberte SuperFaktura a zadejte email + klíč.',
     ],
-    externalUrl: 'https://moja.superfaktura.sk/tools/access',
+    externalUrl: 'https://moje.superfaktura.cz/tools/access',
     externalLabel: 'API přístup ve SuperFaktuře',
     settingsHref: '/settings/accounting#superfaktura',
   },
@@ -67,7 +67,7 @@ export const EXPORT_GUIDES: GuideLink[] = [
     id: 'isdoc',
     title: 'ISDOC — univerzální formát',
     icon: '📄',
-    summary: 'Standardní český/slovenský formát elektronické faktury.',
+    summary: 'Standardní český formát elektronické faktury.',
     steps: [
       'Na detailu faktury klikněte „ISDOC (univerzální)“.',
       'Importujte soubor v Pohodě, Money S3, Helios nebo jiném ERP s podporou ISDOC.',

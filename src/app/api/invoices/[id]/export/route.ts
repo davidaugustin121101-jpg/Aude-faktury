@@ -10,7 +10,6 @@ import {
   loadExportProfileForInvoice,
   mergeExportProfile,
 } from '@/lib/export/export-profile'
-import type { CountryCode } from '@/lib/export/types'
 
 export async function GET(
   req: NextRequest,
@@ -49,17 +48,8 @@ export async function GET(
 
   const inv = invoice as ProcessedInvoice
 
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('country')
-    .eq('id', user.id)
-    .maybeSingle()
-
   const workspaceProfile = await loadExportProfileForInvoice(supabase, inv.workspace_id)
-  const exportProfile = mergeExportProfile(
-    workspaceProfile,
-    ((profile as { country?: string } | null)?.country ?? 'cz') as CountryCode
-  )
+  const exportProfile = mergeExportProfile(workspaceProfile)
 
   const { result, validation } = await generateExport(format, {
     invoice: inv,

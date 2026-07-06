@@ -7,8 +7,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import type { AccountingConnection } from '@/types/invoices'
-import type { CountryCode } from '@/lib/accounting-codes'
-import { COUNTRY_LABELS } from '@/lib/accounting-codes'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 
@@ -18,7 +16,6 @@ type FakturoidMode = 'apikeys' | 'token'
 
 interface Props {
   connections: AccountingConnection[]
-  userCountry: CountryCode
   isAccountant: boolean
   workspaceName: string
 }
@@ -51,7 +48,7 @@ const PROVIDER_CONFIG = {
     text: 'text-violet-700',
     border: 'border-violet-600',
     soft: 'bg-violet-50',
-    desc: 'Email + API klíč (CZ / SK)',
+    desc: 'Email + API klíč',
   },
 } as const
 
@@ -89,7 +86,6 @@ function ModeToggle({
 
 export function AccountingConnectionManager({
   connections,
-  userCountry,
   isAccountant,
   workspaceName,
 }: Props) {
@@ -100,7 +96,6 @@ export function AccountingConnectionManager({
   const [changing, setChanging] = useState(false)
   const [idokladMode, setIdokladMode] = useState<IdokladMode>('oauth2')
   const [fakturoidMode, setFakturoidMode] = useState<FakturoidMode>('apikeys')
-  const [sfCountry, setSfCountry] = useState<CountryCode>(userCountry)
 
   const [clientId, setClientId] = useState('')
   const [clientSecret, setClientSecret] = useState('')
@@ -120,7 +115,6 @@ export function AccountingConnectionManager({
     if (activeConnection) {
       setChanging(true)
     }
-    setSfCountry(userCountry)
     setPicking(hash)
 
     requestAnimationFrame(() => {
@@ -140,7 +134,6 @@ export function AccountingConnectionManager({
     setCompanyId('')
     setIdokladMode('oauth2')
     setFakturoidMode('apikeys')
-    setSfCountry(userCountry)
   }
 
   function startChange() {
@@ -194,7 +187,6 @@ export function AccountingConnectionManager({
         apiEmail,
         apiKey,
         companyId,
-        country: sfCountry,
       }
     }
 
@@ -219,7 +211,6 @@ export function AccountingConnectionManager({
   }
 
   const activeCfg = adding ? PROVIDER_CONFIG[adding] : null
-  const showCzProviders = userCountry === 'cz'
 
   return (
     <div className="space-y-5">
@@ -295,17 +286,14 @@ export function AccountingConnectionManager({
             </p>
           )}
           <div className="grid gap-3 sm:grid-cols-3">
-            {PROVIDERS.filter((p) => showCzProviders || p === 'superfaktura').map((provider) => {
+            {PROVIDERS.map((provider) => {
               const cfg = PROVIDER_CONFIG[provider]
               return (
                 <button
                   key={provider}
                   id={provider}
                   type="button"
-                  onClick={() => {
-                    setSfCountry(userCountry)
-                    setPicking(provider)
-                  }}
+                  onClick={() => setPicking(provider)}
                   className={cn(
                     'text-left p-4 rounded-xl border-2 transition-all hover:border-blue-300 scroll-mt-24',
                     'border-gray-200 bg-white hover:bg-gray-50'
@@ -444,15 +432,6 @@ export function AccountingConnectionManager({
 
           {adding === 'superfaktura' && (
             <>
-              <ModeToggle
-                options={[
-                  { id: 'cz', label: COUNTRY_LABELS.cz },
-                  { id: 'sk', label: COUNTRY_LABELS.sk },
-                ]}
-                value={sfCountry}
-                onChange={(v) => setSfCountry(v as CountryCode)}
-                accent={`${activeCfg.text} ${activeCfg.soft} ${activeCfg.border}`}
-              />
               <p className="text-xs text-gray-500">
                 SuperFaktura → Nástroje → API přístup. Doporučujeme API uživatele s rolí Administrátor.
                 Ve SuperFaktuře musí být kompletně vyplněný firemní profil (IČO, adresa, DIČ) — jinak
@@ -463,7 +442,7 @@ export function AccountingConnectionManager({
                 <Input
                   id="sf-email"
                   type="email"
-                  placeholder={sfCountry === 'sk' ? 'email@firma.sk' : 'email@firma.cz'}
+                  placeholder="email@firma.cz"
                   value={apiEmail}
                   onChange={(e) => setApiEmail(e.target.value)}
                   className="mt-1"

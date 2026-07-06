@@ -9,9 +9,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
-import type { CountryCode } from '@/lib/accounting-codes'
-import { COUNTRY_LABELS } from '@/lib/accounting-codes'
 import { APP_NAME } from '@/lib/brand'
 import { LegalFooter } from '@/components/legal/LegalFooter'
 import { getPostAuthUploadPath, hasPendingPdf } from '@/lib/pending-upload'
@@ -24,7 +21,6 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [country, setCountry] = useState<CountryCode>('cz')
   const [acceptedTerms, setAcceptedTerms] = useState(false)
 
   async function handleRegister(e: React.FormEvent) {
@@ -47,7 +43,7 @@ export default function RegisterPage() {
       email,
       password,
       options: {
-        data: { country },
+        data: { country: 'cz' },
         emailRedirectTo: redirectTo,
       },
     })
@@ -73,15 +69,11 @@ export default function RegisterPage() {
     await fetch('/api/user/country', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ country }),
+      body: JSON.stringify({ country: 'cz' }),
     })
 
     setLoading(false)
-    toast.success(
-      country === 'sk'
-        ? 'Účet vytvorený – nastavené Slovensko 🇸🇰'
-        : 'Účet vytvořen – nastaveno Česko 🇨🇿'
-    )
+    toast.success('Účet vytvořen – připraveno pro české účetnictví 🇨🇿')
     const pending = await hasPendingPdf()
     router.push(pending ? getPostAuthUploadPath() : '/faktury/upload')
   }
@@ -108,36 +100,11 @@ export default function RegisterPage() {
 
           <form onSubmit={handleRegister} className="space-y-4">
             <div>
-              <Label className="mb-2 block">Země účetnictví</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {(['cz', 'sk'] as CountryCode[]).map((code) => (
-                  <button
-                    key={code}
-                    type="button"
-                    onClick={() => setCountry(code)}
-                    className={cn(
-                      'rounded-xl border-2 p-3 text-left transition-all',
-                      country === code
-                        ? 'border-blue-600 bg-blue-50'
-                        : 'border-gray-200 hover:border-blue-300'
-                    )}
-                  >
-                    <span className="text-lg">{code === 'cz' ? '🇨🇿' : '🇸🇰'}</span>
-                    <p className="text-xs font-semibold text-gray-900 mt-1">{COUNTRY_LABELS[code]}</p>
-                    <p className="text-[10px] text-gray-500">
-                      {code === 'cz' ? 'DPH 0/12/21 %' : 'DPH 0/10/20 % · EUR'}
-                    </p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
               <Label htmlFor="email">E-mail</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder={country === 'sk' ? 'jan@firma.sk' : 'jan@firma.cz'}
+                placeholder="jan@firma.cz"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -195,18 +162,12 @@ export default function RegisterPage() {
           </form>
 
           <ul className="mt-5 space-y-1.5">
-            {(country === 'sk'
-              ? [
-                  '10 faktúr zdarma každý mesiac',
-                  'PDF drag & drop',
-                  'SuperFaktúra · slovenské účtovné kódy',
-                ]
-              : [
-                  '10 faktur zdarma každý měsíc',
-                  'PDF drag & drop',
-                  'iDoklad · Fakturoid · SuperFaktura',
-                ]
-            ).map((f) => (
+            {[
+              '10 faktur zdarma každý měsíc',
+              'PDF drag & drop',
+              'iDoklad · Fakturoid · SuperFaktura',
+              'České účetní kódy a předkontace',
+            ].map((f) => (
               <li key={f} className="flex items-center gap-2 text-xs text-gray-500">
                 <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
                 {f}

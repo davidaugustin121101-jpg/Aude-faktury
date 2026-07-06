@@ -3,7 +3,7 @@ import { mapPohodaRateVat } from '../vat-mapping'
 import { escapeXml, formatDateIso, formatMoney } from '../xml-utils'
 
 export function generatePohodaXml(inv: NormalizedInvoice, profile?: ExportProfile): string {
-  const rateVat = mapPohodaRateVat(inv.sazbaDph, inv.country)
+  const rateVat = mapPohodaRateVat(inv.sazbaDph)
   const companyIco = profile?.companyIco ?? ''
   const base = inv.castkaBezDph
   const vat = inv.castkaDph

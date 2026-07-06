@@ -10,7 +10,6 @@ import {
 import { validateSuperFakturaConnection } from '@/lib/superfaktura'
 import { getActiveWorkspace } from '@/lib/workspace'
 import { storeVaultSecret } from '@/lib/vault-secrets'
-import type { CountryCode } from '@/lib/accounting-codes'
 import { checkRateLimit } from '@/lib/rate-limit'
 
 function vaultStoreFailed() {
@@ -36,7 +35,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { provider, apiKey, accountSlug, clientId, clientSecret, apiEmail, companyId, country } =
+  const { provider, apiKey, accountSlug, clientId, clientSecret, apiEmail, companyId } =
     body as {
       provider: string
       apiKey?: string
@@ -45,14 +44,13 @@ export async function POST(req: NextRequest) {
       clientSecret?: string
       apiEmail?: string
       companyId?: string
-      country?: CountryCode
     }
 
   if (!provider) {
     return NextResponse.json({ error: 'Chybí provider' }, { status: 400 })
   }
 
-  const connCountry: CountryCode = country === 'sk' ? 'sk' : 'cz'
+  const connCountry = 'cz' as const
 
   let valid = false
   let fakturoidAutoSlug: string | null = null
@@ -114,7 +112,6 @@ export async function POST(req: NextRequest) {
         email: apiEmail,
         apiKey,
         companyId: companyId ?? '',
-        country: connCountry,
       })
       if (!valid) {
         return NextResponse.json(

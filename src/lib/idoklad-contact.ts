@@ -1,4 +1,3 @@
-import type { CountryCode } from './accounting-codes'
 import type { ExtractedInvoiceData } from './claude'
 import type { AresSubject } from './invoice-audit/rules/ares-lookup'
 
@@ -8,7 +7,6 @@ export const IDOKLAD_COUNTRY_CZ = 2
 
 export function inferIdokladCountryId(
   data: Pick<ExtractedInvoiceData, 'dodavatel_dic'>,
-  fallback: CountryCode = 'cz',
   aresCountryCode?: string | null
 ): number {
   const dic = (data.dodavatel_dic ?? '').trim().toUpperCase()
@@ -19,7 +17,7 @@ export function inferIdokladCountryId(
   if (ares === 'SK') return IDOKLAD_COUNTRY_SK
   if (ares === 'CZ') return IDOKLAD_COUNTRY_CZ
 
-  return fallback === 'sk' ? IDOKLAD_COUNTRY_SK : IDOKLAD_COUNTRY_CZ
+  return IDOKLAD_COUNTRY_CZ
 }
 
 export function buildStreetFromAresSidlo(sidlo: NonNullable<AresSubject['sidlo']>): string | undefined {
@@ -45,15 +43,11 @@ export function buildStreetFromAresSidlo(sidlo: NonNullable<AresSubject['sidlo']
 
 export function buildIdokladContactPayload(
   data: ExtractedInvoiceData,
-  options?: { country?: CountryCode; ares?: AresSubject | null }
+  options?: { ares?: AresSubject | null }
 ): Record<string, string | number> {
   const ico = (data.dodavatel_ico ?? '').replace(/\D/g, '')
   const sidlo = options?.ares?.sidlo
-  const countryId = inferIdokladCountryId(
-    data,
-    options?.country ?? 'cz',
-    sidlo?.kodStatu ?? null
-  )
+  const countryId = inferIdokladCountryId(data, sidlo?.kodStatu ?? null)
 
   const payload: Record<string, string | number> = {
     CompanyName: data.dodavatel_nazev || 'Neznámý dodavatel',

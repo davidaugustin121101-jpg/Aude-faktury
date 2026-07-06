@@ -1,4 +1,3 @@
-import type { CountryCode } from './accounting-codes'
 import type { ExtractedInvoiceData } from './claude'
 
 export type PredkontaceSide = 'md' | 'dal'
@@ -11,8 +10,7 @@ export type PredkontaceLine = {
 }
 
 export type PredkontaceConfig = {
-  country?: CountryCode
-  /** Účet DPH (výchozí 343 pro CZ/SK) */
+  /** Účet DPH (výchozí 343) */
   dphAccount?: string
   /** Účet dodavatelů (výchozí 321) */
   supplierAccount?: string
@@ -31,10 +29,8 @@ export type Predkontace = {
   comment: string
 }
 
-const DEFAULT_ACCOUNTS: Record<CountryCode, { dph: string; supplier: string }> = {
-  cz: { dph: '343', supplier: '321' },
-  sk: { dph: '343', supplier: '321' },
-}
+const DEFAULT_DPH_ACCOUNT = '343'
+const DEFAULT_SUPPLIER_ACCOUNT = '321'
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100
@@ -60,7 +56,6 @@ export type PredkontaceInput = {
   castka_celkem?: number | null
   mena?: string | null
   je_prenesena_dan?: boolean | null
-  country?: CountryCode
 }
 
 export function buildPredkontace(
@@ -70,11 +65,9 @@ export function buildPredkontace(
   const naklad = (input.ucetni_kod ?? '').trim()
   if (!naklad) return null
 
-  const country = config.country ?? input.country ?? 'cz'
-  const defaults = DEFAULT_ACCOUNTS[country]
-  const dphAccount = config.dphAccount ?? defaults.dph
-  const supplierAccount = config.supplierAccount ?? defaults.supplier
-  const mena = (input.mena ?? (country === 'sk' ? 'EUR' : 'CZK')).toUpperCase()
+  const dphAccount = config.dphAccount ?? DEFAULT_DPH_ACCOUNT
+  const supplierAccount = config.supplierAccount ?? DEFAULT_SUPPLIER_ACCOUNT
+  const mena = (input.mena ?? 'CZK').toUpperCase()
 
   const base = round2(Number(input.castka_bez_dph ?? 0))
   const vat = round2(Number(input.castka_dph ?? 0))
@@ -139,7 +132,6 @@ export function buildPredkontaceFromExtracted(
   data: ExtractedInvoiceData,
   config?: PredkontaceConfig
 ): Predkontace | null {
-  const raw = data as ExtractedInvoiceData & { country?: CountryCode }
   return buildPredkontace(
     {
       ucetni_kod: data.ucetni_kod,
@@ -148,7 +140,6 @@ export function buildPredkontaceFromExtracted(
       castka_celkem: data.castka_celkem,
       mena: data.mena,
       je_prenesena_dan: data.je_prenesena_dan,
-      country: raw.country,
     },
     config
   )
@@ -167,7 +158,6 @@ export function predkontaceFromInvoice(
 ): Predkontace | null {
   const raw = (invoice.raw_extraction ?? {}) as {
     je_prenesena_dan?: boolean
-    country?: CountryCode
   }
   return buildPredkontace(
     {
@@ -177,7 +167,6 @@ export function predkontaceFromInvoice(
       castka_celkem: invoice.castka_celkem,
       mena: invoice.mena,
       je_prenesena_dan: raw.je_prenesena_dan,
-      country: raw.country,
     },
     config
   )

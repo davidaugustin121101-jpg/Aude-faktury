@@ -1,5 +1,4 @@
 import type { ExtractedInvoiceData } from './claude'
-import type { CountryCode } from './accounting-codes'
 import { buildPredkontaceFromExtracted } from './predkontace'
 import {
   canAttachToSuperFaktura,
@@ -7,17 +6,12 @@ import {
 } from './invoice-pdf-storage'
 
 const MODULE_NAME = 'AudeflowFaktury'
-
-const BASE_URLS: Record<CountryCode, string> = {
-  sk: 'https://moja.superfaktura.sk',
-  cz: 'https://moje.superfaktura.cz',
-}
+const SUPERFAKTURA_BASE = 'https://moje.superfaktura.cz'
 
 export interface SuperFakturaConnection {
   email: string
   apiKey: string
   companyId: string
-  country: CountryCode
 }
 
 function buildAuthHeader(email: string, apiKey: string, companyId: string): string {
@@ -54,8 +48,7 @@ export async function validateSuperFakturaConnection(
   connection: SuperFakturaConnection
 ): Promise<boolean> {
   try {
-    const base = BASE_URLS[connection.country]
-    const res = await fetch(`${base}/expenses/index.json/listinfo:1/per_page:1/page:1`, {
+    const res = await fetch(`${SUPERFAKTURA_BASE}/expenses/index.json/listinfo:1/per_page:1/page:1`, {
       headers: { Authorization: buildAuthHeader(connection.email, connection.apiKey, connection.companyId) },
     })
     if (!res.ok) return false
@@ -71,12 +64,10 @@ export async function sendToSuperFaktura(
   data: ExtractedInvoiceData,
   pdf?: InvoicePdfAttachment | null
 ): Promise<{ id: string; number: string; pdfAttached: boolean }> {
-  const base = BASE_URLS[connection.country]
-  const commentPrefix = connection.country === 'sk' ? 'Účtovný kód' : 'Účetní kód'
-  const predkontace = buildPredkontaceFromExtracted(data, { country: connection.country })
+  const predkontace = buildPredkontaceFromExtracted(data)
   const expenseComment = predkontace
     ? predkontace.comment
-    : `${commentPrefix}: ${data.ucetni_kod} – ${data.ucetni_kod_nazev}`
+    : `Účetní kód: ${data.ucetni_kod} – ${data.ucetni_kod_nazev}`
 
   const includePdf = pdf ? canAttachToSuperFaktura(pdf.bytes.length) : false
   if (pdf && !includePdf) {
@@ -92,8 +83,8 @@ export async function sendToSuperFaktura(
       created: data.datum_vystaveni,
       due: data.datum_splatnosti,
       variable: data.variabilni_symbol || undefined,
-      currency: data.mena || (connection.country === 'sk' ? 'EUR' : 'CZK'),
-      vat: String(data.sazba_dph ?? (connection.country === 'sk' ? 20 : 21)),
+      currency: data.mena || 'CZK',
+      vat: String(data.sazba_dph ?? 21),
       amount: data.castka_bez_dph ?? data.castka_celkem ?? 0,
       version: 'basic',
       type: 'invoice',
@@ -109,11 +100,10 @@ export async function sendToSuperFaktura(
     },
   }
 
-  // SuperFaktura API expects form-urlencoded body with JSON in the `data` field (not raw JSON).
   const body = new URLSearchParams()
   body.set('data', JSON.stringify(payload))
 
-  const res = await fetch(`${base}/expenses/add`, {
+  const res = await fetch(`${SUPERFAKTURA_BASE}/expenses/add`, {
     method: 'POST',
     headers: {
       Authorization: buildAuthHeader(connection.email, connection.apiKey, connection.companyId),
