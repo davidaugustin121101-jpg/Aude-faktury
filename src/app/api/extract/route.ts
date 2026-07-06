@@ -41,6 +41,10 @@ export async function POST(req: NextRequest) {
   } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Nepřihlášen' }, { status: 401 })
 
+  // #region agent log
+  fetch('http://127.0.0.1:7711/ingest/3cd4d8f4-c62c-4feb-9280-e257beb22e7d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'20dbe5'},body:JSON.stringify({sessionId:'20dbe5',location:'extract/route.ts:POST-start',message:'extract started',data:{userId:user.id},timestamp:Date.now(),hypothesisId:'D,F'})}).catch(()=>{});
+  // #endregion
+
   const rate = checkRateLimit(`extract:${user.id}`, 12, 60_000)
   if (!rate.allowed) {
     return NextResponse.json(
@@ -71,6 +75,9 @@ export async function POST(req: NextRequest) {
     user.email ?? '',
     (profile as { full_name?: string } | null)?.full_name
   )
+  // #region agent log
+  fetch('http://127.0.0.1:7711/ingest/3cd4d8f4-c62c-4feb-9280-e257beb22e7d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'20dbe5'},body:JSON.stringify({sessionId:'20dbe5',location:'extract/route.ts:workspace',message:'workspace resolved',data:{workspaceId:workspace.id},timestamp:Date.now(),hypothesisId:'F'})}).catch(()=>{});
+  // #endregion
 
   const { data: invoiceSettings } = await supabase
     .from('invoice_settings')
@@ -85,7 +92,12 @@ export async function POST(req: NextRequest) {
     await releaseInvoiceReservation(user.id, reservedSource)
     return NextResponse.json({ error: 'Chybí soubor' }, { status: 400 })
   }
-  if (file.type !== 'application/pdf') {
+  const isPdf =
+    file.type === 'application/pdf' ||
+    file.name.toLowerCase().endsWith('.pdf') ||
+    file.type === '' ||
+    file.type === 'application/octet-stream'
+  if (!isPdf) {
     await releaseInvoiceReservation(user.id, reservedSource)
     return NextResponse.json({ error: 'Nahraj prosím PDF soubor' }, { status: 400 })
   }

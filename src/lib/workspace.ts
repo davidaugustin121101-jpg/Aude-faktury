@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { cache } from 'react'
 import type { UserProfileRow } from '@/lib/auth-server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export type Workspace = {
   id: string
@@ -10,6 +11,17 @@ export type Workspace = {
 }
 
 type WorkspaceProfileHint = Pick<UserProfileRow, 'active_workspace_id' | 'full_name'> | null | undefined
+
+async function setActiveWorkspaceId(userId: string, workspaceId: string): Promise<void> {
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('user_profiles')
+    .update({ active_workspace_id: workspaceId })
+    .eq('id', userId)
+  if (error) {
+    console.error('[workspace] active_workspace_id update failed:', error.message)
+  }
+}
 
 async function resolveActiveWorkspace(
   supabase: SupabaseClient,
@@ -46,10 +58,7 @@ async function resolveActiveWorkspace(
     .maybeSingle()
 
   if (existing) {
-    await supabase
-      .from('user_profiles')
-      .update({ active_workspace_id: existing.id })
-      .eq('id', userId)
+    await setActiveWorkspaceId(userId, existing.id)
     return existing as Workspace
   }
 
@@ -62,10 +71,7 @@ async function resolveActiveWorkspace(
 
   if (error || !created) throw new Error('Nepodařilo se vytvořit workspace.')
 
-  await supabase
-    .from('user_profiles')
-    .update({ active_workspace_id: created.id })
-    .eq('id', userId)
+  await setActiveWorkspaceId(userId, created.id)
 
   return created as Workspace
 }
@@ -119,10 +125,7 @@ export async function switchWorkspace(
     .maybeSingle()
   if (!ws) throw new Error('Klient nenalezen.')
 
-  await supabase
-    .from('user_profiles')
-    .update({ active_workspace_id: workspaceId })
-    .eq('id', userId)
+  await setActiveWorkspaceId(userId, workspaceId)
 }
 
 export async function enableAccountantMode(
