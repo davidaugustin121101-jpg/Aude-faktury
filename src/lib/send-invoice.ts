@@ -12,6 +12,7 @@ import { upsertSupplierRule } from '@/lib/supplier-rules'
 import type { AuditResult } from '@/lib/invoice-audit/types'
 import { insertAuditLog } from '@/lib/audit-log'
 import { INVOICE_SEND_CLAIM_STATUSES } from '@/lib/invoice-guards'
+import type { CountryCode } from '@/lib/accounting-codes'
 
 type AccountingRow = Record<string, unknown> & {
   id: string
@@ -156,7 +157,9 @@ export async function sendInvoiceToAccounting(params: {
         client_id: conn.idoklad_client_id ?? null,
         client_secret: conn.idoklad_client_secret ?? '',
       }
-      const r = await sendToIdoklad(idokladConn, extractedData, pdf)
+      const r = await sendToIdoklad(idokladConn, extractedData, pdf, {
+        country: (conn.country as CountryCode | undefined) ?? 'cz',
+      })
       result = { id: r.id, documentNumber: r.documentNumber, pdfAttached: r.pdfAttached }
       pdfAttached = r.pdfAttached
       pdfAttachmentError = r.pdfAttachmentError

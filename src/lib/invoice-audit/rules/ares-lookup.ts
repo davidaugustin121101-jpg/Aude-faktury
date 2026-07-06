@@ -1,9 +1,21 @@
 import { normalizeIco } from './ico-format-check'
 import type { AuditCheck, InvoiceAuditInput } from '../types'
 
-type AresSubject = {
+type AresSidlo = {
+  kodStatu?: string
+  nazevUlice?: string
+  cisloDomovni?: number
+  cisloOrientacni?: number
+  cisloOrientacniPismeno?: string
+  nazevObce?: string
+  psc?: number
+  textovaAdresa?: string
+}
+
+export type AresSubject = {
   obchodniJmeno?: string
   ico?: string
+  sidlo?: AresSidlo
 }
 
 function normalizeCompanyName(name: string): string {

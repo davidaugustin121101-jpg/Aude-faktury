@@ -1,6 +1,12 @@
 import type { ExtractedInvoiceData } from './claude'
 import { buildPredkontaceFromExtracted } from './predkontace'
 import type { InvoicePdfAttachment } from './invoice-pdf-storage'
+import type { CountryCode } from './accounting-codes'
+import { lookupAres } from './invoice-audit/rules/ares-lookup'
+import {
+  buildIdokladContactPayload,
+  contactNeedsAddressSync,
+} from './idoklad-contact'
 
 const IDOKLAD_API_BASE = 'https://api.idoklad.cz/v3'
 const IDOKLAD_TOKEN_URL = 'https://app.idoklad.cz/identity/server/connect/token'
@@ -37,6 +43,10 @@ type IdokladContact = {
   Id: number
   CompanyName?: string
   IdentificationNumber?: string
+  Street?: string | null
+  City?: string | null
+  PostalCode?: string | null
+  CountryId?: number | null
 }
 type IdokladReceivedInvoice = { Id: number; DocumentNumber?: string }
 
@@ -203,19 +213,36 @@ async function findContactByIco(token: string, ico: string): Promise<number | nu
   return null
 }
 
-async function resolvePartnerId(token: string, data: ExtractedInvoiceData): Promise<number> {
+async function resolvePartnerId(
+  token: string,
+  data: ExtractedInvoiceData,
+  country: CountryCode = 'cz'
+): Promise<number> {
   const ico = (data.dodavatel_ico ?? '').replace(/\D/g, '')
-  const existing = await findContactByIco(token, ico)
-  if (existing) return existing
+  const existingId = await findContactByIco(token, ico)
+  const ares = country === 'cz' && ico ? await lookupAres(ico).catch(() => null) : null
+  const contactPayload = buildIdokladContactPayload(data, { country, ares })
+
+  if (existingId) {
+    try {
+      const existing = await idokladRequest<IdokladContact>(token, `Contacts/${existingId}`, {
+        method: 'GET',
+      })
+      if (contactNeedsAddressSync(existing)) {
+        await idokladRequest<IdokladContact>(token, 'Contacts', {
+          method: 'PATCH',
+          body: JSON.stringify({ Id: existingId, ...contactPayload }),
+        })
+      }
+    } catch (err) {
+      console.error('[idoklad] sync kontaktu dodavatele selhal:', err)
+    }
+    return existingId
+  }
 
   const created = await idokladRequest<IdokladContact>(token, 'Contacts', {
     method: 'POST',
-    body: JSON.stringify({
-      CompanyName: data.dodavatel_nazev || 'Neznámý dodavatel',
-      ...(ico ? { IdentificationNumber: ico } : {}),
-      ...(data.dodavatel_dic ? { TaxIdentificationNumber: data.dodavatel_dic } : {}),
-      CountryId: 1,
-    }),
+    body: JSON.stringify(contactPayload),
   })
 
   if (!created?.Id) {
@@ -280,7 +307,8 @@ export interface IdokladConnection {
 export async function sendToIdoklad(
   connection: IdokladConnection,
   data: ExtractedInvoiceData,
-  pdf?: InvoicePdfAttachment | null
+  pdf?: InvoicePdfAttachment | null,
+  options?: { country?: CountryCode }
 ): Promise<{ id: string; documentNumber: string; pdfAttached: boolean; pdfAttachmentError?: string }> {
   let token: string
   if (connection.client_id) {
@@ -295,7 +323,7 @@ export async function sendToIdoklad(
   const itemName = (data.popis_plneni ?? `Faktura ${data.cislo_faktury ?? ''}`).slice(0, 200)
 
   const [partnerId, currencyId, paymentOptionId, numericSequence] = await Promise.all([
-    resolvePartnerId(token, data),
+    resolvePartnerId(token, data, options?.country ?? 'cz'),
     resolveCurrencyId(token, data.mena ?? 'CZK'),
     resolvePaymentOptionId(token),
     resolveNumericSequence(token),
