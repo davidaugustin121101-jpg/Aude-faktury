@@ -20,6 +20,14 @@ Povinná pole:
 - typ_dokladu: "faktura" | "dobropis" | "proforma" | "jiny"
 - je_prenesena_dan: boolean (true pokud faktura uvádí přenesení daňové povinnosti / reverse charge)
 
+=== ČÁST 3: POLOŽKY FAKTURY (rozpoložkování) ===
+
+Pokud faktura obsahuje tabulku položek, vyplň pole "polozky" jako pole objektů:
+- nazev, mnozstvi, jednotkova_cena, sazba_dph (0/10/12/21)
+- typ: "zbozi" (materiál, zboží, hardware) nebo "sluzba" (služby, pronájem, software SaaS, doprava)
+- volitelně ucetni_kod a ucetni_kod_nazev pro každou položku dle české osnovy
+Součet položek by měl odpovídat hlavičkovým částkám. Pokud je jen jedna agregovaná položka, vrať prázdné pole polozky.
+
 === ČÁST 2: NÁVRH ÚČETNÍHO KÓDU (česká účtová osnova) ===
 
 Hardware nad 80 000 Kč → 022, pod → 501
@@ -39,7 +47,7 @@ Nejasné → 518
 
 Přenesení DPH (reverse charge): uveď je_prenesena_dan=true, sazba_dph může být 0
 
-Vrať JSON s poli ucetni_kod, ucetni_kod_nazev, ucetni_kod_duvod, ucetni_kod_confidence, confidence, problemy[], typ_dokladu, je_prenesena_dan.
+Vrať JSON s poli ucetni_kod, ucetni_kod_nazev, ucetni_kod_duvod, ucetni_kod_confidence, confidence, problemy[], typ_dokladu, je_prenesena_dan, polozky[].
 `.trim()
 }
 

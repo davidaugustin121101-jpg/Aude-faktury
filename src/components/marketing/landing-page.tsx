@@ -19,11 +19,12 @@ import {
   getLandingTierHref,
   getMultiClientAddonHref,
 } from '@/lib/landing-links'
+import { SupportedSystemsSection } from '@/components/marketing/SupportedSystemsSection'
 
 const STEPS = [
   {
     title: 'Nahrajte PDF fakturu',
-    desc: 'Přetáhněte PDF do aplikace z mobilu i počítače. Poradíme si i se skenovanými fakturami.',
+    desc: 'Přetáhněte PDF, pošlete na svou adresu @in.audeflow.cz, nebo nahrajte ze skenu v prohlížeči.',
   },
   {
     title: EXTRACTION_LABEL,
@@ -50,7 +51,11 @@ const FAQ = [
   },
   {
     q: 'Podporujete Pohodu, Money S3 a Helios?',
-    a: 'Ano. Tyto systémy nemají cloudové API pro přijaté faktury — stáhnete ISDOC nebo nativní XML/CSV a importujete v ERP.',
+    a: 'Ano — stáhnete ISDOC, Pohoda XML, Money S3 nebo Helios CSV/XML a naimportujete ve svém programu. Cloudové systémy (iDoklad, Fakturoid, SuperFaktura) napojíme přímo přes API.',
+  },
+  {
+    q: 'Mohu posílat faktury e-mailem?',
+    a: 'Ano. Každý uživatel má unikátní adresu @in.audeflow.cz. PDF přílohy z e-mailu zpracujeme stejně jako upload.',
   },
   {
     q: 'Funguje aplikace na mobilu?',
@@ -75,10 +80,30 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
               <span className="text-blue-600">od 0 Kč.</span>
             </h1>
             <p className="mt-5 text-base sm:text-lg text-gray-600 leading-relaxed max-w-xl">
-              Přetáhněte PDF — Audeflow vytěží data, navrhne účetní kód a odešle do iDokladu,
-              Fakturoidu nebo SuperFaktury včetně originální PDF přílohy. 10 faktur měsíčně zdarma,
-              bez kreditní karty.
+              Přetáhněte PDF nebo pošlete e-mailem — Audeflow vytěží data, navrhne předkontaci{' '}
+              <strong className="text-gray-800">504/343/321</strong> a odešle do iDokladu, Fakturoidu
+              nebo SuperFaktury včetně PDF přílohy.
             </p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                  Cena
+                </p>
+                <p className="text-sm font-semibold text-emerald-900">
+                  od 2,99 Kč/faktura · 299 Kč / 100 faktur
+                </p>
+                <p className="text-xs text-emerald-800">kredit bez expirace</p>
+              </div>
+              <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-violet-700">
+                  Předkontace
+                </p>
+                <p className="text-sm font-semibold text-violet-900">
+                  Rovnou navrhneme účetní zápis
+                </p>
+                <p className="text-xs text-violet-800">ne jen surová data z faktury</p>
+              </div>
+            </div>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href={getLandingPrimaryCtaHref(isAuthenticated)}>
                 <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
@@ -108,6 +133,8 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
 
           <LandingDropZone isAuthenticated={isAuthenticated} />
         </section>
+
+        <SupportedSystemsSection />
 
         <section id="jak-funguje" className="bg-gray-50 py-20">
           <div className="max-w-6xl mx-auto px-4">

@@ -6,6 +6,16 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 })
 
+const PolozkaSchema = z.object({
+  nazev: z.string(),
+  mnozstvi: z.number(),
+  jednotkova_cena: z.number(),
+  sazba_dph: z.number(),
+  typ: z.enum(['zbozi', 'sluzba']),
+  ucetni_kod: z.string().optional(),
+  ucetni_kod_nazev: z.string().optional(),
+})
+
 export const ExtractedInvoiceSchema = z.object({
   dodavatel_nazev: z.string(),
   dodavatel_ico: z.string(),
@@ -29,7 +39,10 @@ export const ExtractedInvoiceSchema = z.object({
   problemy: z.array(z.string()),
   typ_dokladu: z.enum(['faktura', 'dobropis', 'proforma', 'jiny']).optional().default('faktura'),
   je_prenesena_dan: z.boolean().optional().default(false),
+  polozky: z.array(PolozkaSchema).optional().default([]),
 })
+
+export type FakturaPolozka = z.infer<typeof PolozkaSchema>
 
 export type ExtractedInvoiceData = z.infer<typeof ExtractedInvoiceSchema>
 
@@ -61,6 +74,22 @@ const EXTRACTION_TOOL: Anthropic.Tool = {
       problemy: { type: 'array', items: { type: 'string' } },
       typ_dokladu: { type: 'string', enum: ['faktura', 'dobropis', 'proforma', 'jiny'] },
       je_prenesena_dan: { type: 'boolean' },
+      polozky: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            nazev: { type: 'string' },
+            mnozstvi: { type: 'number' },
+            jednotkova_cena: { type: 'number' },
+            sazba_dph: { type: 'number' },
+            typ: { type: 'string', enum: ['zbozi', 'sluzba'] },
+            ucetni_kod: { type: 'string' },
+            ucetni_kod_nazev: { type: 'string' },
+          },
+          required: ['nazev', 'mnozstvi', 'jednotkova_cena', 'sazba_dph', 'typ'],
+        },
+      },
     },
     required: [
       'dodavatel_nazev',
@@ -100,7 +129,7 @@ function parseFromToolResponse(response: Anthropic.Message): ExtractedInvoiceDat
 export async function extractInvoiceFromPdf(pdfBase64: string): Promise<ExtractedInvoiceData> {
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 2000,
+    max_tokens: 4096,
     system: getAccountingSystemPrompt(),
     tools: [EXTRACTION_TOOL],
     tool_choice: { type: 'tool', name: 'extract_invoice' },
@@ -118,7 +147,7 @@ export async function extractInvoiceFromPdf(pdfBase64: string): Promise<Extracte
           },
           {
             type: 'text',
-            text: 'Extrahuj data z této přijaté faktury a navrhni účetní kód. Použij nástroj extract_invoice.',
+            text: 'Extrahuj data z této přijaté faktury včetně položek (tabulky na faktuře), navrhni účetní kód a použij nástroj extract_invoice.',
           },
         ],
       },

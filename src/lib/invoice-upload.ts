@@ -1,18 +1,33 @@
 export type UploadInvoiceResult =
   | { ok: true; invoiceId: string }
-  | { ok: false; error: string }
+  | { ok: false; error: string; duplicate?: boolean; existingInvoiceId?: string }
 
-function parseErrorBody(text: string, status: number): string {
+function parseErrorBody(text: string, status: number): {
+  error: string
+  duplicate?: boolean
+  existingInvoiceId?: string
+} {
   try {
-    const data = JSON.parse(text) as { error?: string }
-    if (data.error) return data.error
+    const data = JSON.parse(text) as {
+      error?: string
+      duplicate?: boolean
+      existingInvoiceId?: string
+    }
+    if (data.error) {
+      return {
+        error: data.error,
+        duplicate: data.duplicate,
+        existingInvoiceId: data.existingInvoiceId,
+      }
+    }
   } catch {
-    // not JSON — fall through
+    // not JSON
   }
-  if (status === 401) return 'Nejste přihlášeni. Obnovte stránku a zkuste znovu.'
-  if (status === 413) return 'Soubor je příliš velký (max 10 MB).'
-  if (status >= 500) return 'Chyba serveru při zpracování. Zkuste to za chvíli znovu.'
-  return `Nahrání se nezdařilo (${status})`
+  if (status === 401) return { error: 'Nejste přihlášeni. Obnovte stránku a zkuste znovu.' }
+  if (status === 409) return { error: 'Faktura už existuje.' }
+  if (status === 413) return { error: 'Soubor je příliš velký (max 10 MB).' }
+  if (status >= 500) return { error: 'Chyba serveru při zpracování. Zkuste to za chvíli znovu.' }
+  return { error: `Nahrání se nezdařilo (${status})` }
 }
 
 export async function uploadInvoicePdf(file: File): Promise<UploadInvoiceResult> {
@@ -36,7 +51,13 @@ export async function uploadInvoicePdf(file: File): Promise<UploadInvoiceResult>
 
   const text = await res.text()
   if (!res.ok) {
-    return { ok: false, error: parseErrorBody(text, res.status) }
+    const parsed = parseErrorBody(text, res.status)
+    return {
+      ok: false,
+      error: parsed.error,
+      duplicate: parsed.duplicate,
+      existingInvoiceId: parsed.existingInvoiceId,
+    }
   }
 
   let data: { invoice?: { id?: string } } = {}

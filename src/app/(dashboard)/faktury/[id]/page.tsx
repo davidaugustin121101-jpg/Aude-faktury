@@ -16,6 +16,7 @@ import {
   providerDisplayName,
 } from '@/lib/accounting-connection'
 import { InvoiceExportButtons } from '@/components/invoices/InvoiceExportButtons'
+import { InvoiceLineItemsPanel } from '@/components/invoices/InvoiceLineItemsPanel'
 import { InvoiceDeleteButton } from '@/components/invoices/InvoiceDeleteButton'
 import { requireUser } from '@/lib/auth-server'
 import { perfStart } from '@/lib/server-timing'
@@ -279,6 +280,11 @@ export default async function InvoiceDetailPage({ params }: Props) {
           </div>
         )}
       </div>
+
+      <InvoiceLineItemsPanel
+        rawExtraction={(inv.raw_extraction as Record<string, unknown> | null) ?? null}
+        mena={inv.mena}
+      />
 
       <InvoiceAuditPanel audit={auditResult} />
 

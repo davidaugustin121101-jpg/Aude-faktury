@@ -1,6 +1,7 @@
 'use client'
 
-import { CheckCircle2, AlertTriangle, XCircle, ShieldCheck } from 'lucide-react'
+import Link from 'next/link'
+import { CheckCircle2, AlertTriangle, XCircle, ShieldCheck, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { AuditCheck, AuditResult } from '@/lib/invoice-audit/types'
 
@@ -33,6 +34,15 @@ function CheckRow({ check }: { check: AuditCheck }) {
       <div>
         <p className="font-medium">{check.label}</p>
         <p className="text-xs opacity-90 mt-0.5">{check.message}</p>
+        {check.relatedInvoiceId && (
+          <Link
+            href={`/faktury/${check.relatedInvoiceId}`}
+            className="inline-flex items-center gap-1 text-xs font-medium mt-1.5 underline underline-offset-2"
+          >
+            Otevřít existující fakturu
+            <ExternalLink className="h-3 w-3" />
+          </Link>
+        )}
       </div>
     </li>
   )

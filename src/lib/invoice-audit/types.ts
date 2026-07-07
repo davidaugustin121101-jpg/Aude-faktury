@@ -5,6 +5,8 @@ export type AuditCheck = {
   label: string
   message: string
   severity: AuditSeverity
+  /** Odkaz na existující fakturu (duplicita) */
+  relatedInvoiceId?: string
 }
 
 export type AuditResult = {

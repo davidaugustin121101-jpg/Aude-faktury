@@ -43,7 +43,16 @@ export function LandingDropZone({ isAuthenticated }: Props) {
 
         const result = await uploadInvoicePdf(file)
         if (!result.ok) {
-          toast.error(result.error)
+          if (result.duplicate && result.existingInvoiceId) {
+            toast.error(result.error, {
+              action: {
+                label: 'Otevřít fakturu',
+                onClick: () => router.push(`/faktury/${result.existingInvoiceId}`),
+              },
+            })
+          } else {
+            toast.error(result.error)
+          }
           return
         }
 

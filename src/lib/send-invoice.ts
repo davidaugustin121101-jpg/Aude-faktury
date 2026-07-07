@@ -54,6 +54,7 @@ export function buildExtractedDataFromInvoice(inv: ProcessedInvoice): ExtractedI
     problemy: inv.problemy ?? [],
     typ_dokladu: (raw.typ_dokladu as ExtractedInvoiceData['typ_dokladu']) ?? 'faktura',
     je_prenesena_dan: Boolean(raw.je_prenesena_dan),
+    polozky: (raw.polozky as ExtractedInvoiceData['polozky']) ?? [],
   }
 }
 

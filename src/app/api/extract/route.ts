@@ -1,37 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { extractInvoiceFromPdf } from '@/lib/claude'
 import { getActiveWorkspace } from '@/lib/workspace'
-import { getDefaultCurrency } from '@/lib/accounting-codes'
-import { runInvoiceAudit } from '@/lib/invoice-audit/run-audit'
-import { getSupplierRule } from '@/lib/supplier-rules'
-import { insertAuditLog } from '@/lib/audit-log'
-import { sendNewInvoiceNotification } from '@/lib/notifications'
-import { sendInvoiceToAccounting } from '@/lib/send-invoice'
-import { saveInvoicePdf } from '@/lib/invoice-pdf-storage'
-import type { ProcessedInvoice } from '@/types/invoices'
-import {
-  confirmFreeInvoiceReservation,
-  releaseInvoiceReservation,
-  reserveInvoiceAllowance,
-  type AllowanceSource,
-} from '@/lib/invoice-allowance'
+import { processInvoiceFromPdf } from '@/lib/process-invoice-from-pdf'
+import { reserveInvoiceAllowance, releaseInvoiceReservation, type AllowanceSource } from '@/lib/invoice-allowance'
 import { checkRateLimit } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
-
-const ALLOWED_VAT_RATES = [0, 10, 12, 21] as const
-
-function normalizeVatRate(rate: number | null | undefined): number {
-  if (rate == null || Number.isNaN(rate)) return 21
-  const rounded = Math.round(rate)
-  if ((ALLOWED_VAT_RATES as readonly number[]).includes(rounded)) return rounded
-  return ALLOWED_VAT_RATES.reduce((best, candidate) =>
-    Math.abs(candidate - rounded) < Math.abs(best - rounded) ? candidate : best
-  )
-}
 
 function isPdfFile(file: File): boolean {
   return (
@@ -102,208 +78,43 @@ export async function POST(req: NextRequest) {
       .eq('user_id', user.id)
       .maybeSingle()
 
-    const buffer = await file.arrayBuffer()
-    const base64 = Buffer.from(buffer).toString('base64')
+    const buffer = Buffer.from(await file.arrayBuffer())
 
-    let extracted
-    try {
-      extracted = await extractInvoiceFromPdf(base64)
-    } catch (err) {
-      await releaseInvoiceReservation(user.id, reservedSource)
-      reservedSource = null
-      const message = err instanceof Error ? err.message : 'Chyba při vytěžení faktury'
-      return NextResponse.json({ error: message }, { status: 500 })
-    }
-
-    const supplierRule = await getSupplierRule(
+    const result = await processInvoiceFromPdf({
       supabase,
-      user.id,
-      workspace.id,
-      extracted.dodavatel_ico
-    )
-
-    if (supplierRule) {
-      extracted = {
-        ...extracted,
-        ucetni_kod: supplierRule.default_ucetni_kod,
-        ucetni_kod_nazev: supplierRule.default_ucetni_kod_nazev ?? extracted.ucetni_kod_nazev,
-        ucetni_kod_duvod: `Dodavatel známý z minula (${supplierRule.use_count}× schváleno). ${extracted.ucetni_kod_duvod}`,
-        ucetni_kod_confidence: Math.max(extracted.ucetni_kod_confidence, 0.92),
-      }
-    }
-
-    const sazbaDph = normalizeVatRate(extracted.sazba_dph)
-
-    const auditResult = await runInvoiceAudit(
-      {
-        dodavatel_nazev: extracted.dodavatel_nazev,
-        dodavatel_ico: extracted.dodavatel_ico,
-        dodavatel_dic: extracted.dodavatel_dic,
-        cislo_faktury: extracted.cislo_faktury,
-        datum_vystaveni: extracted.datum_vystaveni,
-        datum_splatnosti: extracted.datum_splatnosti,
-        variabilni_symbol: extracted.variabilni_symbol,
-        castka_bez_dph: extracted.castka_bez_dph,
-        sazba_dph: sazbaDph,
-        castka_dph: extracted.castka_dph,
-        castka_celkem: extracted.castka_celkem,
-        ucetni_kod: extracted.ucetni_kod,
-        je_prenesena_dan: extracted.je_prenesena_dan,
-      },
-      {
-        supabase,
-        userId: user.id,
-        workspaceId: workspace.id,
-      }
-    )
-
-    const status = auditResult.hasCritical ? 'needs_manual_check' : 'pending_review'
-
-    const { data: invoice, error: dbErr } = await supabase
-      .from('processed_invoices')
-      .insert({
-        user_id: user.id,
-        workspace_id: workspace.id,
-        dodavatel_nazev: extracted.dodavatel_nazev,
-        dodavatel_ico: extracted.dodavatel_ico,
-        dodavatel_dic: extracted.dodavatel_dic,
-        cislo_faktury: extracted.cislo_faktury,
-        datum_vystaveni: extracted.datum_vystaveni,
-        datum_splatnosti: extracted.datum_splatnosti,
-        variabilni_symbol: extracted.variabilni_symbol,
-        castka_bez_dph: extracted.castka_bez_dph,
-        sazba_dph: sazbaDph,
-        castka_dph: extracted.castka_dph,
-        castka_celkem: extracted.castka_celkem,
-        mena: extracted.mena ?? getDefaultCurrency(),
-        popis_plneni: extracted.popis_plneni,
-        iban: extracted.iban,
-        ucetni_kod: extracted.ucetni_kod,
-        ucetni_kod_nazev: extracted.ucetni_kod_nazev,
-        ucetni_kod_duvod: extracted.ucetni_kod_duvod,
-        ucetni_kod_confidence: extracted.ucetni_kod_confidence,
-        confidence: extracted.confidence,
-        problemy: extracted.problemy ?? [],
-        raw_extraction: extracted as unknown as Record<string, unknown>,
-        original_filename: file.name,
-        status,
-        audit_result: auditResult,
-        audit_score: auditResult.score,
-      })
-      .select()
-      .single()
-
-    if (dbErr || !invoice) {
-      await releaseInvoiceReservation(user.id, reservedSource)
-      reservedSource = null
-      console.error('[extract] DB insert failed:', dbErr?.message, dbErr?.code, dbErr?.details)
-      return NextResponse.json(
-        {
-          error: dbErr?.message
-            ? `Chyba při ukládání do databáze: ${dbErr.message}`
-            : 'Chyba při ukládání do databáze',
-        },
-        { status: 500 }
-      )
-    }
-
-    let finalInvoice = invoice as ProcessedInvoice
-    try {
-      const storagePath = await saveInvoicePdf(
-        admin,
-        user.id,
-        invoice.id,
-        Buffer.from(buffer)
-      )
-      const { data: withPdf, error: pdfUpdateErr } = await supabase
-        .from('processed_invoices')
-        .update({ storage_path: storagePath })
-        .eq('id', invoice.id)
-        .eq('user_id', user.id)
-        .select('*')
-        .single()
-
-      if (!pdfUpdateErr && withPdf) {
-        finalInvoice = withPdf as ProcessedInvoice
-      }
-    } catch (pdfErr) {
-      console.error('[extract] PDF storage failed:', pdfErr)
-    }
-
-    if (reservedSource === 'free_monthly') {
-      await confirmFreeInvoiceReservation(user.id)
-    }
-    reservedSource = null
-
-    await insertAuditLog({
-      invoice_id: invoice.id,
-      user_id: user.id,
-      action: 'extracted',
-      details: {
-        confidence: extracted.confidence,
-        ucetni_kod: extracted.ucetni_kod,
-        filename: file.name,
-        source: 'manual_upload',
-        audit_score: auditResult.score,
-        supplier_rule: !!supplierRule,
-        allowance_source: allowance.source,
-      },
+      admin,
+      userId: user.id,
+      userEmail: user.email ?? '',
+      fullName: (profile as { full_name?: string } | null)?.full_name,
+      workspaceId: workspace.id,
+      pdfBuffer: buffer,
+      filename: file.name,
+      source: 'manual_upload',
+      allowanceSource: allowance.source,
+      invoiceSettings,
     })
 
-    const notifyEmail = invoiceSettings?.notify_email?.trim() || user.email || null
-    const shouldNotify = invoiceSettings?.notify_on_new !== false && notifyEmail
+    reservedSource = null
 
-    const autoThreshold = invoiceSettings?.auto_approve_below
-    const totalAmount =
-      extracted.castka_celkem != null && !Number.isNaN(Number(extracted.castka_celkem))
-        ? Number(extracted.castka_celkem)
-        : null
-    const canAutoApprove =
-      autoThreshold != null &&
-      totalAmount != null &&
-      totalAmount > 0 &&
-      !auditResult.hasCritical &&
-      totalAmount <= Number(autoThreshold)
-
-    let autoApproved = false
-
-    if (canAutoApprove) {
-      const sendResult = await sendInvoiceToAccounting({
-        supabase,
-        userId: user.id,
-        userEmail: user.email ?? '',
-        fullName: (profile as { full_name?: string } | null)?.full_name,
-        invoice: finalInvoice,
-        rememberSupplier: true,
-        auditAction: 'auto_approved',
-      })
-
-      if (sendResult.ok) {
-        autoApproved = true
-        const { data: refreshed } = await supabase
-          .from('processed_invoices')
-          .select('*')
-          .eq('id', invoice.id)
-          .single()
-        if (refreshed) finalInvoice = refreshed as ProcessedInvoice
+    if (!result.ok) {
+      if (result.duplicate) {
+        return NextResponse.json(
+          {
+            error: result.message,
+            duplicate: true,
+            existingInvoiceId: result.existingInvoiceId || undefined,
+            existingStatus: result.existingStatus,
+          },
+          { status: 409 }
+        )
       }
-    }
-
-    if (shouldNotify && notifyEmail && totalAmount != null) {
-      await sendNewInvoiceNotification({
-        to: notifyEmail,
-        supplierName: extracted.dodavatel_nazev,
-        amount: totalAmount,
-        currency: extracted.mena ?? getDefaultCurrency(),
-        invoiceId: invoice.id,
-        autoApproved,
-      })
+      return NextResponse.json({ error: result.error }, { status: result.status })
     }
 
     return NextResponse.json({
-      invoice: finalInvoice,
-      audit: auditResult,
-      autoApproved,
+      invoice: result.invoice,
+      audit: result.audit,
+      autoApproved: result.autoApproved,
     })
   } catch (err) {
     if (userId && reservedSource) {

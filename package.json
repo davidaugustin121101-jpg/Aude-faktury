@@ -7,7 +7,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --import tsx --test tests/export/*.test.ts tests/predkontace/*.test.ts tests/invoice-pdf/*.test.ts tests/idoklad/*.test.ts",
+    "test": "node --import tsx --test tests/export/*.test.ts tests/predkontace/*.test.ts tests/invoice-pdf/*.test.ts tests/idoklad/*.test.ts tests/polozky/*.test.ts",
     "stripe:setup": "node scripts/stripe-setup.mjs",
     "verify:prod": "node scripts/verify-prod.mjs",
     "migrate:vault": "node scripts/migrate-secrets-to-vault.mjs"

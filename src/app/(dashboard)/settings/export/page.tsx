@@ -5,7 +5,6 @@ import { requireUser } from '@/lib/auth-server'
 import { getDashboardContext } from '@/lib/dashboard-context'
 import { SettingsNav } from '@/components/settings/SettingsNav'
 import { ExportProfileSettingsSection } from '@/components/settings/ExportProfileSettingsSection'
-
 export default async function ExportSettingsPage() {
   const { supabase, user } = await requireUser()
   const ctx = await getDashboardContext(supabase, user.id, user.email ?? '')

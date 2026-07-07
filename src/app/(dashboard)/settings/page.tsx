@@ -13,6 +13,7 @@ import {
   hasActiveAccountantSubscription,
 } from '@/lib/account-mode'
 import { InvoiceSettingsPanel } from '@/components/settings/InvoiceSettingsPanel'
+import { InboundEmailPanel } from '@/components/settings/InboundEmailPanel'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -84,6 +85,8 @@ export default async function SettingsPage() {
           </div>
         </div>
       </div>
+
+      <InboundEmailPanel />
 
       <InvoiceSettingsPanel />
 
