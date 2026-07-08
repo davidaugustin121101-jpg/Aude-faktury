@@ -20,6 +20,7 @@ import {
   getMultiClientAddonHref,
 } from '@/lib/landing-links'
 import { SupportedSystemsSection } from '@/components/marketing/SupportedSystemsSection'
+import { MARKETING_FAQ } from '@/content/marketing/faq'
 
 const STEPS = [
   {
@@ -41,25 +42,6 @@ const STEPS = [
   {
     title: 'Faktura v účetnictví',
     desc: 'Hotovo — faktura je zaevidovaná v ERP nebo cloudovém fakturačním systému.',
-  },
-]
-
-const FAQ = [
-  {
-    q: 'Jak získám API přístup k iDokladu nebo Fakturoidu?',
-    a: 'V nastavení Audeflow najdete podrobné návody. Obecně: iDoklad → Aplikace a služby → OAuth2; Fakturoid → Nastavení → API → nová integrace.',
-  },
-  {
-    q: 'Podporujete Pohodu, Money S3 a Helios?',
-    a: 'Ano — stáhnete ISDOC, Pohoda XML, Money S3 nebo Helios CSV/XML a naimportujete ve svém programu. Cloudové systémy (iDoklad, Fakturoid, SuperFaktura) napojíme přímo přes API.',
-  },
-  {
-    q: 'Mohu posílat faktury e-mailem?',
-    a: 'Ano. Každý uživatel má unikátní adresu @in.audeflow.cz. PDF přílohy z e-mailu zpracujeme stejně jako upload.',
-  },
-  {
-    q: 'Funguje aplikace na mobilu?',
-    a: 'Ano. Audeflow je plně responzivní — faktury nahráváte, kontrolujete a exportujete přímo z telefonu.',
   },
 ]
 
@@ -304,7 +286,7 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
               Časté dotazy
             </h2>
             <div className="space-y-4">
-              {FAQ.map((item) => (
+              {MARKETING_FAQ.map((item) => (
                 <details
                   key={item.q}
                   className="group bg-white border border-gray-200 rounded-2xl p-5"

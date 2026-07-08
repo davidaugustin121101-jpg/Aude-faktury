@@ -1,30 +1,52 @@
 import type { Metadata, Viewport } from 'next'
 import { APP_NAME } from '@/lib/brand'
+import { LEGAL_EMAIL, LEGAL_WEB } from '@/lib/legal'
+import { MARKETING_FAQ } from '@/content/marketing/faq'
 
 export const SITE_URL =
   process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ?? 'https://faktury.audeflow.cz'
 
 export const SITE_DESCRIPTION =
-  'Automatické vytěžení PDF faktur a odeslání do iDokladu, Fakturoidu nebo SuperFaktury. Export ISDOC, Pohoda XML, Money S3 a Helios. Pro OSVČ, firmy i účetní kanceláře v ČR.'
+  'Automatické vytěžení PDF faktur, návrh předkontace a odeslání do iDokladu, Fakturoidu nebo SuperFaktury. Export ISDOC, Pohoda XML, Money S3 a Helios. E-mailový vstup @in.audeflow.cz. Pro OSVČ, firmy i účetní kanceláře v ČR.'
 
 export const SITE_KEYWORDS = [
   'vytěžení faktury',
+  'vytěžení PDF faktury',
   'OCR faktura',
   'PDF faktura účetnictví',
+  'automatické zpracování faktur',
+  'přijaté faktury',
   'iDoklad API',
+  'iDoklad import faktury',
   'Fakturoid náklady',
-  'SuperFaktura',
+  'SuperFaktura faktura',
   'ISDOC export',
   'Pohoda import faktury',
+  'Pohoda XML faktura',
   'Money S3 faktura',
   'Helios faktura',
   'účetní kód faktura',
+  'předkontace faktury',
+  '504 343 321',
   'automatizace faktur',
-  'přijaté faktury',
   'faktury pro účetní',
+  'účetní kancelář faktury',
   'Audeflow',
   'faktury audeflow',
+  'e-mail faktura PDF',
+  'zálohová faktura účetnictví',
 ]
+
+/** Veřejné trasy pro sitemap a interní odkazy */
+export const PUBLIC_SEO_ROUTES = [
+  { path: '', changeFrequency: 'weekly' as const, priority: 1 },
+  { path: '/register', changeFrequency: 'monthly' as const, priority: 0.9 },
+  { path: '/login', changeFrequency: 'monthly' as const, priority: 0.6 },
+  { path: '/obchodni-podminky', changeFrequency: 'yearly' as const, priority: 0.3 },
+  { path: '/ochrana-udaju', changeFrequency: 'yearly' as const, priority: 0.3 },
+]
+
+const googleVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim()
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -40,12 +62,12 @@ export const viewport: Viewport = {
 export const rootMetadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${APP_NAME} – Vytěžení PDF faktur a export do účetnictví`,
+    default: `${APP_NAME} – Vytěžení PDF faktur a export do účetnictví | Audeflow`,
     template: `%s | ${APP_NAME}`,
   },
   description: SITE_DESCRIPTION,
   keywords: SITE_KEYWORDS,
-  authors: [{ name: 'AUDEFLOW', url: 'https://audeflow.cz' }],
+  authors: [{ name: 'AUDEFLOW', url: LEGAL_WEB }],
   creator: 'AUDEFLOW',
   publisher: 'AUDEFLOW',
   category: 'finance',
@@ -58,20 +80,23 @@ export const rootMetadata: Metadata = {
   },
   alternates: {
     canonical: SITE_URL,
+    languages: {
+      'cs-CZ': SITE_URL,
+    },
   },
   openGraph: {
     type: 'website',
     locale: 'cs_CZ',
     url: SITE_URL,
     siteName: APP_NAME,
-    title: `${APP_NAME} – PDF faktura do účetnictví za 30 sekund`,
+    title: `${APP_NAME} – PDF faktura do účetnictví za minutu`,
     description: SITE_DESCRIPTION,
     images: [
       {
         url: '/og-image.svg',
         width: 1200,
         height: 630,
-        alt: `${APP_NAME} – automatické vytěžení faktur`,
+        alt: `${APP_NAME} – automatické vytěžení faktur pro ČR`,
       },
     ],
   },
@@ -92,6 +117,13 @@ export const rootMetadata: Metadata = {
       'max-snippet': -1,
     },
   },
+  ...(googleVerification
+    ? {
+        verification: {
+          google: googleVerification,
+        },
+      }
+    : {}),
   icons: {
     icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
     apple: [{ url: '/apple-icon.svg', type: 'image/svg+xml' }],
@@ -109,6 +141,16 @@ export function pageMetadata(title: string, description: string, path = ''): Met
       title: `${title} | ${APP_NAME}`,
       description,
       url,
+      type: 'website',
+      locale: 'cs_CZ',
+      siteName: APP_NAME,
+      images: [{ url: '/og-image.svg', width: 1200, height: 630, alt: APP_NAME }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${title} | ${APP_NAME}`,
+      description,
+      images: ['/og-image.svg'],
     },
   }
 }
@@ -130,59 +172,52 @@ export function landingJsonLd() {
         '@type': 'Organization',
         '@id': `${SITE_URL}/#organization`,
         name: 'AUDEFLOW',
-        url: 'https://audeflow.cz',
-        email: 'kontakt@audeflow.cz',
+        url: LEGAL_WEB,
+        email: LEGAL_EMAIL,
         logo: `${SITE_URL}/icon.svg`,
+        sameAs: [LEGAL_WEB],
       },
       {
         '@type': 'SoftwareApplication',
         name: APP_NAME,
         applicationCategory: 'BusinessApplication',
         operatingSystem: 'Web',
-        offers: {
-          '@type': 'Offer',
-          price: '0',
-          priceCurrency: 'CZK',
-          description: 'Solo režim – 10 faktur měsíčně zdarma',
-        },
+        offers: [
+          {
+            '@type': 'Offer',
+            price: '0',
+            priceCurrency: 'CZK',
+            description: '10 faktur měsíčně zdarma',
+          },
+          {
+            '@type': 'Offer',
+            price: '299',
+            priceCurrency: 'CZK',
+            description: '100 faktur — kredit bez expirace',
+          },
+        ],
         description: SITE_DESCRIPTION,
         url: SITE_URL,
-        inLanguage: ['cs'],
+        inLanguage: ['cs-CZ'],
         featureList: [
           'Vytěžení PDF faktur',
-          'Návrh českého účetního kódu',
+          'E-mailový vstup @in.audeflow.cz',
+          'Návrh českého účetního kódu a předkontace',
           'Odeslání do iDoklad, Fakturoid, SuperFaktura',
           'Export ISDOC, Pohoda, Money S3, Helios',
+          'Kontrola duplicit a ARES',
         ],
       },
       {
         '@type': 'FAQPage',
-        mainEntity: [
-          {
-            '@type': 'Question',
-            name: 'Jak funguje vytěžení faktury v Audeflow?',
-            acceptedAnswer: {
-              '@type': 'Answer',
-              text: 'Nahrajete PDF fakturu, systém automaticky načte dodavatele, IČO, částky, DPH a navrhne účetní kód. Poté exportujete soubor nebo odešlete do připojeného fakturačního systému.',
-            },
+        mainEntity: MARKETING_FAQ.map((item) => ({
+          '@type': 'Question',
+          name: item.q,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: item.a,
           },
-          {
-            '@type': 'Question',
-            name: 'Které fakturační systémy podporujete?',
-            acceptedAnswer: {
-              '@type': 'Answer',
-              text: 'API napojení: iDoklad, Fakturoid, SuperFaktura. Export souborů: ISDOC, Pohoda XML, Money S3, Helios Red a Helios iNuvio.',
-            },
-          },
-          {
-            '@type': 'Question',
-            name: 'Je Audeflow vhodný pro účetní firmy?',
-            acceptedAnswer: {
-              '@type': 'Answer',
-              text: 'Ano. Účetní režim umožňuje spravovat více klientů — každý klient má vlastní workspace a vlastní napojení na fakturační systém.',
-            },
-          },
-        ],
+        })),
       },
     ],
   }

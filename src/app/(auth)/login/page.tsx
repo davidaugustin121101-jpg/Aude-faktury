@@ -12,6 +12,8 @@ import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { APP_NAME } from '@/lib/brand'
 import { safeRedirectPath } from '@/lib/safe-redirect'
+import { AuthAccountHelpNotice } from '@/components/auth/AuthAccountHelpNotice'
+import { LEGAL_EMAIL } from '@/lib/legal'
 import { getPostAuthUploadPath, hasPendingPdf } from '@/lib/pending-upload'
 
 export default function LoginPage() {
@@ -26,18 +28,11 @@ export default function LoginPage() {
 
   async function handleForgotPassword(e: React.MouseEvent) {
     e.preventDefault()
-    if (!email.trim()) {
-      toast.error('Nejdřív zadejte e-mail')
-      return
-    }
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/callback?next=/settings`,
-    })
-    if (error) {
-      toast.error(error.message)
-      return
-    }
-    toast.success('Odkaz pro obnovení hesla jsme poslali na e-mail')
+    window.location.href = `mailto:${LEGAL_EMAIL}?subject=${encodeURIComponent('Obnovení hesla – Faktury Audeflow')}&body=${encodeURIComponent(
+      email.trim()
+        ? `Dobrý den,\n\nprosím o obnovení hesla k účtu ${email.trim()}.\n\nDěkuji`
+        : 'Dobrý den,\n\nprosím o obnovení hesla k mému účtu.\n\nE-mail účtu: \n\nDěkuji'
+    )}`
   }
 
   async function handleLogin(e: React.FormEvent) {
@@ -119,6 +114,7 @@ export default function LoginPage() {
                   autoComplete="current-password"
                 />
               </div>
+              <AuthAccountHelpNotice variant="login" />
             </CardContent>
             <CardFooter className="flex-col gap-4">
               <Button

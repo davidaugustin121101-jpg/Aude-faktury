@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { Toaster } from '@/components/ui/sonner'
 import { rootMetadata, viewport } from '@/lib/seo'
@@ -19,6 +20,7 @@ export default function RootLayout({
       <body className={`${inter.className} antialiased`}>
         {children}
         <Toaster richColors position="top-center" className="sm:!top-right" />
+        <Analytics />
       </body>
     </html>
   )

@@ -1,20 +1,13 @@
 import type { MetadataRoute } from 'next'
-import { SITE_URL } from '@/lib/seo'
+import { PUBLIC_SEO_ROUTES, SITE_URL } from '@/lib/seo'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date()
-  const publicRoutes = [
-    '',
-    '/login',
-    '/register',
-    '/obchodni-podminky',
-    '/ochrana-udaju',
-  ] as const
 
-  return publicRoutes.map((path) => ({
+  return PUBLIC_SEO_ROUTES.map(({ path, changeFrequency, priority }) => ({
     url: `${SITE_URL}${path}`,
     lastModified: now,
-    changeFrequency: path === '' ? 'weekly' : 'monthly',
-    priority: path === '' ? 1 : 0.5,
+    changeFrequency,
+    priority,
   }))
 }

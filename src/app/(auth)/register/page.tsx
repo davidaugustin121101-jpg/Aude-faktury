@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label'
 import { Loader2, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { APP_NAME } from '@/lib/brand'
+import { AuthAccountHelpNotice } from '@/components/auth/AuthAccountHelpNotice'
+import { LEGAL_EMAIL } from '@/lib/legal'
 import { LegalFooter } from '@/components/legal/LegalFooter'
 import { getPostAuthUploadPath, hasPendingPdf } from '@/lib/pending-upload'
 
@@ -62,7 +64,9 @@ export default function RegisterPage() {
 
     if (!data.session) {
       setLoading(false)
-      toast.success('Ověřte e-mail – poslali jsme vám potvrzovací odkaz.')
+      toast.success(`Účet vytvořen. Pokud vám nepřijde potvrzovací e-mail, napište na ${LEGAL_EMAIL} — pomůžeme vám :)`, {
+        duration: 8000,
+      })
       return
     }
 
@@ -146,6 +150,8 @@ export default function RegisterPage() {
                 dle podmínek.
               </span>
             </label>
+
+            <AuthAccountHelpNotice variant="register" />
 
             <Button
               type="submit"
