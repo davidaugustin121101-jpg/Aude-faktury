@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { APP_NAME } from '@/lib/brand'
+import { LEGAL_LAST_UPDATED } from '@/lib/legal'
 import { LegalFooter } from './LegalFooter'
 import type { LegalSection } from '@/content/legal/obchodni-podminky'
 
@@ -24,7 +25,8 @@ export function LegalDocumentLayout({ title, sections }: Props) {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-10">
-        <h1 className="text-2xl font-bold text-gray-900 mb-8">{title}</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">{title}</h1>
+        <p className="text-sm text-gray-500 mb-8">Poslední aktualizace: {LEGAL_LAST_UPDATED}</p>
         <div className="space-y-8">
           {sections.map((section) => (
             <section key={section.title}>

@@ -143,8 +143,8 @@ export default function RegisterPage() {
                   obchodními podmínkami
                 </Link>{' '}
                 a{' '}
-                <Link href="/ochrana-udaju" target="_blank" className="text-blue-600 hover:underline">
-                  zásadami ochrany údajů
+                <Link href="/gdpr" target="_blank" className="text-blue-600 hover:underline">
+                  zásadami ochrany údajů (GDPR)
                 </Link>
                 . Beru na vědomí, že digitální služba je poskytována okamžitě a neposkytuje se vrácení peněz
                 dle podmínek.

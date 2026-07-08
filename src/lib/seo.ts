@@ -43,7 +43,7 @@ export const PUBLIC_SEO_ROUTES = [
   { path: '/register', changeFrequency: 'monthly' as const, priority: 0.9 },
   { path: '/login', changeFrequency: 'monthly' as const, priority: 0.6 },
   { path: '/obchodni-podminky', changeFrequency: 'yearly' as const, priority: 0.3 },
-  { path: '/ochrana-udaju', changeFrequency: 'yearly' as const, priority: 0.3 },
+  { path: '/gdpr', changeFrequency: 'yearly' as const, priority: 0.3 },
 ]
 
 const googleVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim()

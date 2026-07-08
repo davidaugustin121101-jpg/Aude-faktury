@@ -14,8 +14,8 @@ export function LegalFooter({ className, compact }: Props) {
         <Link href="/obchodni-podminky" className="hover:text-blue-600 underline-offset-2 hover:underline">
           Obchodní podmínky
         </Link>
-        <Link href="/ochrana-udaju" className="hover:text-blue-600 underline-offset-2 hover:underline">
-          Ochrana údajů
+        <Link href="/gdpr" className="hover:text-blue-600 underline-offset-2 hover:underline">
+          GDPR
         </Link>
         {!compact && (
           <a href={`mailto:${LEGAL_EMAIL}`} className="hover:text-blue-600 underline-offset-2 hover:underline">
