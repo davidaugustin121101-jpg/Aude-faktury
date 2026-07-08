@@ -12,7 +12,6 @@ import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { APP_NAME } from '@/lib/brand'
 import { safeRedirectPath } from '@/lib/safe-redirect'
-import { AuthAccountHelpNotice } from '@/components/auth/AuthAccountHelpNotice'
 import { LEGAL_EMAIL } from '@/lib/legal'
 import { getPostAuthUploadPath, hasPendingPdf } from '@/lib/pending-upload'
 
@@ -25,14 +24,11 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [forgotOpen, setForgotOpen] = useState(false)
 
-  async function handleForgotPassword(e: React.MouseEvent) {
+  function toggleForgotPassword(e: React.MouseEvent) {
     e.preventDefault()
-    window.location.href = `mailto:${LEGAL_EMAIL}?subject=${encodeURIComponent('Obnovení hesla – Faktury Audeflow')}&body=${encodeURIComponent(
-      email.trim()
-        ? `Dobrý den,\n\nprosím o obnovení hesla k účtu ${email.trim()}.\n\nDěkuji`
-        : 'Dobrý den,\n\nprosím o obnovení hesla k mému účtu.\n\nE-mail účtu: \n\nDěkuji'
-    )}`
+    setForgotOpen((open) => !open)
   }
 
   async function handleLogin(e: React.FormEvent) {
@@ -98,8 +94,10 @@ export default function LoginPage() {
                   <Label htmlFor="password">Heslo</Label>
                   <button
                     type="button"
-                    onClick={handleForgotPassword}
+                    onClick={toggleForgotPassword}
                     className="text-xs text-blue-600 hover:underline"
+                    aria-expanded={forgotOpen}
+                    aria-controls="forgot-password-help"
                   >
                     Zapomněli jste heslo?
                   </button>
@@ -113,8 +111,22 @@ export default function LoginPage() {
                   required
                   autoComplete="current-password"
                 />
+                {forgotOpen && (
+                  <p
+                    id="forgot-password-help"
+                    className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5 leading-relaxed"
+                  >
+                    Pro obnovení hesla kontaktujte{' '}
+                    <a
+                      href={`mailto:${LEGAL_EMAIL}?subject=${encodeURIComponent('Obnovení hesla – Faktury Audeflow')}`}
+                      className="font-medium text-blue-600 hover:underline"
+                    >
+                      {LEGAL_EMAIL}
+                    </a>
+                    :)
+                  </p>
+                )}
               </div>
-              <AuthAccountHelpNotice variant="login" />
             </CardContent>
             <CardFooter className="flex-col gap-4">
               <Button
