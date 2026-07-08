@@ -53,6 +53,10 @@ export function buildExtractedDataFromInvoice(inv: ProcessedInvoice): ExtractedI
     confidence: inv.confidence ?? 0,
     problemy: inv.problemy ?? [],
     typ_dokladu: (raw.typ_dokladu as ExtractedInvoiceData['typ_dokladu']) ?? 'faktura',
+    typ_faktury: (raw.typ_faktury as ExtractedInvoiceData['typ_faktury']) ?? 'danovy_doklad',
+    castka_k_uhrade:
+      raw.castka_k_uhrade != null ? Number(raw.castka_k_uhrade) : undefined,
+    datum_duzp: (raw.datum_duzp as string | null | undefined) ?? null,
     je_prenesena_dan: Boolean(raw.je_prenesena_dan),
     polozky: (raw.polozky as ExtractedInvoiceData['polozky']) ?? [],
   }

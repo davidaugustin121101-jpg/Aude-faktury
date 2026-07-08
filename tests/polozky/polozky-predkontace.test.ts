@@ -25,6 +25,7 @@ const base: ExtractedInvoiceData = {
   confidence: 0.9,
   problemy: [],
   typ_dokladu: 'faktura',
+  typ_faktury: 'danovy_doklad',
   je_prenesena_dan: false,
   polozky: [],
 }
