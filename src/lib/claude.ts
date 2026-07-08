@@ -38,6 +38,9 @@ export const ExtractedInvoiceSchema = z.object({
   confidence: z.number(),
   problemy: z.array(z.string()),
   typ_dokladu: z.enum(['faktura', 'dobropis', 'proforma', 'jiny']).optional().default('faktura'),
+  typ_faktury: z.enum(['zalohova', 'danovy_doklad']).optional().default('danovy_doklad'),
+  castka_k_uhrade: z.number().optional(),
+  datum_duzp: z.string().nullable().optional(),
   je_prenesena_dan: z.boolean().optional().default(false),
   polozky: z.array(PolozkaSchema).optional().default([]),
 })
@@ -73,6 +76,9 @@ const EXTRACTION_TOOL: Anthropic.Tool = {
       confidence: { type: 'number' },
       problemy: { type: 'array', items: { type: 'string' } },
       typ_dokladu: { type: 'string', enum: ['faktura', 'dobropis', 'proforma', 'jiny'] },
+      typ_faktury: { type: 'string', enum: ['zalohova', 'danovy_doklad'] },
+      castka_k_uhrade: { type: 'number', description: 'Zbývá k úhradě po záloze; 0 pokud záloha pokryla vše' },
+      datum_duzp: { type: ['string', 'null'] as unknown as 'string', description: 'Datum uskutečnění zdanitelného plnění YYYY-MM-DD' },
       je_prenesena_dan: { type: 'boolean' },
       polozky: {
         type: 'array',

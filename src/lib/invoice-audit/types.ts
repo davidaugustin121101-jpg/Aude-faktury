@@ -32,4 +32,14 @@ export type InvoiceAuditInput = {
   castka_celkem: number | null
   ucetni_kod: string | null
   je_prenesena_dan?: boolean | null
+  typ_faktury?: string | null
+  typ_dokladu?: string | null
+  castka_k_uhrade?: number | null
+  polozky?: Array<{
+    nazev: string
+    mnozstvi: number
+    jednotkova_cena: number
+    sazba_dph: number
+    typ: 'zbozi' | 'sluzba'
+  }>
 }

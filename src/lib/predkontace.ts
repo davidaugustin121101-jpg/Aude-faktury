@@ -31,6 +31,32 @@ export type Predkontace = {
 
 const DEFAULT_DPH_ACCOUNT = '343'
 const DEFAULT_SUPPLIER_ACCOUNT = '321'
+const ADVANCE_NAKLAD_ACCOUNT = '314'
+const ADVANCE_DPH_ACCOUNT = '315'
+
+export function predkontaceConfigForExtracted(data: {
+  typ_faktury?: string | null
+  typ_dokladu?: string | null
+}): PredkontaceConfig {
+  const isAdvance =
+    data.typ_faktury === 'zalohova' || data.typ_dokladu === 'proforma'
+  if (!isAdvance) return {}
+  return {
+    dphAccount: ADVANCE_DPH_ACCOUNT,
+    supplierAccount: DEFAULT_SUPPLIER_ACCOUNT,
+  }
+}
+
+export function defaultNakladAccountForExtracted(data: {
+  typ_faktury?: string | null
+  typ_dokladu?: string | null
+  ucetni_kod?: string | null
+}): string {
+  if (data.typ_faktury === 'zalohova' || data.typ_dokladu === 'proforma') {
+    return ADVANCE_NAKLAD_ACCOUNT
+  }
+  return (data.ucetni_kod ?? '').trim()
+}
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100
@@ -132,16 +158,22 @@ export function buildPredkontaceFromExtracted(
   data: ExtractedInvoiceData,
   config?: PredkontaceConfig
 ): Predkontace | null {
+  const mergedConfig = { ...predkontaceConfigForExtracted(data), ...config }
+  const naklad =
+    data.typ_faktury === 'zalohova' || data.typ_dokladu === 'proforma'
+      ? ADVANCE_NAKLAD_ACCOUNT
+      : data.ucetni_kod
+
   return buildPredkontace(
     {
-      ucetni_kod: data.ucetni_kod,
+      ucetni_kod: naklad,
       castka_bez_dph: data.castka_bez_dph,
       castka_dph: data.castka_dph,
       castka_celkem: data.castka_celkem,
       mena: data.mena,
       je_prenesena_dan: data.je_prenesena_dan,
     },
-    config
+    mergedConfig
   )
 }
 
@@ -158,16 +190,24 @@ export function predkontaceFromInvoice(
 ): Predkontace | null {
   const raw = (invoice.raw_extraction ?? {}) as {
     je_prenesena_dan?: boolean
+    typ_faktury?: string
+    typ_dokladu?: string
   }
+  const mergedConfig = { ...predkontaceConfigForExtracted(raw), ...config }
+  const naklad =
+    raw.typ_faktury === 'zalohova' || raw.typ_dokladu === 'proforma'
+      ? ADVANCE_NAKLAD_ACCOUNT
+      : invoice.ucetni_kod
+
   return buildPredkontace(
     {
-      ucetni_kod: invoice.ucetni_kod,
+      ucetni_kod: naklad,
       castka_bez_dph: invoice.castka_bez_dph,
       castka_dph: invoice.castka_dph,
       castka_celkem: invoice.castka_celkem,
       mena: invoice.mena,
       je_prenesena_dan: raw.je_prenesena_dan,
     },
-    config
+    mergedConfig
   )
 }

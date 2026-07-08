@@ -1,6 +1,6 @@
 import type { ExtractedInvoiceData } from './claude'
 import type { Predkontace } from './predkontace'
-import { buildPredkontace } from './predkontace'
+import { buildPredkontace, predkontaceConfigForExtracted } from './predkontace'
 
 export type PolozkaTyp = 'zbozi' | 'sluzba'
 
@@ -154,7 +154,7 @@ export function buildSplitPredkontaceFromExtracted(
         mena,
         je_prenesena_dan: jePrenesenaDan,
       },
-      {}
+      predkontaceConfigForExtracted(data)
     )
 
     if (!predkontace) continue

@@ -9,6 +9,7 @@ import { sendInvoiceToAccounting } from '@/lib/send-invoice'
 import { saveInvoicePdf } from '@/lib/invoice-pdf-storage'
 import { findDuplicateInvoice, formatDuplicateMessage } from '@/lib/duplicate-invoice'
 import { applyPolozkyToExtraction } from '@/lib/polozky-predkontace'
+import { reconcileExtractionAmounts, isZalohovaTyp } from '@/lib/invoice-amounts'
 import type { ProcessedInvoice } from '@/types/invoices'
 import type { AuditResult } from '@/lib/invoice-audit/types'
 import {
@@ -110,6 +111,17 @@ export async function processInvoiceFromPdf(
   }
 
   extracted = applyPolozkyToExtraction(extracted)
+  extracted = reconcileExtractionAmounts(extracted)
+
+  if (isZalohovaTyp(extracted)) {
+    extracted = {
+      ...extracted,
+      typ_faktury: 'zalohova',
+      ucetni_kod: '314',
+      ucetni_kod_nazev: 'Poskytnuté zálohy',
+      ucetni_kod_duvod: `Zálohová faktura — předkontace 314/315/321. ${extracted.ucetni_kod_duvod}`,
+    }
+  }
 
   const supplierRule = await getSupplierRule(supabase, userId, workspaceId, extracted.dodavatel_ico)
 
@@ -158,6 +170,10 @@ export async function processInvoiceFromPdf(
       castka_celkem: extracted.castka_celkem,
       ucetni_kod: extracted.ucetni_kod,
       je_prenesena_dan: extracted.je_prenesena_dan,
+      typ_faktury: extracted.typ_faktury,
+      typ_dokladu: extracted.typ_dokladu,
+      castka_k_uhrade: extracted.castka_k_uhrade,
+      polozky: extracted.polozky,
     },
     { supabase, userId, workspaceId }
   )

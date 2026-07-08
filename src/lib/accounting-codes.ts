@@ -18,7 +18,30 @@ Povinná pole:
 - variabilni_symbol, castka_bez_dph, sazba_dph (0, 10, 12, 21 — české sazby DPH)
 - castka_dph, castka_celkem, mena (CZK default), popis_plneni, iban
 - typ_dokladu: "faktura" | "dobropis" | "proforma" | "jiny"
+- typ_faktury: "zalohova" | "danovy_doklad" — viz pravidla níže
+- castka_k_uhrade: kolik zbývá uhradit (0 pokud záloha pokryla celé plnění)
+- datum_duzp: datum uskutečnění zdanitelného plnění (YYYY-MM-DD), null u proformy bez DUZP
 - je_prenesena_dan: boolean (true pokud faktura uvádí přenesení daňové povinnosti / reverse charge)
+
+=== ROZLIŠENÍ ZÁLOHOVÉ vs. DAŇOVÉ FAKTURY ===
+
+typ_faktury = "zalohova" pokud:
+- titulek obsahuje "zálohová faktura", "proforma", "advance invoice", "daňový doklad k přijaté platbě" u zálohy
+- chybí DUZP nebo není řádný daňový rozpis DPH (jen požadavek platby)
+- jde o požadavek platby před dodáním
+
+typ_faktury = "danovy_doklad" pokud:
+- jde o finální/vyúčtovací fakturu, daňový doklad po dodání, případně vyúčtování zálohy
+- je DUZP a rozpis DPH (i když castka_k_uhrade = 0 protože záloha byla uhrazena)
+
+U typ_faktury "zalohova":
+- navrhni ucetni_kod 314 (Poskytnuté zálohy), ne 504/518
+- předkontace bude 314 / 315 / 321 (DPH na záloze účet 315)
+
+U typ_faktury "danovy_doklad" po záloze (doplatek 0 Kč):
+- castka_bez_dph, castka_dph, castka_celkem vyplň z ROZPISU PLNĚNÍ / tabulky položek (hodnota plnění), NE jen řádek "k úhradě 0 Kč"
+- castka_k_uhrade = skutečně zbývající platba
+- do problemy[] uveď "Vyúčtování zálohy — ověřte párování se zálohovou fakturou" pokud je castka_k_uhrade 0
 
 === ČÁST 3: POLOŽKY FAKTURY (rozpoložkování) ===
 
@@ -47,7 +70,7 @@ Nejasné → 518
 
 Přenesení DPH (reverse charge): uveď je_prenesena_dan=true, sazba_dph může být 0
 
-Vrať JSON s poli ucetni_kod, ucetni_kod_nazev, ucetni_kod_duvod, ucetni_kod_confidence, confidence, problemy[], typ_dokladu, je_prenesena_dan, polozky[].
+Vrať JSON s poli ucetni_kod, ucetni_kod_nazev, ucetni_kod_duvod, ucetni_kod_confidence, confidence, problemy[], typ_dokladu, typ_faktury, castka_k_uhrade, datum_duzp, je_prenesena_dan, polozky[].
 `.trim()
 }
 

@@ -7,6 +7,7 @@ import { checkAssetThreshold } from './rules/asset-threshold'
 import { checkIcoFormat } from './rules/ico-format-check'
 import { checkAres } from './rules/ares-lookup'
 import { checkDuplicate } from './rules/duplicate-check'
+import { checkAdvancePairing } from './rules/advance-pairing-check'
 
 export type RunAuditOptions = {
   supabase?: SupabaseClient
@@ -53,6 +54,15 @@ export async function runInvoiceAudit(
   if (options.supabase && options.userId) {
     checks.push(
       await checkDuplicate(
+        options.supabase,
+        options.userId,
+        options.workspaceId ?? null,
+        data,
+        options.excludeInvoiceId
+      )
+    )
+    checks.push(
+      await checkAdvancePairing(
         options.supabase,
         options.userId,
         options.workspaceId ?? null,
