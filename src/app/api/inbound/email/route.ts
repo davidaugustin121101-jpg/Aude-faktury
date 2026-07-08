@@ -4,7 +4,11 @@ import { extractTokenFromRecipients } from '@/lib/inbound-email'
 import { processInvoiceFromPdf } from '@/lib/process-invoice-from-pdf'
 import { reserveInvoiceAllowance, releaseInvoiceReservation } from '@/lib/invoice-allowance'
 import { getActiveWorkspace } from '@/lib/workspace'
-import { verifyInboundWebhookSecret } from '@/lib/inbound-webhook-auth'
+import { verifyInboundWebhookSecret, verifyResendWebhook } from '@/lib/inbound-webhook-auth'
+import {
+  fetchPdfAttachmentsFromResendEmail,
+  parseResendReceivedEvent,
+} from '@/lib/resend-inbound'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -62,29 +66,21 @@ function parsePdfAttachments(attachments: InboundAttachment[] | undefined): {
   return pdfs
 }
 
-export async function POST(req: NextRequest) {
-  const secretHeader =
-    req.headers.get('x-inbound-secret') ??
-    req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ??
-    null
-
-  if (!verifyInboundWebhookSecret(secretHeader)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  let body: InboundPayload
-  try {
-    body = (await req.json()) as InboundPayload
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
-  }
-
-  const envelope = body.data ?? body
-  const recipients = normalizeRecipients(envelope.to)
+async function processInboundEmail(params: {
+  recipients: string[]
+  from: string | null
+  messageId: string | null
+  pdfs: { filename: string; buffer: Buffer }[]
+}) {
+  const { recipients, from, messageId, pdfs } = params
   const token = extractTokenFromRecipients(recipients)
 
   if (!token) {
     return NextResponse.json({ error: 'Unknown recipient' }, { status: 404 })
+  }
+
+  if (pdfs.length === 0) {
+    return NextResponse.json({ error: 'No PDF attachment' }, { status: 400 })
   }
 
   const admin = createAdminClient()
@@ -96,11 +92,6 @@ export async function POST(req: NextRequest) {
 
   if (!profile) {
     return NextResponse.json({ error: 'User not found for address' }, { status: 404 })
-  }
-
-  const pdfs = parsePdfAttachments(envelope.attachments)
-  if (pdfs.length === 0) {
-    return NextResponse.json({ error: 'No PDF attachment' }, { status: 400 })
   }
 
   const userId = profile.id as string
@@ -150,8 +141,8 @@ export async function POST(req: NextRequest) {
       pdfBuffer: pdf.buffer,
       filename: pdf.filename,
       source: 'email_inbound',
-      senderEmail: envelope.from ?? null,
-      originalEmailId: envelope.message_id ?? null,
+      senderEmail: from,
+      originalEmailId: messageId,
       receivedAt: new Date().toISOString(),
       allowanceSource: allowanceForPdf,
       invoiceSettings,
@@ -174,4 +165,63 @@ export async function POST(req: NextRequest) {
 
   const processed = results.filter((r) => r.ok).length
   return NextResponse.json({ processed, results })
+}
+
+export async function POST(req: NextRequest) {
+  const rawBody = await req.text()
+
+  const svixId = req.headers.get('svix-id')
+  const resendEvent = svixId
+    ? verifyResendWebhook(rawBody, {
+        id: svixId,
+        timestamp: req.headers.get('svix-timestamp'),
+        signature: req.headers.get('svix-signature'),
+      })
+    : null
+
+  if (svixId && !resendEvent) {
+    return NextResponse.json({ error: 'Invalid Resend webhook' }, { status: 401 })
+  }
+
+  if (!svixId) {
+    const secretHeader =
+      req.headers.get('x-inbound-secret') ??
+      req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ??
+      null
+
+    if (!verifyInboundWebhookSecret(secretHeader)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+  }
+
+  let body: InboundPayload
+  try {
+    body = JSON.parse(rawBody) as InboundPayload
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+
+  const resendData = parseResendReceivedEvent(resendEvent ?? body)
+  if (resendData?.email_id) {
+    try {
+      const pdfs = await fetchPdfAttachmentsFromResendEmail(resendData.email_id)
+      return processInboundEmail({
+        recipients: normalizeRecipients(resendData.to),
+        from: resendData.from ?? null,
+        messageId: resendData.message_id ?? resendData.email_id,
+        pdfs,
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Resend attachment fetch failed'
+      return NextResponse.json({ error: message }, { status: 502 })
+    }
+  }
+
+  const envelope = body.data ?? body
+  return processInboundEmail({
+    recipients: normalizeRecipients(envelope.to),
+    from: envelope.from ?? null,
+    messageId: envelope.message_id ?? null,
+    pdfs: parsePdfAttachments(envelope.attachments),
+  })
 }
