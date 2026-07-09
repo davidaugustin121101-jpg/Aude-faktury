@@ -2,6 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { sendToIdoklad, type IdokladConnection } from '@/lib/idoklad'
 import { sendToFakturoid } from '@/lib/fakturoid'
 import { sendToSuperFaktura } from '@/lib/superfaktura'
+import { sendToBitFaktura } from '@/lib/bitfaktura'
+import { sendToSucto } from '@/lib/sucto'
 import { getConnectionForInvoiceWithSecrets } from '@/lib/accounting-connection'
 import { buildPredkontaceFromExtracted } from '@/lib/predkontace'
 import { loadInvoicePdfAttachment } from '@/lib/invoice-pdf-storage'
@@ -26,6 +28,11 @@ type AccountingRow = Record<string, unknown> & {
   superfaktura_api_email?: string | null
   superfaktura_api_key?: string | null
   superfaktura_company_id?: string | null
+  bitfaktura_domain?: string | null
+  bitfaktura_api_token?: string | null
+  sucto_email?: string | null
+  sucto_password?: string | null
+  sucto_company_id?: string | null
 }
 
 export function buildExtractedDataFromInvoice(inv: ProcessedInvoice): ExtractedInvoiceData {
@@ -176,6 +183,25 @@ export async function sendInvoiceToAccounting(params: {
       )
       result = { id: r.id, number: r.number, pdfAttached: r.pdfAttached }
       pdfAttached = r.pdfAttached
+    } else if (conn.provider === 'bitfaktura') {
+      const r = await sendToBitFaktura(
+        {
+          domain: conn.bitfaktura_domain ?? '',
+          apiToken: conn.bitfaktura_api_token ?? '',
+        },
+        extractedData
+      )
+      result = { id: r.id, number: r.number }
+    } else if (conn.provider === 'sucto') {
+      const r = await sendToSucto(
+        {
+          email: conn.sucto_email ?? '',
+          password: conn.sucto_password ?? '',
+          companyId: conn.sucto_company_id ?? '',
+        },
+        extractedData
+      )
+      result = { id: r.id, number: r.number }
     } else {
       const r = await sendToFakturoid(
         {

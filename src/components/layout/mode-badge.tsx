@@ -7,6 +7,8 @@ const PROVIDER_NAMES = {
   idoklad: 'iDoklad',
   fakturoid: 'Fakturoid',
   superfaktura: 'SuperFaktura',
+  bitfaktura: 'BitFaktura',
+  sucto: 'Súčto',
 } as const
 
 export function ModeBadge({

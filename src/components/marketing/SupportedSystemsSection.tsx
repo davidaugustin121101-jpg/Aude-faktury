@@ -1,17 +1,25 @@
+import Image from 'next/image'
 import { ArrowRight, CloudUpload, Download, Mail, Sparkles } from 'lucide-react'
 
-const DIRECT_SYSTEMS = [
-  { name: 'iDoklad', color: 'text-blue-700', bg: 'bg-blue-50' },
-  { name: 'Fakturoid', color: 'text-emerald-700', bg: 'bg-emerald-50' },
-  { name: 'SuperFaktura', color: 'text-violet-700', bg: 'bg-violet-50' },
-] as const
+type SupportedSystem = {
+  name: string
+  logo: string
+}
 
-const EXPORT_SYSTEMS = [
-  { name: 'Pohoda', color: 'text-orange-700', bg: 'bg-orange-50' },
-  { name: 'Money S3', color: 'text-sky-700', bg: 'bg-sky-50' },
-  { name: 'Helios', color: 'text-indigo-700', bg: 'bg-indigo-50' },
-  { name: 'ISDOC', color: 'text-slate-700', bg: 'bg-slate-50' },
-] as const
+const DIRECT_SYSTEMS: SupportedSystem[] = [
+  { name: 'iDoklad', logo: '/logos/systems/idoklad.png' },
+  { name: 'Fakturoid', logo: '/logos/systems/fakturoid.png' },
+  { name: 'SuperFaktura', logo: '/logos/systems/superfaktura.png' },
+  { name: 'BitFaktura', logo: '/logos/systems/bitfaktura.png' },
+  { name: 'Súčto', logo: '/logos/systems/sucto.png' },
+]
+
+const EXPORT_SYSTEMS: SupportedSystem[] = [
+  { name: 'Pohoda', logo: '/logos/systems/pohoda.png' },
+  { name: 'Money S3', logo: '/logos/systems/money-s3.png' },
+  { name: 'Helios', logo: '/logos/systems/helios.png' },
+  { name: 'ISDOC', logo: '/logos/systems/isdoc.svg' },
+]
 
 const STEPS = [
   {
@@ -27,24 +35,26 @@ const STEPS = [
   {
     icon: CloudUpload,
     title: 'Odešleme nebo exportujeme',
-    desc: 'Přímé API do iDokladu/Fakturoidu/SuperFaktury včetně PDF, nebo stažení souboru pro Pohodu/Money/Helios.',
+    desc: 'Přímé API do iDokladu, Fakturoidu, SuperFaktury, BitFaktury nebo Súčta včetně předkontace v poznámce.',
   },
 ] as const
 
-function SystemBadge({
-  name,
-  color,
-  bg,
-}: {
-  name: string
-  color: string
-  bg: string
-}) {
+function SystemLogoCard({ name, logo }: SupportedSystem) {
   return (
     <div
-      className={`flex items-center justify-center rounded-xl border border-gray-200 px-4 py-3 ${bg}`}
+      className="flex flex-col items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-3 shadow-sm"
+      title={name}
     >
-      <span className={`text-sm font-bold tracking-tight ${color}`}>{name}</span>
+      <div className="relative h-12 w-full max-w-[180px]">
+        <Image
+          src={logo}
+          alt={`Logo ${name}`}
+          fill
+          className="object-contain object-center"
+          sizes="180px"
+        />
+      </div>
+      <span className="text-[11px] font-medium text-gray-500 text-center leading-tight">{name}</span>
     </div>
   )
 }
@@ -73,9 +83,9 @@ export function SupportedSystemsSection() {
             <p className="text-sm text-gray-600 mb-4">
               Plně automatické — faktura + PDF příloha + předkontace v poznámce.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {DIRECT_SYSTEMS.map((s) => (
-                <SystemBadge key={s.name} {...s} />
+                <SystemLogoCard key={s.name} {...s} />
               ))}
             </div>
           </div>
@@ -90,9 +100,26 @@ export function SupportedSystemsSection() {
             </p>
             <div className="grid grid-cols-2 gap-3">
               {EXPORT_SYSTEMS.map((s) => (
-                <SystemBadge key={s.name} {...s} />
+                <SystemLogoCard key={s.name} {...s} />
               ))}
             </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-gray-100 bg-gray-50/80 px-6 py-5 mb-16">
+          <p className="text-center text-sm text-gray-500 mb-4">Všechny podporované systémy na jednom místě</p>
+          <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6">
+            {[...DIRECT_SYSTEMS, ...EXPORT_SYSTEMS].map((s) => (
+              <div key={`strip-${s.name}`} className="relative h-10 w-[120px] opacity-90 hover:opacity-100 transition-opacity">
+                <Image
+                  src={s.logo}
+                  alt={s.name}
+                  fill
+                  className="object-contain object-center"
+                  sizes="120px"
+                />
+              </div>
+            ))}
           </div>
         </div>
 

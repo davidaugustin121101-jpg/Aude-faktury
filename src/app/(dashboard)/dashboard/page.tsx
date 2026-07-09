@@ -16,6 +16,8 @@ const PROVIDER_NAMES = {
   idoklad: 'iDoklad',
   fakturoid: 'Fakturoid',
   superfaktura: 'SuperFaktura',
+  bitfaktura: 'BitFaktura',
+  sucto: 'Súčto',
 }
 
 export default async function DashboardPage() {

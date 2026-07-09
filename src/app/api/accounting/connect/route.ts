@@ -8,6 +8,8 @@ import {
   validateFakturoidExpenseWrite,
 } from '@/lib/fakturoid'
 import { validateSuperFakturaConnection } from '@/lib/superfaktura'
+import { validateBitFakturaConnection } from '@/lib/bitfaktura'
+import { validateSuctoConnection } from '@/lib/sucto'
 import { getActiveWorkspace } from '@/lib/workspace'
 import { storeVaultSecret } from '@/lib/vault-secrets'
 import { checkRateLimit } from '@/lib/rate-limit'
@@ -35,7 +37,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { provider, apiKey, accountSlug, clientId, clientSecret, apiEmail, companyId } =
+  const { provider, apiKey, accountSlug, clientId, clientSecret, apiEmail, companyId, suctoPassword } =
     body as {
       provider: string
       apiKey?: string
@@ -44,6 +46,7 @@ export async function POST(req: NextRequest) {
       clientSecret?: string
       apiEmail?: string
       companyId?: string
+      suctoPassword?: string
     }
 
   if (!provider) {
@@ -122,6 +125,45 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         )
       }
+    } else if (provider === 'bitfaktura') {
+      if (!accountSlug || !apiKey) {
+        return NextResponse.json(
+          { error: 'Vyplňte subdoménu BitFaktury a API token' },
+          { status: 400 }
+        )
+      }
+      valid = await validateBitFakturaConnection({ domain: accountSlug, apiToken: apiKey })
+      if (!valid) {
+        return NextResponse.json(
+          {
+            error:
+              'BitFaktura odmítla přihlášení. Zkontrolujte subdoménu (např. mojefirma) a token z Nastavení → Integrace → Autorizační kód API.',
+          },
+          { status: 400 }
+        )
+      }
+    } else if (provider === 'sucto') {
+      const password = suctoPassword ?? apiKey
+      if (!apiEmail || !password || !companyId) {
+        return NextResponse.json(
+          { error: 'Vyplňte e-mail, heslo a ID firmy ve Súčtu' },
+          { status: 400 }
+        )
+      }
+      valid = await validateSuctoConnection({
+        email: apiEmail,
+        password,
+        companyId,
+      })
+      if (!valid) {
+        return NextResponse.json(
+          {
+            error:
+              'Súčto odmítlo přihlášení. Zkontrolujte přihlašovací údaje a ID firmy (číslo v URL po přihlášení na moje.sucto.cz).',
+          },
+          { status: 400 }
+        )
+      }
     }
   } catch {
     return NextResponse.json({ error: 'Nepodařilo se ověřit přihlašovací údaje' }, { status: 400 })
@@ -159,6 +201,8 @@ export async function POST(req: NextRequest) {
     fakturoid_oauth_token: null,
     fakturoid_client_secret: null,
     superfaktura_api_key: null,
+    bitfaktura_api_token: null,
+    sucto_password: null,
   }
 
   if (provider === 'idoklad') {
@@ -188,6 +232,39 @@ export async function POST(req: NextRequest) {
     connData.superfaktura_company_id = companyId ?? ''
     connData.idoklad_client_id = null
     connData.fakturoid_account_slug = null
+  } else if (provider === 'bitfaktura') {
+    connData.bitfaktura_domain = accountSlug ?? null
+    const tokenId = await storeVaultSecret(
+      admin,
+      apiKey ?? '',
+      `${vaultPrefix}_bitfaktura_token`,
+      'BitFaktura API token'
+    )
+    if (!tokenId) return vaultStoreFailed()
+    connData.bitfaktura_api_token_id = tokenId
+    connData.idoklad_client_id = null
+    connData.fakturoid_account_slug = null
+    connData.superfaktura_api_email = null
+    connData.superfaktura_company_id = null
+    connData.sucto_email = null
+    connData.sucto_company_id = null
+  } else if (provider === 'sucto') {
+    const password = suctoPassword ?? apiKey ?? ''
+    connData.sucto_email = apiEmail ?? null
+    connData.sucto_company_id = companyId ?? null
+    const passwordId = await storeVaultSecret(
+      admin,
+      password,
+      `${vaultPrefix}_sucto_password`,
+      'Súčto password'
+    )
+    if (!passwordId) return vaultStoreFailed()
+    connData.sucto_password_id = passwordId
+    connData.idoklad_client_id = null
+    connData.fakturoid_account_slug = null
+    connData.superfaktura_api_email = null
+    connData.superfaktura_company_id = null
+    connData.bitfaktura_domain = null
   } else {
     const token = fakturoidAutoToken ?? apiKey ?? null
     const secret = clientSecret ?? null

@@ -30,7 +30,7 @@ export async function DELETE(req: NextRequest, { params }: Props) {
   const { data: row } = await admin
     .from('accounting_connections')
     .select(
-      'idoklad_client_secret_id, fakturoid_oauth_token_id, fakturoid_client_secret_id, superfaktura_api_key_id'
+      'idoklad_client_secret_id, fakturoid_oauth_token_id, fakturoid_client_secret_id, superfaktura_api_key_id, bitfaktura_api_token_id, sucto_password_id'
     )
     .eq('id', id)
     .maybeSingle()
@@ -40,6 +40,8 @@ export async function DELETE(req: NextRequest, { params }: Props) {
     await deleteVaultSecret(admin, row.fakturoid_oauth_token_id)
     await deleteVaultSecret(admin, row.fakturoid_client_secret_id)
     await deleteVaultSecret(admin, row.superfaktura_api_key_id)
+    await deleteVaultSecret(admin, row.bitfaktura_api_token_id)
+    await deleteVaultSecret(admin, row.sucto_password_id)
   }
 
   const { error } = await admin

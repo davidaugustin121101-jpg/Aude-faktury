@@ -13,7 +13,7 @@ import { toast } from 'sonner'
 
 type WorkspaceAccounting = {
   connected: boolean
-  provider?: 'idoklad' | 'fakturoid' | 'superfaktura'
+  provider?: 'idoklad' | 'fakturoid' | 'superfaktura' | 'bitfaktura' | 'sucto'
   label?: string | null
 }
 
@@ -28,6 +28,8 @@ const PROVIDER_NAMES = {
   idoklad: 'iDoklad',
   fakturoid: 'Fakturoid',
   superfaktura: 'SuperFaktura',
+  bitfaktura: 'BitFaktura',
+  sucto: 'Súčto',
 }
 
 export function ClientsPageClient() {

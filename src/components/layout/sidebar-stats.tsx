@@ -9,6 +9,8 @@ const PROVIDER_NAMES: Record<AccountingProvider, string> = {
   idoklad: 'iDoklad',
   fakturoid: 'Fakturoid',
   superfaktura: 'SuperFaktura',
+  bitfaktura: 'BitFaktura',
+  sucto: 'Súčto',
 }
 
 export function SidebarStats({

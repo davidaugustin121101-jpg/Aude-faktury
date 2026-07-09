@@ -2,7 +2,12 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { hydrateConnectionSecrets } from '@/lib/vault-secrets'
 
-export type AccountingProvider = 'idoklad' | 'fakturoid' | 'superfaktura'
+export type AccountingProvider =
+  | 'idoklad'
+  | 'fakturoid'
+  | 'superfaktura'
+  | 'bitfaktura'
+  | 'sucto'
 
 export type WorkspaceConnectionSummary = {
   workspaceId: string
@@ -53,7 +58,7 @@ export async function getWorkspaceConnection(
 ) {
   const { data, error } = await supabase
     .from('accounting_connections')
-    .select('id, provider, user_id, workspace_id, is_active, created_at, fakturoid_account_slug, superfaktura_company_id, country')
+    .select('id, provider, user_id, workspace_id, is_active, created_at, fakturoid_account_slug, superfaktura_company_id, bitfaktura_domain, sucto_company_id, country')
     .eq('user_id', userId)
     .eq('workspace_id', workspaceId)
     .eq('is_active', true)
@@ -89,7 +94,7 @@ export async function listWorkspaceConnectionSummaries(
 
   const { data } = await supabase
     .from('accounting_connections')
-    .select('workspace_id, provider, fakturoid_account_slug, superfaktura_company_id')
+    .select('workspace_id, provider, fakturoid_account_slug, superfaktura_company_id, bitfaktura_domain, sucto_company_id')
     .eq('user_id', userId)
     .eq('is_active', true)
     .in('workspace_id', workspaceIds)
@@ -105,7 +110,11 @@ export async function listWorkspaceConnectionSummaries(
         ? row.fakturoid_account_slug
         : row.provider === 'superfaktura'
           ? row.superfaktura_company_id || 'SuperFaktura'
-          : 'iDoklad'
+          : row.provider === 'bitfaktura'
+            ? row.bitfaktura_domain || 'BitFaktura'
+            : row.provider === 'sucto'
+              ? row.sucto_company_id || 'Súčto'
+              : 'iDoklad'
     map[row.workspace_id] = {
       workspaceId: row.workspace_id,
       connected: true,
@@ -138,6 +147,8 @@ export async function getConnectionForInvoice(
 export function providerDisplayName(provider: AccountingProvider | string): string {
   if (provider === 'idoklad') return 'iDoklad'
   if (provider === 'superfaktura') return 'SuperFaktura'
+  if (provider === 'bitfaktura') return 'BitFaktura'
+  if (provider === 'sucto') return 'Súčto'
   return 'Fakturoid'
 }
 
@@ -151,6 +162,8 @@ export function mapConnectionRow(row: Record<string, unknown>) {
     account_slug:
       (row.fakturoid_account_slug as string | null) ??
       (row.superfaktura_company_id as string | null) ??
+      (row.bitfaktura_domain as string | null) ??
+      (row.sucto_company_id as string | null) ??
       null,
   }
 }

@@ -75,7 +75,7 @@ export interface EmailConnection {
 export interface AccountingConnection {
   id: string
   user_id: string
-  provider: 'idoklad' | 'fakturoid' | 'superfaktura'
+  provider: 'idoklad' | 'fakturoid' | 'superfaktura' | 'bitfaktura' | 'sucto'
   account_slug: string | null
   is_active: boolean
   created_at: string

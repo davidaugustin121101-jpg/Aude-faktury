@@ -77,5 +77,15 @@ export async function hydrateConnectionSecrets(
     out.superfaktura_api_key = await readVaultSecret(admin, superfakturaKeyId)
   }
 
+  const bitfakturaTokenId = row.bitfaktura_api_token_id as string | null
+  if (bitfakturaTokenId && !row.bitfaktura_api_token) {
+    out.bitfaktura_api_token = await readVaultSecret(admin, bitfakturaTokenId)
+  }
+
+  const suctoPasswordId = row.sucto_password_id as string | null
+  if (suctoPasswordId && !row.sucto_password) {
+    out.sucto_password = await readVaultSecret(admin, suctoPasswordId)
+  }
+
   return out
 }

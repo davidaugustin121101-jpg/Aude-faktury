@@ -10,7 +10,7 @@ import type { AccountingConnection } from '@/types/invoices'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 
-type Provider = 'idoklad' | 'fakturoid' | 'superfaktura'
+type Provider = 'idoklad' | 'fakturoid' | 'superfaktura' | 'bitfaktura' | 'sucto'
 type IdokladMode = 'oauth2' | 'token'
 type FakturoidMode = 'apikeys' | 'token'
 
@@ -20,7 +20,13 @@ interface Props {
   workspaceName: string
 }
 
-const PROVIDERS: Provider[] = ['idoklad', 'fakturoid', 'superfaktura']
+const PROVIDERS: Provider[] = [
+  'idoklad',
+  'fakturoid',
+  'superfaktura',
+  'bitfaktura',
+  'sucto',
+]
 
 const PROVIDER_CONFIG = {
   idoklad: {
@@ -49,6 +55,24 @@ const PROVIDER_CONFIG = {
     border: 'border-violet-600',
     soft: 'bg-violet-50',
     desc: 'Email + API klíč',
+  },
+  bitfaktura: {
+    label: 'BitFaktura',
+    emoji: '🧮',
+    bg: 'bg-amber-50',
+    text: 'text-amber-700',
+    border: 'border-amber-600',
+    soft: 'bg-amber-50',
+    desc: 'Subdoména + API token',
+  },
+  sucto: {
+    label: 'Súčto',
+    emoji: '📒',
+    bg: 'bg-teal-50',
+    text: 'text-teal-700',
+    border: 'border-teal-600',
+    soft: 'bg-teal-50',
+    desc: 'Přihlášení + ID firmy',
   },
 } as const
 
@@ -103,6 +127,7 @@ export function AccountingConnectionManager({
   const [accountSlug, setAccountSlug] = useState('')
   const [apiEmail, setApiEmail] = useState('')
   const [companyId, setCompanyId] = useState('')
+  const [suctoPassword, setSuctoPassword] = useState('')
   const [saving, setSaving] = useState(false)
 
   const showPicker = !activeConnection || changing
@@ -132,6 +157,7 @@ export function AccountingConnectionManager({
     setAccountSlug('')
     setApiEmail('')
     setCompanyId('')
+    setSuctoPassword('')
     setIdokladMode('oauth2')
     setFakturoidMode('apikeys')
   }
@@ -168,6 +194,14 @@ export function AccountingConnectionManager({
       toast.error('Vyplňte email a API klíč SuperFaktury')
       return
     }
+    if (adding === 'bitfaktura' && (!accountSlug || !apiKey)) {
+      toast.error('Vyplňte subdoménu a API token BitFaktury')
+      return
+    }
+    if (adding === 'sucto' && (!apiEmail || !suctoPassword || !companyId)) {
+      toast.error('Vyplňte e-mail, heslo a ID firmy Súčto')
+      return
+    }
 
     setSaving(true)
     let body: Record<string, unknown>
@@ -181,13 +215,29 @@ export function AccountingConnectionManager({
         fakturoidMode === 'apikeys'
           ? { provider: 'fakturoid', clientId, clientSecret, country: 'cz' }
           : { provider: 'fakturoid', apiKey, accountSlug, country: 'cz' }
-    } else {
+    } else if (adding === 'superfaktura') {
       body = {
         provider: 'superfaktura',
         apiEmail,
         apiKey,
         companyId,
       }
+    } else if (adding === 'bitfaktura') {
+      body = {
+        provider: 'bitfaktura',
+        accountSlug,
+        apiKey,
+      }
+    } else if (adding === 'sucto') {
+      body = {
+        provider: 'sucto',
+        apiEmail,
+        suctoPassword,
+        companyId,
+      }
+    } else {
+      toast.error('Neznámý fakturační systém')
+      return
     }
 
     const res = await fetch('/api/accounting/connect', {
@@ -225,7 +275,7 @@ export function AccountingConnectionManager({
           <>
             V režimu Solo lze mít pouze{' '}
             <span className="font-medium text-gray-900">jeden</span> fakturační systém — vyberte
-            iDoklad, Fakturoid nebo SuperFakturu.
+            iDoklad, Fakturoid, SuperFakturu, BitFakturu nebo Súčto.
           </>
         )}
       </div>
@@ -257,7 +307,11 @@ export function AccountingConnectionManager({
                     ? `Company ID: ${activeConnection.account_slug}`
                     : activeConnection.provider === 'fakturoid'
                       ? `Slug: ${activeConnection.account_slug}`
-                      : 'Aktivní připojení'}
+                      : activeConnection.provider === 'bitfaktura'
+                        ? `${activeConnection.account_slug}.bitfaktura.cz`
+                        : activeConnection.provider === 'sucto'
+                          ? `Firma #${activeConnection.account_slug}`
+                          : 'Aktivní připojení'}
                 </p>
               )}
               <Button
@@ -285,7 +339,7 @@ export function AccountingConnectionManager({
               nahrazeno.
             </p>
           )}
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {PROVIDERS.map((provider) => {
               const cfg = PROVIDER_CONFIG[provider]
               return (
@@ -464,6 +518,75 @@ export function AccountingConnectionManager({
                 <Input
                   id="sf-company"
                   placeholder="ID firmy z API nastavení"
+                  value={companyId}
+                  onChange={(e) => setCompanyId(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+            </>
+          )}
+
+          {adding === 'bitfaktura' && (
+            <>
+              <p className="text-xs text-gray-500">
+                BitFaktura → Nastavení → Nastavení účtu → Integrace → Autorizační kód API.
+                Subdoména je část URL před .bitfaktura.cz (např.{' '}
+                <span className="font-mono">mojefirma</span>).
+              </p>
+              <div>
+                <Label htmlFor="bf-domain">Subdoména účtu</Label>
+                <Input
+                  id="bf-domain"
+                  placeholder="mojefirma"
+                  value={accountSlug}
+                  onChange={(e) => setAccountSlug(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="bf-token">API token</Label>
+                <Input
+                  id="bf-token"
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+            </>
+          )}
+
+          {adding === 'sucto' && (
+            <>
+              <p className="text-xs text-gray-500">
+                Přihlašovací údaje z moje.sucto.cz. ID firmy najdete v URL po výběru firmy
+                (např. /companies/<span className="font-mono">123</span>/…).
+              </p>
+              <div>
+                <Label htmlFor="sucto-email">E-mail</Label>
+                <Input
+                  id="sucto-email"
+                  type="email"
+                  value={apiEmail}
+                  onChange={(e) => setApiEmail(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="sucto-password">Heslo</Label>
+                <Input
+                  id="sucto-password"
+                  type="password"
+                  value={suctoPassword}
+                  onChange={(e) => setSuctoPassword(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="sucto-company">ID firmy ve Súčtu</Label>
+                <Input
+                  id="sucto-company"
+                  placeholder="123"
                   value={companyId}
                   onChange={(e) => setCompanyId(e.target.value)}
                   className="mt-1"
