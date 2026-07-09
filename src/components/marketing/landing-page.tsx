@@ -20,6 +20,7 @@ import {
   getMultiClientAddonHref,
 } from '@/lib/landing-links'
 import { SupportedSystemsSection } from '@/components/marketing/SupportedSystemsSection'
+import { SeoRichContentSection } from '@/components/marketing/SeoRichContentSection'
 import { MARKETING_FAQ } from '@/content/marketing/faq'
 
 const STEPS = [
@@ -37,7 +38,7 @@ const STEPS = [
   },
   {
     title: 'Export nebo odeslání',
-    desc: 'Stáhněte ISDOC/Pohoda/Money/Helios, nebo odešlete do iDokladu, Fakturoidu či SuperFaktury včetně PDF přílohy.',
+    desc: 'Stáhněte Pohoda/Money/Helios, nebo odešlete do iDokladu, Fakturoidu, SuperFaktury, BitFaktury či Súčta včetně PDF přílohy.',
   },
   {
     title: 'Faktura v účetnictví',
@@ -59,12 +60,12 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-gray-900 leading-tight tracking-tight">
               Vytěžení faktury{' '}
-              <span className="text-blue-600">od 0 Kč.</span>
+              <span className="text-blue-600">od 2,99 Kč.</span>
             </h1>
             <p className="mt-5 text-base sm:text-lg text-gray-600 leading-relaxed max-w-xl">
               Přetáhněte PDF nebo pošlete e-mailem — Audeflow vytěží data, navrhne předkontaci{' '}
-              <strong className="text-gray-800">504/343/321</strong> a odešle do iDokladu, Fakturoidu
-              nebo SuperFaktury včetně PDF přílohy.
+              <strong className="text-gray-800">504/343/321</strong> a odešle do iDokladu, Fakturoidu,
+              SuperFaktury, BitFaktury nebo Súčta. Export do Pohody, Money S3 a Helios.
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5">
@@ -72,7 +73,7 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
                   Cena
                 </p>
                 <p className="text-sm font-semibold text-emerald-900">
-                  od 2,99 Kč/faktura · 299 Kč / 100 faktur
+                  od 2,99 Kč/faktura · nejnižší cena na trhu
                 </p>
                 <p className="text-xs text-emerald-800">kredit bez expirace</p>
               </div>
@@ -100,7 +101,7 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
               </a>
             </div>
             <div className="mt-8 flex flex-wrap gap-2">
-              {['Solo zdarma', '1 fakturační systém', '10 faktur / měsíc', 'PDF příloha v ERP'].map(
+              {['10 faktur zdarma', 'iDoklad · Fakturoid · Pohoda', 'BitFaktura · Súčto · Helios', 'PDF příloha v ERP'].map(
                 (tag) => (
                   <span
                     key={tag}
@@ -170,7 +171,7 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
               <h2 className="text-2xl font-bold mb-3">Více klientů, každý vlastní systém</h2>
               <p className="text-violet-100 leading-relaxed mb-6">
                 Pro účetní kanceláře. Každý klient má vlastní workspace a vlastní napojení na iDoklad,
-                Fakturoid nebo SuperFakturu. Přepínání klienta trvá jednu sekundu.
+                Fakturoid, SuperFaktura, BitFaktura nebo Súčto. Přepínání klienta trvá jednu sekundu.
               </p>
               <ul className="space-y-2">
                 {BILLING_TIERS[1].benefits.map((f) => (
@@ -189,18 +190,18 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
             {[
               {
                 icon: Upload,
-                title: 'PDF drag & drop',
-                desc: 'Nahrajte fakturu přetažením. Žádná instalace, funguje v prohlížeči.',
+                title: 'PDF drag & drop + e-mail',
+                desc: 'Nahrajte fakturu přetažením nebo pošlete na @in.audeflow.cz. Žádná instalace.',
               },
               {
                 icon: FileText,
                 title: 'České účetnictví',
-                desc: 'České sazby DPH, účetní osnova a předkontace 504/343/321.',
+                desc: 'České sazby DPH, účetní osnova, předkontace 504/343/321 a kontrola duplicit.',
               },
               {
                 icon: Sparkles,
-                title: 'Odeslání s PDF přílohou',
-                desc: 'Do iDokladu a SuperFaktury pošleme fakturu i s originálním PDF — bez ručního nahrávání.',
+                title: '8 účetních systémů',
+                desc: 'API do iDokladu, Fakturoidu, SuperFaktury, BitFaktury, Súčta. Export Pohoda, Money S3, Helios.',
               },
             ].map(({ icon: Icon, title, desc }) => (
               <div key={title} className="bg-white rounded-2xl border border-gray-200 p-6">
@@ -223,8 +224,8 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
               Tarify podle objemu faktur
             </h2>
             <p className="text-gray-500 text-center mb-12">
-              Solo zdarma, Standard 100 faktur, Pro neomezeně. Modul více klientů (+299 Kč) jako
-              doplněk k placenému tarifu.
+              Solo zdarma (10 faktur/měsíc), Standard od 2,99 Kč/faktura — nejnižší cena vytěžení v ČR.
+              Modul více klientů (+299 Kč) jako doplněk k placenému tarifu.
             </p>
             <div className="grid md:grid-cols-3 gap-6 mb-8">
               {BILLING_TIERS.map((plan) => (
@@ -279,6 +280,8 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
             </div>
           </div>
         </section>
+
+        <SeoRichContentSection />
 
         <section id="faq" className="py-16 sm:py-20">
           <div className="max-w-3xl mx-auto px-4">

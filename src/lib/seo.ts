@@ -2,29 +2,29 @@ import type { Metadata, Viewport } from 'next'
 import { APP_NAME } from '@/lib/brand'
 import { LEGAL_EMAIL, LEGAL_WEB } from '@/lib/legal'
 import { MARKETING_FAQ } from '@/content/marketing/faq'
+import {
+  API_ACCOUNTING_SYSTEMS,
+  ERP_EXPORT_SYSTEMS,
+  PRICING_SEO,
+  allSeoKeywords,
+} from '@/content/marketing/seo-systems'
 
 export const SITE_URL =
   process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ?? 'https://faktury.audeflow.cz'
 
 export const SITE_DESCRIPTION =
-  'Automatické vytěžení PDF faktur, návrh předkontace a odeslání do iDokladu, Fakturoidu nebo SuperFaktury. Export ISDOC, Pohoda XML, Money S3 a Helios. E-mailový vstup @in.audeflow.cz. Pro OSVČ, firmy i účetní kanceláře v ČR.'
+  'Nejlevnější vytěžení PDF faktur v ČR — od 2,99 Kč/faktura, 10 faktur měsíčně zdarma. Automatické OCR, návrh předkontace 504/343/321 a odeslání do iDokladu, Fakturoidu, SuperFaktury, BitFaktury a Súčta. Export Pohoda XML, Money S3, Helios. E-mail @in.audeflow.cz.'
 
 export const SITE_KEYWORDS = [
+  ...allSeoKeywords(),
   'vytěžení faktury',
   'vytěžení PDF faktury',
   'OCR faktura',
   'PDF faktura účetnictví',
   'automatické zpracování faktur',
   'přijaté faktury',
-  'iDoklad API',
-  'iDoklad import faktury',
-  'Fakturoid náklady',
-  'SuperFaktura faktura',
-  'ISDOC export',
-  'Pohoda import faktury',
-  'Pohoda XML faktura',
-  'Money S3 faktura',
-  'Helios faktura',
+  'BitFaktura API',
+  'Súčto API',
   'účetní kód faktura',
   'předkontace faktury',
   '504 343 321',
@@ -35,6 +35,9 @@ export const SITE_KEYWORDS = [
   'faktury audeflow',
   'e-mail faktura PDF',
   'zálohová faktura účetnictví',
+  'daňový doklad k záloze',
+  'kontrola duplicit faktura',
+  'ARES IČO faktura',
 ]
 
 /** Veřejné trasy pro sitemap a interní odkazy */
@@ -62,7 +65,7 @@ export const viewport: Viewport = {
 export const rootMetadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${APP_NAME} – Vytěžení PDF faktur a export do účetnictví | Audeflow`,
+    default: `${APP_NAME} – Vytěžení faktur od 2,99 Kč | iDoklad, Pohoda, Fakturoid`,
     template: `%s | ${APP_NAME}`,
   },
   description: SITE_DESCRIPTION,
@@ -89,20 +92,20 @@ export const rootMetadata: Metadata = {
     locale: 'cs_CZ',
     url: SITE_URL,
     siteName: APP_NAME,
-    title: `${APP_NAME} – PDF faktura do účetnictví za minutu`,
+    title: `${APP_NAME} – Nejlevnější vytěžení PDF faktur v ČR`,
     description: SITE_DESCRIPTION,
     images: [
       {
         url: '/og-image.svg',
         width: 1200,
         height: 630,
-        alt: `${APP_NAME} – automatické vytěžení faktur pro ČR`,
+        alt: `${APP_NAME} – automatické vytěžení faktur od 2,99 Kč`,
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${APP_NAME} – Vytěžení faktur pro ČR`,
+    title: `${APP_NAME} – Vytěžení faktur od 2,99 Kč`,
     description: SITE_DESCRIPTION,
     images: ['/og-image.svg'],
   },
@@ -155,6 +158,38 @@ export function pageMetadata(title: string, description: string, path = ''): Met
   }
 }
 
+function supportedSystemsItemList() {
+  const apiItems = API_ACCOUNTING_SYSTEMS.map((s, i) => ({
+    '@type': 'ListItem',
+    position: i + 1,
+    item: {
+      '@type': 'SoftwareApplication',
+      name: `${APP_NAME} → ${s.name}`,
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      description: s.description,
+      url: `${SITE_URL}/#integrace-${s.slug}`,
+    },
+  }))
+  const erpItems = ERP_EXPORT_SYSTEMS.map((s, i) => ({
+    '@type': 'ListItem',
+    position: API_ACCOUNTING_SYSTEMS.length + i + 1,
+    item: {
+      '@type': 'SoftwareApplication',
+      name: `${APP_NAME} → export ${s.name}`,
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      description: s.description,
+      url: `${SITE_URL}/#export-${s.slug}`,
+    },
+  }))
+  return {
+    '@type': 'ItemList',
+    name: 'Podporované účetní a fakturační systémy',
+    itemListElement: [...apiItems, ...erpItems],
+  }
+}
+
 export function landingJsonLd() {
   return {
     '@context': 'https://schema.org',
@@ -187,27 +222,36 @@ export function landingJsonLd() {
             '@type': 'Offer',
             price: '0',
             priceCurrency: 'CZK',
-            description: '10 faktur měsíčně zdarma',
+            description: PRICING_SEO.free,
           },
           {
             '@type': 'Offer',
             price: '299',
             priceCurrency: 'CZK',
-            description: '100 faktur — kredit bez expirace',
+            description: PRICING_SEO.pack,
+          },
+          {
+            '@type': 'Offer',
+            price: '2.99',
+            priceCurrency: 'CZK',
+            description: `Cena za fakturu od ${PRICING_SEO.perInvoice}`,
           },
         ],
         description: SITE_DESCRIPTION,
         url: SITE_URL,
         inLanguage: ['cs-CZ'],
         featureList: [
-          'Vytěžení PDF faktur',
+          'Automatické vytěžení PDF faktur (OCR/AI)',
           'E-mailový vstup @in.audeflow.cz',
-          'Návrh českého účetního kódu a předkontace',
-          'Odeslání do iDoklad, Fakturoid, SuperFaktura',
-          'Export ISDOC, Pohoda, Money S3, Helios',
-          'Kontrola duplicit a ARES',
+          'Návrh českého účetního kódu a předkontace MD/DAL',
+          'Odeslání do iDoklad, Fakturoid, SuperFaktura, BitFaktura, Súčto',
+          'Export Pohoda XML, Money S3, Helios CSV/XML',
+          'Kontrola duplicit, ARES, audit DPH',
+          'Položková extrakce a split předkontace',
+          'Zálohové faktury a daňové doklady',
         ],
       },
+      supportedSystemsItemList(),
       {
         '@type': 'FAQPage',
         mainEntity: MARKETING_FAQ.map((item) => ({

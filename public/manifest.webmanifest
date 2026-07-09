@@ -1,7 +1,7 @@
 {
   "name": "Faktury Audeflow",
   "short_name": "Audeflow",
-  "description": "Automatické vytěžení PDF faktur a export do účetnictví",
+  "description": "Nejlevnější vytěžení PDF faktur v ČR — od 2,99 Kč/faktura. iDoklad, Fakturoid, Pohoda, BitFaktura, Súčto, Helios.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

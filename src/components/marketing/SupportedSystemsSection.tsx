@@ -18,7 +18,6 @@ const EXPORT_SYSTEMS: SupportedSystem[] = [
   { name: 'Pohoda', logo: '/logos/systems/pohoda.png' },
   { name: 'Money S3', logo: '/logos/systems/money-s3.png' },
   { name: 'Helios', logo: '/logos/systems/helios.png' },
-  { name: 'ISDOC', logo: '/logos/systems/isdoc.svg' },
 ]
 
 const STEPS = [
@@ -71,7 +70,7 @@ export function SupportedSystemsSection() {
         </h2>
         <p className="text-gray-500 text-center mb-12 max-w-2xl mx-auto">
           Cloudové systémy napojíme přímo přes API včetně PDF přílohy. U desktopového ERP stáhnete
-          připravený soubor (XML, ISDOC, CSV) a naimportujete ho ve svém programu.
+          připravený export (Pohoda XML, Money S3, Helios) a naimportujete ho ve svém programu.
         </p>
 
         <div className="grid md:grid-cols-2 gap-8 mb-16">
@@ -96,9 +95,9 @@ export function SupportedSystemsSection() {
               <h3 className="font-semibold text-gray-900">Stažení souboru</h3>
             </div>
             <p className="text-sm text-gray-600 mb-4">
-              XML, ISDOC nebo CSV — jedno tlačítko Stáhnout na detailu faktury, import ve vašem ERP.
+              Pohoda XML, Money S3 nebo Helios — jedno tlačítko Stáhnout na detailu faktury, import ve vašem ERP.
             </p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               {EXPORT_SYSTEMS.map((s) => (
                 <SystemLogoCard key={s.name} {...s} />
               ))}
