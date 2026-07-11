@@ -25,11 +25,12 @@ export async function reserveInvoiceAllowance(userId: string): Promise<ReserveRe
   return { ok: true, source: result.source ?? 'free_monthly' }
 }
 
+/** Vrátí rezervaci jen při selhání extrakce před uložením faktury — ne při smazání. */
 export async function releaseInvoiceReservation(
   userId: string,
   source: AllowanceSource
 ): Promise<void> {
-  if (source === 'pro') return
+  if (source === 'pro' || source === 'credit') return
   const admin = createAdminClient()
   await admin.rpc('release_invoice_reservation', {
     p_user_id: userId,
@@ -37,6 +38,47 @@ export async function releaseInvoiceReservation(
   })
 }
 
+/** Trvale započítá spotřebu po úspěšném vytěžení (kredit / měsíční slot). */
+export async function confirmInvoiceUsage(params: {
+  userId: string
+  workspaceId: string
+  source: AllowanceSource
+  invoiceId: string
+}): Promise<void> {
+  const admin = createAdminClient()
+  const { error } = await admin.rpc('confirm_invoice_usage', {
+    p_user_id: params.userId,
+    p_workspace_id: params.workspaceId,
+    p_source: params.source,
+    p_invoice_id: params.invoiceId,
+  })
+  if (error) {
+    console.error('[allowance] confirm usage failed:', error.message)
+    throw new Error('Nepodařilo se započítat spotřebu faktury')
+  }
+}
+
+export async function countMonthlyFreeUsage(userId: string): Promise<number> {
+  const admin = createAdminClient()
+  const firstOfMonth = new Date()
+  firstOfMonth.setUTCDate(1)
+  firstOfMonth.setUTCHours(0, 0, 0, 0)
+
+  const { count, error } = await admin
+    .from('invoice_usage_ledger')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('allowance_source', 'free_monthly')
+    .gte('created_at', firstOfMonth.toISOString())
+
+  if (error) {
+    console.error('[allowance] count monthly usage failed:', error.message)
+    return 0
+  }
+  return count ?? 0
+}
+
+/** @deprecated Použijte confirmInvoiceUsage */
 export async function confirmFreeInvoiceReservation(userId: string): Promise<void> {
   const admin = createAdminClient()
   await admin.rpc('confirm_free_invoice_reservation', { p_user_id: userId })

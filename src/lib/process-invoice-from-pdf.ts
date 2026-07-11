@@ -13,7 +13,7 @@ import { reconcileExtractionAmounts, isZalohovaTyp } from '@/lib/invoice-amounts
 import type { ProcessedInvoice } from '@/types/invoices'
 import type { AuditResult } from '@/lib/invoice-audit/types'
 import {
-  confirmFreeInvoiceReservation,
+  confirmInvoiceUsage,
   releaseInvoiceReservation,
   type AllowanceSource,
 } from '@/lib/invoice-allowance'
@@ -213,6 +213,7 @@ export async function processInvoiceFromPdf(
       status,
       audit_result: auditResult,
       audit_score: auditResult.score,
+      allowance_source: allowanceSource,
     })
     .select()
     .single()
@@ -237,6 +238,25 @@ export async function processInvoiceFromPdf(
     }
   }
 
+  try {
+    await confirmInvoiceUsage({
+      userId,
+      workspaceId,
+      source: allowanceSource,
+      invoiceId: invoice.id,
+    })
+  } catch (usageErr) {
+    console.error('[process-invoice] allowance confirm failed, rolling back invoice:', usageErr)
+    await supabase.from('processed_invoices').delete().eq('id', invoice.id).eq('user_id', userId)
+    await releaseInvoiceReservation(userId, allowanceSource)
+    return {
+      ok: false,
+      duplicate: false,
+      error: 'Nepodařilo se započítat spotřebu faktury. Zkuste to znovu.',
+      status: 500,
+    }
+  }
+
   let finalInvoice = invoice as ProcessedInvoice
   try {
     const storagePath = await saveInvoicePdf(admin, userId, invoice.id, pdfBuffer)
@@ -253,10 +273,6 @@ export async function processInvoiceFromPdf(
     }
   } catch (pdfErr) {
     console.error('[process-invoice] PDF storage failed:', pdfErr)
-  }
-
-  if (allowanceSource === 'free_monthly') {
-    await confirmFreeInvoiceReservation(userId)
   }
 
   await insertAuditLog({

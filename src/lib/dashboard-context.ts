@@ -5,12 +5,15 @@ import { getUserProfile } from '@/lib/auth-server'
 import { perfStart } from '@/lib/server-timing'
 import {
   getAccountMode,
+  getInvoiceCredits,
   getInvoiceLimit,
   getInvoicesRemaining,
   hasActiveBaseSubscription,
   hasActiveAccountantSubscription,
+  hasActiveProSubscription,
   type AccountMode,
 } from '@/lib/account-mode'
+import { countMonthlyFreeUsage } from '@/lib/invoice-allowance'
 import type { AccountingProvider } from '@/lib/accounting-connection'
 
 export type DashboardContext = {
@@ -63,7 +66,13 @@ async function loadDashboardContext(
   ])
 
   const rows = invoiceRows ?? []
-  const invoicesThisMonth = rows.filter((r) => r.created_at >= firstOfMonth).length
+  const invoicesCreatedThisMonth = rows.filter((r) => r.created_at >= firstOfMonth).length
+
+  let invoicesThisMonth = invoicesCreatedThisMonth
+  if (!hasActiveProSubscription(profile) && getInvoiceCredits(profile) === 0) {
+    invoicesThisMonth = await countMonthlyFreeUsage(userId)
+  }
+
   const totalCount = rows.length
   const sentCount = rows.filter((r) => r.status === 'sent_to_accounting').length
   const attentionCount = rows.filter((r) =>

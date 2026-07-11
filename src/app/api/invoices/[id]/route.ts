@@ -32,6 +32,8 @@ export async function DELETE(
     )
   }
 
+  // Smazání faktury záměrně nevrací kredit ani měsíční slot — spotřeba je v invoice_usage_ledger.
+
   await insertAuditLog({
     invoice_id: id,
     user_id: user.id,
