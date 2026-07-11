@@ -1,5 +1,11 @@
 import type { ExtractedInvoiceData } from './claude'
 import { buildPredkontaceFromExtracted } from './predkontace'
+import {
+  buildInvoiceOutputLines,
+  buildInvoicePayment,
+  formatPaymentAccount,
+  roundInvoiceAmount,
+} from './invoice-output'
 
 const SUCTO_API = 'https://moje.sucto.cz/api'
 
@@ -77,32 +83,37 @@ export function buildSuctoActuarialPayload(params: {
   init: SuctoInit
   partnerId: number
   actuarialTypeId: number
-  vatId: number | null
+  vatIdByRate: Map<number, number>
+  fallbackVatId: number | null
 }): Record<string, unknown> {
-  const { data, init, partnerId, actuarialTypeId, vatId } = params
+  const { data, init, partnerId, actuarialTypeId, vatIdByRate, fallbackVatId } = params
   const predkontace = buildPredkontaceFromExtracted(data)
   const internalNotice = predkontace
     ? predkontace.comment
     : `Účetní kód: ${data.ucetni_kod} – ${data.ucetni_kod_nazev}`
 
-  const unitPrice = data.castka_bez_dph ?? data.castka_celkem ?? 0
-  const tax = data.sazba_dph ?? 0
-  const taxAmount = data.castka_dph ?? 0
-  const total = data.castka_celkem ?? unitPrice + taxAmount
+  const payment = buildInvoicePayment(data)
+  const paymentAccount = formatPaymentAccount(payment)
+  const outputLines = buildInvoiceOutputLines(data)
 
-  const line: Record<string, unknown> = {
-    lineable_type: 'Actuarial',
-    name: (data.popis_plneni ?? `Faktura ${data.cislo_faktury}`).slice(0, 255),
-    quantity: 1,
-    unit_price: unitPrice,
-    base_price: unitPrice,
-    tax: taxAmount,
-    total_price: total,
-    unit_name: 'ks',
-  }
-  if (vatId != null) {
-    line.vat_id = vatId
-  }
+  const lines = outputLines.map((line) => {
+    const tax = roundInvoiceAmount((line.castkaBezDph * line.sazbaDph) / 100)
+    const total = roundInvoiceAmount(line.castkaBezDph + tax)
+    const vatId = vatIdByRate.get(line.sazbaDph) ?? fallbackVatId
+
+    const row: Record<string, unknown> = {
+      lineable_type: 'Actuarial',
+      name: line.nazev.slice(0, 255),
+      quantity: line.mnozstvi,
+      unit_price: line.jednotkovaCena,
+      base_price: line.castkaBezDph,
+      tax,
+      total_price: total,
+      unit_name: line.jednotka,
+    }
+    if (vatId != null) row.vat_id = vatId
+    return row
+  })
 
   return {
     partner_id: partnerId,
@@ -115,10 +126,22 @@ export function buildSuctoActuarialPayload(params: {
     uzp_date_at: data.datum_duzp ?? data.datum_vystaveni,
     external_number: data.cislo_faktury || undefined,
     variable_symbol: data.variabilni_symbol || undefined,
-    iban: data.iban ?? undefined,
+    order_number: data.cislo_objednavky || undefined,
+    iban: payment.iban ?? undefined,
+    bank_number: paymentAccount && !payment.iban ? paymentAccount : undefined,
+    swift: payment.swift ?? undefined,
     internal_notice: internalNotice,
-    lines: [line],
+    lines,
   }
+}
+
+export function buildVatIdByRate(vats: SuctoVat[]): Map<number, number> {
+  const map = new Map<number, number>()
+  for (const vat of vats) {
+    const rate = Math.round(parseFloat(vat.value))
+    if (Number.isFinite(rate)) map.set(rate, vat.id)
+  }
+  return map
 }
 
 async function resolvePartnerId(
@@ -193,13 +216,15 @@ export async function sendToSucto(
   ])
 
   const countryId = init.account?.country_id
-  let vatId: number | null = null
+  let vatIdByRate = new Map<number, number>()
+  let fallbackVatId: number | null = null
   if (countryId) {
     const vats = await suctoRequest<SuctoVat[]>(
       `countries/${countryId}/vats/current`,
       token
     )
-    vatId = pickVatId(vats, data.sazba_dph)
+    vatIdByRate = buildVatIdByRate(vats)
+    fallbackVatId = pickVatId(vats, data.sazba_dph)
   }
 
   const payload = buildSuctoActuarialPayload({
@@ -207,7 +232,8 @@ export async function sendToSucto(
     init,
     partnerId,
     actuarialTypeId,
-    vatId,
+    vatIdByRate,
+    fallbackVatId,
   })
 
   const created = await suctoRequest<{ id?: number; actuarial_number?: string }>(

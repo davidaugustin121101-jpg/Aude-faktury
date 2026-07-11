@@ -35,39 +35,7 @@ type AccountingRow = Record<string, unknown> & {
   sucto_company_id?: string | null
 }
 
-export function buildExtractedDataFromInvoice(inv: ProcessedInvoice): ExtractedInvoiceData {
-  const raw = (inv.raw_extraction ?? {}) as Record<string, unknown>
-
-  return {
-    dodavatel_nazev: inv.dodavatel_nazev ?? '',
-    dodavatel_ico: inv.dodavatel_ico ?? '',
-    dodavatel_dic: inv.dodavatel_dic,
-    cislo_faktury: inv.cislo_faktury ?? '',
-    datum_vystaveni: inv.datum_vystaveni ?? new Date().toISOString().slice(0, 10),
-    datum_splatnosti: inv.datum_splatnosti ?? new Date().toISOString().slice(0, 10),
-    variabilni_symbol: inv.variabilni_symbol ?? '',
-    castka_bez_dph: Number(inv.castka_bez_dph ?? 0),
-    sazba_dph: inv.sazba_dph ?? 21,
-    castka_dph: Number(inv.castka_dph ?? 0),
-    castka_celkem: Number(inv.castka_celkem ?? 0),
-    mena: inv.mena ?? 'CZK',
-    popis_plneni: inv.popis_plneni ?? '',
-    iban: inv.iban,
-    ucetni_kod: inv.ucetni_kod ?? '518',
-    ucetni_kod_nazev: inv.ucetni_kod_nazev ?? 'Ostatní služby',
-    ucetni_kod_duvod: inv.ucetni_kod_duvod ?? '',
-    ucetni_kod_confidence: inv.ucetni_kod_confidence ?? 0,
-    confidence: inv.confidence ?? 0,
-    problemy: inv.problemy ?? [],
-    typ_dokladu: (raw.typ_dokladu as ExtractedInvoiceData['typ_dokladu']) ?? 'faktura',
-    typ_faktury: (raw.typ_faktury as ExtractedInvoiceData['typ_faktury']) ?? 'danovy_doklad',
-    castka_k_uhrade:
-      raw.castka_k_uhrade != null ? Number(raw.castka_k_uhrade) : undefined,
-    datum_duzp: (raw.datum_duzp as string | null | undefined) ?? null,
-    je_prenesena_dan: Boolean(raw.je_prenesena_dan),
-    polozky: (raw.polozky as ExtractedInvoiceData['polozky']) ?? [],
-  }
-}
+import { buildExtractedDataFromInvoice } from '@/lib/invoice-output'
 
 export async function sendInvoiceToAccounting(params: {
   supabase: SupabaseClient

@@ -1,6 +1,11 @@
 import type { ExtractedInvoiceData } from './claude'
 import { buildPredkontaceFromExtracted } from './predkontace'
 import {
+  buildInvoiceOutputLines,
+  buildInvoicePayment,
+  formatPaymentAccount,
+} from './invoice-output'
+import {
   canAttachToSuperFaktura,
   type InvoicePdfAttachment,
 } from './invoice-pdf-storage'
@@ -44,6 +49,65 @@ function formatSuperFakturaError(json: SuperFakturaResponse): string {
   return 'Neznámá chyba SuperFaktura API'
 }
 
+export function buildSuperFakturaPayload(
+  data: ExtractedInvoiceData,
+  options?: { includePdfBase64?: string }
+) {
+  const predkontace = buildPredkontaceFromExtracted(data)
+  const expenseComment = predkontace
+    ? predkontace.comment
+    : `Účetní kód: ${data.ucetni_kod} – ${data.ucetni_kod_nazev}`
+
+  const lines = buildInvoiceOutputLines(data)
+  const payment = buildInvoicePayment(data)
+  const paymentAccount = formatPaymentAccount(payment)
+  const useItems = (data.polozky?.filter((p) => p.nazev?.trim()).length ?? 0) > 0
+
+  const expense: Record<string, unknown> = {
+    name: (data.popis_plneni ?? `Faktura ${data.cislo_faktury}`).slice(0, 200),
+    document_number: data.cislo_faktury || undefined,
+    created: data.datum_vystaveni,
+    due: data.datum_splatnosti,
+    variable: data.variabilni_symbol || undefined,
+    constant: data.konstantni_symbol || undefined,
+    taxable_supply: data.datum_duzp ?? data.datum_vystaveni,
+    currency: data.mena || 'CZK',
+    version: useItems ? 'items' : 'basic',
+    type: 'invoice',
+    comment: expenseComment,
+    ...(options?.includePdfBase64 ? { attachment: options.includePdfBase64 } : {}),
+  }
+
+  if (!useItems) {
+    expense.amount = data.castka_bez_dph ?? data.castka_celkem ?? 0
+    expense.vat = String(data.sazba_dph ?? 21)
+  }
+
+  const client: Record<string, unknown> = {
+    name: data.dodavatel_nazev,
+    ico: data.dodavatel_ico || undefined,
+    dic: data.dodavatel_dic?.replace(/^(SK|CZ)/i, '') || undefined,
+    update_addressbook: 1,
+  }
+  if (payment.iban) client.iban = payment.iban
+  else if (paymentAccount) client.account = paymentAccount
+  if (payment.swift) client.swift = payment.swift
+
+  const payload: Record<string, unknown> = { Expense: expense, Client: client }
+
+  if (useItems) {
+    payload.ExpenseItem = lines.map((line) => ({
+      name: line.nazev,
+      quantity: line.mnozstvi,
+      unit: line.jednotka,
+      tax: line.sazbaDph,
+      unit_price: line.jednotkovaCena,
+    }))
+  }
+
+  return payload
+}
+
 export async function validateSuperFakturaConnection(
   connection: SuperFakturaConnection
 ): Promise<boolean> {
@@ -64,11 +128,6 @@ export async function sendToSuperFaktura(
   data: ExtractedInvoiceData,
   pdf?: InvoicePdfAttachment | null
 ): Promise<{ id: string; number: string; pdfAttached: boolean }> {
-  const predkontace = buildPredkontaceFromExtracted(data)
-  const expenseComment = predkontace
-    ? predkontace.comment
-    : `Účetní kód: ${data.ucetni_kod} – ${data.ucetni_kod_nazev}`
-
   const includePdf = pdf ? canAttachToSuperFaktura(pdf.bytes.length) : false
   if (pdf && !includePdf) {
     console.warn(
@@ -76,29 +135,9 @@ export async function sendToSuperFaktura(
     )
   }
 
-  const payload = {
-    Expense: {
-      name: (data.popis_plneni ?? `Faktura ${data.cislo_faktury}`).slice(0, 200),
-      document_number: data.cislo_faktury || undefined,
-      created: data.datum_vystaveni,
-      due: data.datum_splatnosti,
-      variable: data.variabilni_symbol || undefined,
-      currency: data.mena || 'CZK',
-      vat: String(data.sazba_dph ?? 21),
-      amount: data.castka_bez_dph ?? data.castka_celkem ?? 0,
-      version: 'basic',
-      type: 'invoice',
-      comment: expenseComment,
-      ...(includePdf ? { attachment: pdf!.bytes.toString('base64') } : {}),
-    },
-    Client: {
-      name: data.dodavatel_nazev,
-      ico: data.dodavatel_ico || undefined,
-      dic: data.dodavatel_dic?.replace(/^(SK|CZ)/i, '') || undefined,
-      update_addressbook: 1,
-      ...(data.iban ? { iban: data.iban } : {}),
-    },
-  }
+  const payload = buildSuperFakturaPayload(data, {
+    includePdfBase64: includePdf ? pdf!.bytes.toString('base64') : undefined,
+  })
 
   const body = new URLSearchParams()
   body.set('data', JSON.stringify(payload))

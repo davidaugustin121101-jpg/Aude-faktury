@@ -6,6 +6,7 @@ import {
   buildIdokladContactPayload,
   contactNeedsAddressSync,
 } from './idoklad-contact'
+import { buildInvoiceOutputLines, buildInvoicePayment } from './invoice-output'
 
 const IDOKLAD_API_BASE = 'https://api.idoklad.cz/v3'
 const IDOKLAD_TOKEN_URL = 'https://app.idoklad.cz/identity/server/connect/token'
@@ -47,7 +48,55 @@ type IdokladContact = {
   PostalCode?: string | null
   CountryId?: number | null
 }
+type IdokladBank = { Id: number; Code?: string; Name?: string }
 type IdokladReceivedInvoice = { Id: number; DocumentNumber?: string }
+
+export type IdokladInvoiceItemPayload = {
+  Name: string
+  Amount: number
+  Unit: string
+  UnitPrice: number
+  PriceType: number
+  VatRateType: number
+  DiscountPercentage: number
+  IsTaxMovement: boolean
+  AccountingCode?: string
+}
+
+function buildIdokladTaxingDate(data: ExtractedInvoiceData, issue: string): string {
+  return normalizeIdokladDate(data.datum_duzp, issue)
+}
+
+/** Položky faktury pro iDoklad — z tabulky polozky[], jinak jedna agregovaná položka */
+export function buildIdokladItems(data: ExtractedInvoiceData): IdokladInvoiceItemPayload[] {
+  const predkontace = buildPredkontaceFromExtracted(data)
+  const defaultAccountingCode = predkontace?.naklad ?? data.ucetni_kod
+
+  return buildInvoiceOutputLines(data).map((line) => ({
+    Name: line.nazev.slice(0, 200),
+    Amount: line.mnozstvi,
+    Unit: line.jednotka,
+    UnitPrice: line.jednotkovaCena,
+    PriceType: PRICE_TYPE_WITHOUT_VAT,
+    VatRateType: mapDphSazba(line.sazbaDph),
+    DiscountPercentage: 0,
+    IsTaxMovement: false,
+    ...((line.ucetniKod || defaultAccountingCode)
+      ? { AccountingCode: line.ucetniKod || defaultAccountingCode }
+      : {}),
+  }))
+}
+
+export function buildIdokladBankFields(data: ExtractedInvoiceData): Record<string, string | number> {
+  const bank = buildInvoicePayment(data)
+
+  const out: Record<string, string | number> = {}
+  if (bank.accountNumber) out.AccountNumber = bank.accountNumber
+  if (bank.iban) out.Iban = bank.iban
+  if (bank.swift) out.Swift = bank.swift
+  if (bank.bankCode) out._bankCode = bank.bankCode
+  return out
+}
 
 // VatRateType: 3=exempt(0%), 2=reduced(10%/12%), 1=standard(21%)
 function mapDphSazba(sazba: number): number {
@@ -156,6 +205,15 @@ async function resolveCurrencyId(token: string, mena: string): Promise<number> {
   throw new Error(`iDoklad: měna ${code} není v účtu podporována`)
 }
 
+async function resolveBankId(token: string, bankCode: string | null | undefined): Promise<number | null> {
+  const code = (bankCode ?? '').trim()
+  if (!code) return null
+
+  const banks = await idokladListItems<IdokladBank>(token, 'Banks', 'pageSize=200')
+  const hit = banks.find((b) => String(b.Code ?? '').padStart(4, '0') === code.padStart(4, '0'))
+  return hit?.Id ?? null
+}
+
 async function resolvePaymentOptionId(token: string): Promise<number> {
   const options = await idokladListItems<IdokladPaymentOption>(token, 'PaymentOptions', 'pageSize=50')
   const preferred = options.find((o) => isTruthyDefault(o.IsDefault))
@@ -219,7 +277,17 @@ async function resolvePartnerId(
   const ico = (data.dodavatel_ico ?? '').replace(/\D/g, '')
   const existingId = await findContactByIco(token, ico)
   const ares = ico ? await lookupAres(ico).catch(() => null) : null
-  const contactPayload = buildIdokladContactPayload(data, { ares })
+
+  const bankFields = buildIdokladBankFields(data)
+  const bankCode = bankFields._bankCode as string | undefined
+  delete bankFields._bankCode
+  const bankId = bankCode ? await resolveBankId(token, bankCode) : null
+
+  const contactPayload = buildIdokladContactPayload(data, {
+    ares,
+    bankId,
+    bankFields,
+  })
 
   if (existingId) {
     try {
@@ -315,15 +383,20 @@ export async function sendToIdoklad(
   }
 
   const { issue, maturity, receiving } = buildIdokladDates(data)
-  const unitPrice = Number(data.castka_bez_dph ?? data.castka_celkem ?? 0)
   const predkontace = buildPredkontaceFromExtracted(data)
-  const itemName = (data.popis_plneni ?? `Faktura ${data.cislo_faktury ?? ''}`).slice(0, 200)
+  const items = buildIdokladItems(data)
+  const taxingDate = buildIdokladTaxingDate(data, issue)
 
-  const [partnerId, currencyId, paymentOptionId, numericSequence] = await Promise.all([
+  const bankFields = buildIdokladBankFields(data)
+  const bankCode = bankFields._bankCode as string | undefined
+  delete bankFields._bankCode
+
+  const [partnerId, currencyId, paymentOptionId, numericSequence, bankId] = await Promise.all([
     resolvePartnerId(token, data),
     resolveCurrencyId(token, data.mena ?? 'CZK'),
     resolvePaymentOptionId(token),
     resolveNumericSequence(token),
+    bankCode ? resolveBankId(token, bankCode) : Promise.resolve(null),
   ])
 
   const payload = {
@@ -337,24 +410,18 @@ export async function sendToIdoklad(
     DateOfIssue: issue,
     DateOfMaturity: maturity,
     DateOfReceiving: receiving,
-    DateOfTaxing: issue,
+    DateOfTaxing: taxingDate,
     Description: data.popis_plneni ?? 'Přijatá faktura',
     ...(predkontace ? { Note: predkontace.comment } : {}),
     ...(data.variabilni_symbol ? { VariableSymbol: data.variabilni_symbol } : {}),
-    ...(data.cislo_faktury ? { OrderNumber: data.cislo_faktury } : {}),
-    Items: [
-      {
-        Name: itemName,
-        Amount: 1,
-        Unit: 'ks',
-        UnitPrice: unitPrice,
-        PriceType: PRICE_TYPE_WITHOUT_VAT,
-        VatRateType: mapDphSazba(data.sazba_dph ?? 21),
-        DiscountPercentage: 0,
-        IsTaxMovement: false,
-        ...(predkontace ? { AccountingCode: predkontace.naklad } : {}),
-      },
-    ],
+    ...(data.konstantni_symbol ? { ConstantSymbol: data.konstantni_symbol } : {}),
+    ...(data.cislo_objednavky ? { OrderNumber: data.cislo_objednavky } : {}),
+    ...(data.cislo_faktury ? { ExternalDocumentNumber: data.cislo_faktury } : {}),
+    ...(bankFields.AccountNumber ? { AccountNumber: bankFields.AccountNumber } : {}),
+    ...(bankId ? { BankId: bankId } : {}),
+    ...(bankFields.Iban ? { Iban: bankFields.Iban } : {}),
+    ...(bankFields.Swift ? { Swift: bankFields.Swift } : {}),
+    Items: items,
   }
 
   const result = await idokladRequest<IdokladReceivedInvoice>(token, 'ReceivedInvoices', {

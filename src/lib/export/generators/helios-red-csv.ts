@@ -1,6 +1,6 @@
 import iconv from 'iconv-lite'
 import type { ExportProfile, NormalizedInvoice } from '../types'
-import { breakdownVatForHelios } from '../vat-mapping'
+import { buildVatRecap } from '@/lib/invoice-output'
 import { formatDateHelios, formatMoney } from '../xml-utils'
 
 function csvEscape(value: string | number): string {
@@ -24,12 +24,56 @@ export function generateHeliosRedCsv(
   inv: NormalizedInvoice,
   profile?: ExportProfile
 ): HeliosRedCsvFiles {
-  const vat = breakdownVatForHelios(
-    inv.castkaBezDph,
-    inv.castkaDph,
-    inv.castkaCelkem,
-    inv.sazbaDph
+  const recap = buildVatRecap(
+    inv.polozky.map((line) => ({
+      nazev: line.nazev,
+      mnozstvi: line.mnozstvi,
+      jednotka: line.jednotka,
+      jednotkovaCena: line.jednotkovaCena,
+      sazbaDph: line.sazbaDph,
+      castkaBezDph: line.castkaBezDph,
+    }))
   )
+
+  const base0 = recap.find((r) => r.sazbaDph === 0)?.zaklad ?? 0
+  const base12 = recap.find((r) => r.sazbaDph === 12 || r.sazbaDph === 10)?.zaklad ?? 0
+  const vat12 = recap.find((r) => r.sazbaDph === 12 || r.sazbaDph === 10)?.dph ?? 0
+  const base21 = recap
+    .filter((r) => r.sazbaDph !== 0 && r.sazbaDph !== 12 && r.sazbaDph !== 10)
+    .reduce((sum, r) => sum + r.zaklad, 0)
+  const vat21 = recap
+    .filter((r) => r.sazbaDph !== 0 && r.sazbaDph !== 12 && r.sazbaDph !== 10)
+    .reduce((sum, r) => sum + r.dph, 0)
+
+  const noteParts = [
+    inv.predkontace?.comment ?? inv.popisPlneni.slice(0, 200),
+    inv.paymentAccount ? `Účet: ${inv.paymentAccount}` : null,
+    inv.konstantniSymbol ? `KS: ${inv.konstantniSymbol}` : null,
+    inv.cisloObjednavky ? `Obj: ${inv.cisloObjednavky}` : null,
+  ].filter(Boolean)
+
+  const prifakRow = [
+    1,
+    formatDateHelios(inv.datumDuzp ?? inv.datumVystaveni),
+    formatDateHelios(inv.datumVystaveni),
+    inv.cisloFaktury,
+    inv.variabilniSymbol ?? inv.cisloFaktury,
+    0,
+    inv.dodavatelNazev.slice(0, 200),
+    formatMoney(inv.castkaCelkem),
+    formatMoney(base0),
+    formatMoney(base0),
+    formatMoney(vat12),
+    formatMoney(base12),
+    formatMoney(vat21),
+    formatMoney(base21),
+    'FP',
+    formatDateHelios(inv.datumSplatnosti),
+    inv.dodavatelIco,
+    String(noteParts.join(' | ')).slice(0, 200),
+    profile?.costCenter ?? '',
+    profile?.contractCode ?? '',
+  ]
 
   const prifakHeader = [
     'CISLO',
@@ -54,29 +98,6 @@ export function generateHeliosRedCsv(
     'STRED2',
   ]
 
-  const prifakRow = [
-    1,
-    formatDateHelios(inv.datumVystaveni),
-    formatDateHelios(inv.datumVystaveni),
-    inv.cisloFaktury,
-    inv.variabilniSymbol ?? inv.cisloFaktury,
-    0,
-    inv.dodavatelNazev.slice(0, 200),
-    formatMoney(inv.castkaCelkem),
-    formatMoney(vat.base0),
-    formatMoney(vat.base0),
-    formatMoney(vat.vat12),
-    formatMoney(vat.base12),
-    formatMoney(vat.vat21),
-    formatMoney(vat.base21),
-    'FP',
-    formatDateHelios(inv.datumSplatnosti),
-    inv.dodavatelIco,
-    inv.predkontace?.comment ?? inv.popisPlneni.slice(0, 200),
-    profile?.costCenter ?? '',
-    profile?.contractCode ?? '',
-  ]
-
   const pripolHeader = [
     'P_CISLO',
     'P_TYP',
@@ -90,23 +111,25 @@ export function generateHeliosRedCsv(
     'P_MAJETEK',
   ]
 
-  const primaryRate = inv.sazbaDph === 0 ? 0 : inv.sazbaDph === 12 || inv.sazbaDph === 10 ? inv.sazbaDph : 21
-
-  const pripolRow = [
-    1,
-    formatDateHelios(inv.datumVystaveni),
-    'FP',
-    inv.dodavatelNazev.slice(0, 200),
-    formatMoney(inv.castkaCelkem),
-    0,
-    formatMoney(inv.castkaBezDph),
-    primaryRate,
-    formatMoney(inv.castkaDph),
-    '.F.',
-  ]
+  const pripolRows = inv.polozky.map((line, index) => {
+    const vat = (line.castkaBezDph * line.sazbaDph) / 100
+    const total = line.castkaBezDph + vat
+    return [
+      index + 1,
+      formatDateHelios(inv.datumDuzp ?? inv.datumVystaveni),
+      'FP',
+      line.nazev.slice(0, 200),
+      formatMoney(total),
+      0,
+      formatMoney(line.castkaBezDph),
+      line.sazbaDph,
+      formatMoney(vat),
+      '.F.',
+    ]
+  })
 
   const prifak = [csvRow(prifakHeader), csvRow(prifakRow)].join('\r\n')
-  const pripol = [csvRow(pripolHeader), csvRow(pripolRow)].join('\r\n')
+  const pripol = [csvRow(pripolHeader), ...pripolRows.map((row) => csvRow(row))].join('\r\n')
 
   return { prifak, pripol }
 }

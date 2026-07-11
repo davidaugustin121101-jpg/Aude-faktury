@@ -25,6 +25,16 @@ export type ExportProfile = {
   country?: CountryCode
 }
 
+export type NormalizedLineItem = {
+  nazev: string
+  mnozstvi: number
+  jednotka: string
+  jednotkovaCena: number
+  sazbaDph: number
+  castkaBezDph: number
+  ucetniKod: string | null
+}
+
 export type NormalizedInvoice = {
   id: string
   dodavatelNazev: string
@@ -33,14 +43,22 @@ export type NormalizedInvoice = {
   cisloFaktury: string
   datumVystaveni: string
   datumSplatnosti: string
+  datumDuzp: string | null
   variabilniSymbol: string | null
+  konstantniSymbol: string | null
+  cisloObjednavky: string | null
   castkaBezDph: number
   sazbaDph: number
   castkaDph: number
   castkaCelkem: number
   mena: string
   popisPlneni: string
+  cisloUctu: string | null
+  kodBanky: string | null
   iban: string | null
+  swift: string | null
+  paymentAccount: string | null
+  polozky: NormalizedLineItem[]
   ucetniKod: string
   ucetniKodNazev: string | null
   predkontace: Predkontace | null

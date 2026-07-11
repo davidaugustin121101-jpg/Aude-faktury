@@ -79,11 +79,25 @@ describe('export validate', () => {
 describe('export generators golden snippets', () => {
   const inv = normalizeInvoice(sampleInvoice)
 
-  it('generates ISDOC with invoice number', () => {
-    const xml = generateIsdoc(inv)
+  it('generates ISDOC with invoice number and payment account', () => {
+    const invWithExtras = normalizeInvoice({
+      ...sampleInvoice,
+      iban: null,
+      raw_extraction: {
+        polozky: [
+          { nazev: 'Služba', mnozstvi: 1, jednotkova_cena: 1000, sazba_dph: 21, typ: 'sluzba' },
+        ],
+        cislo_uctu: '1234567891/0321',
+        datum_duzp: '2024-06-15',
+      },
+    })
+    const xml = generateIsdoc(invWithExtras)
     assert.ok(xml.includes('FV2024/001'))
     assert.ok(xml.includes('http://isdoc.cz/namespace/2013'))
     assert.ok(xml.includes('<PayableAmount>1210.00</PayableAmount>'))
+    assert.ok(xml.includes('<InvoiceLine>'))
+    assert.ok(xml.includes('1234567891/0321'))
+    assert.ok(xml.includes('<TaxPointDate>2024-06-15</TaxPointDate>'))
   })
 
   it('generates Pohoda XML with receivedInvoice and rateVAT high', () => {

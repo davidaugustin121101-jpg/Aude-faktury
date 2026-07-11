@@ -42,6 +42,12 @@ export default async function InvoiceDetailPage({ params }: Props) {
 
   const inv = invoice as ProcessedInvoice
   const problemy = inv.problemy ?? []
+  const rawExtraction = (inv.raw_extraction as Record<string, unknown> | null) ?? null
+  const cisloUctu = (rawExtraction?.cislo_uctu as string | null | undefined) ?? null
+  const swift = (rawExtraction?.swift as string | null | undefined) ?? null
+  const konstantniSymbol = (rawExtraction?.konstantni_symbol as string | null | undefined) ?? null
+  const cisloObjednavky = (rawExtraction?.cislo_objednavky as string | null | undefined) ?? null
+  const datumDuzp = (rawExtraction?.datum_duzp as string | null | undefined) ?? null
 
   const [{ data: lastSentLog }, { data: lastErrorLog }, connectionRow] = await Promise.all([
     supabase
@@ -218,6 +224,27 @@ export default async function InvoiceDetailPage({ params }: Props) {
             globalConfidence={inv.confidence}
             inProblemy={problemy.includes('variabilni_symbol')}
           />
+          {konstantniSymbol && (
+            <FieldRow
+              label="Konstantní symbol"
+              value={konstantniSymbol}
+              globalConfidence={inv.confidence}
+            />
+          )}
+          {cisloObjednavky && (
+            <FieldRow
+              label="Číslo objednávky"
+              value={cisloObjednavky}
+              globalConfidence={inv.confidence}
+            />
+          )}
+          {datumDuzp && (
+            <FieldRow
+              label="DUZP"
+              value={formatDate(datumDuzp)}
+              globalConfidence={inv.confidence}
+            />
+          )}
           <FieldRow
             label="Základ DPH"
             value={formatMoney(inv.castka_bez_dph)}
@@ -236,12 +263,26 @@ export default async function InvoiceDetailPage({ params }: Props) {
             globalConfidence={inv.confidence}
             inProblemy={problemy.includes('castka_celkem')}
           />
+          {cisloUctu && (
+            <FieldRow
+              label="Číslo účtu"
+              value={cisloUctu}
+              globalConfidence={inv.confidence}
+            />
+          )}
           {inv.iban && (
             <FieldRow
               label="IBAN"
               value={inv.iban}
               globalConfidence={inv.confidence}
               inProblemy={problemy.includes('iban')}
+            />
+          )}
+          {swift && (
+            <FieldRow
+              label="SWIFT"
+              value={swift}
+              globalConfidence={inv.confidence}
             />
           )}
           {inv.popis_plneni && (
@@ -282,7 +323,7 @@ export default async function InvoiceDetailPage({ params }: Props) {
       </div>
 
       <InvoiceLineItemsPanel
-        rawExtraction={(inv.raw_extraction as Record<string, unknown> | null) ?? null}
+        rawExtraction={rawExtraction}
         mena={inv.mena}
       />
 

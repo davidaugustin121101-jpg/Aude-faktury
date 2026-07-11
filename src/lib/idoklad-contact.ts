@@ -1,5 +1,6 @@
 import type { ExtractedInvoiceData } from './claude'
 import type { AresSubject } from './invoice-audit/rules/ares-lookup'
+import { parseBankPaymentFields } from './bank-account'
 
 /** iDoklad Countries list – 1 = Slovensko, 2 = Česko */
 export const IDOKLAD_COUNTRY_SK = 1
@@ -43,7 +44,11 @@ export function buildStreetFromAresSidlo(sidlo: NonNullable<AresSubject['sidlo']
 
 export function buildIdokladContactPayload(
   data: ExtractedInvoiceData,
-  options?: { ares?: AresSubject | null }
+  options?: {
+    ares?: AresSubject | null
+    bankId?: number | null
+    bankFields?: Record<string, string | number>
+  }
 ): Record<string, string | number> {
   const ico = (data.dodavatel_ico ?? '').replace(/\D/g, '')
   const sidlo = options?.ares?.sidlo
@@ -56,6 +61,22 @@ export function buildIdokladContactPayload(
 
   if (ico) payload.IdentificationNumber = ico
   if (data.dodavatel_dic?.trim()) payload.TaxIdentificationNumber = data.dodavatel_dic.trim()
+
+  const bank =
+    options?.bankFields ??
+    (() => {
+      const parsed = parseBankPaymentFields(data)
+      const out: Record<string, string | number> = {}
+      if (parsed.accountNumber) out.AccountNumber = parsed.accountNumber
+      if (parsed.iban) out.Iban = parsed.iban
+      if (parsed.swift) out.Swift = parsed.swift
+      return out
+    })()
+
+  if (bank.AccountNumber) payload.AccountNumber = bank.AccountNumber
+  if (bank.Iban) payload.Iban = bank.Iban
+  if (bank.Swift) payload.Swift = bank.Swift
+  if (options?.bankId) payload.BankId = options.bankId
 
   if (sidlo) {
     const street = buildStreetFromAresSidlo(sidlo)

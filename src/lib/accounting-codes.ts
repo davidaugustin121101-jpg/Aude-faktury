@@ -16,7 +16,13 @@ Povinná pole:
 - dodavatel_nazev, dodavatel_ico (8 číslic), dodavatel_dic (CZ + čísla)
 - cislo_faktury, datum_vystaveni, datum_splatnosti (YYYY-MM-DD)
 - variabilni_symbol, castka_bez_dph, sazba_dph (0, 10, 12, 21 — české sazby DPH)
-- castka_dph, castka_celkem, mena (CZK default), popis_plneni, iban
+- castka_dph, castka_celkem, mena (CZK default), popis_plneni
+- cislo_uctu: číslo účtu dodavatele ve formátu číslo/kód banky (např. 1234567891/0321), null pokud chybí
+- kod_banky: 4místný kód banky pokud je uveden odděleně od čísla účtu
+- iban: IBAN pokud je na faktuře uveden, jinak null (u českých faktur často chybí — pak stačí cislo_uctu)
+- swift: SWIFT/BIC pokud je uveden, jinak null
+- konstantni_symbol: konstantní symbol platby, null pokud chybí
+- cislo_objednavky: číslo objednávky z faktury, null pokud chybí
 - typ_dokladu: "faktura" | "dobropis" | "proforma" | "jiny"
 - typ_faktury: "zalohova" | "danovy_doklad" — viz pravidla níže
 - castka_k_uhrade: kolik zbývá uhradit (0 pokud záloha pokryla celé plnění)
@@ -45,11 +51,14 @@ U typ_faktury "danovy_doklad" po záloze (doplatek 0 Kč):
 
 === ČÁST 3: POLOŽKY FAKTURY (rozpoložkování) ===
 
-Pokud faktura obsahuje tabulku položek, vyplň pole "polozky" jako pole objektů:
+Pokud faktura obsahuje tabulku položek, VŽDY vyplň pole "polozky" — každý řádek tabulky = jeden objekt:
 - nazev, mnozstvi, jednotkova_cena, sazba_dph (0/10/12/21)
+- jednotka: ks, kg, hod, m² apod. (pokud je na faktuře uvedena)
 - typ: "zbozi" (materiál, zboží, hardware) nebo "sluzba" (služby, pronájem, software SaaS, doprava)
 - volitelně ucetni_kod a ucetni_kod_nazev pro každou položku dle české osnovy
-Součet položek by měl odpovídat hlavičkovým částkám. Pokud je jen jedna agregovaná položka, vrať prázdné pole polozky.
+Součet položek (mnozstvi × jednotkova_cena) by měl odpovídat základu DPH / rekapitulaci.
+NIKDY neslučuj více řádků tabulky do jednoho záznamu ani do popis_plneni — popis_plneni je jen krátký souhrn, detaily patří do polozky[].
+Pole polozky nech prázdné pouze pokud faktura skutečně nemá žádnou tabulku položek (jen jedna souhrnná částka bez rozpisu).
 
 === ČÁST 2: NÁVRH ÚČETNÍHO KÓDU (česká účtová osnova) ===
 
@@ -70,7 +79,7 @@ Nejasné → 518
 
 Přenesení DPH (reverse charge): uveď je_prenesena_dan=true, sazba_dph může být 0
 
-Vrať JSON s poli ucetni_kod, ucetni_kod_nazev, ucetni_kod_duvod, ucetni_kod_confidence, confidence, problemy[], typ_dokladu, typ_faktury, castka_k_uhrade, datum_duzp, je_prenesena_dan, polozky[].
+Vrať JSON s poli ucetni_kod, ucetni_kod_nazev, ucetni_kod_duvod, ucetni_kod_confidence, confidence, problemy[], typ_dokladu, typ_faktury, castka_k_uhrade, datum_duzp, je_prenesena_dan, polozky[], cislo_uctu, kod_banky, iban, swift, konstantni_symbol, cislo_objednavky.
 `.trim()
 }
 

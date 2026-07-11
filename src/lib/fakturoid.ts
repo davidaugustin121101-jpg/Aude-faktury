@@ -1,6 +1,11 @@
 import type { ExtractedInvoiceData } from './claude'
 import { buildPredkontaceFromExtracted } from './predkontace'
 import { FAKTUROID_USER_AGENT, getFakturoidAccessToken, type FakturoidConnectionRow, connectFakturoidWithClientCredentials, tokenExpiresAt } from './fakturoid-auth'
+import {
+  buildInvoiceOutputLines,
+  buildInvoicePayment,
+  formatPaymentAccount,
+} from './invoice-output'
 
 const FAKTUROID_BASE = 'https://app.fakturoid.cz/api/v3'
 
@@ -25,6 +30,44 @@ export function formatFakturoidApiError(status: number, body: string): string {
     // raw text fallback
   }
   return body || `HTTP ${status}`
+}
+
+export function buildFakturoidExpensePayload(data: ExtractedInvoiceData) {
+  const predkontace = buildPredkontaceFromExtracted(data)
+  const payment = buildInvoicePayment(data)
+  const paymentAccount = formatPaymentAccount(payment)
+  const lines = buildInvoiceOutputLines(data)
+
+  const noteParts = [
+    data.popis_plneni || undefined,
+    data.konstantni_symbol ? `KS: ${data.konstantni_symbol}` : undefined,
+    data.cislo_objednavky ? `Objednávka: ${data.cislo_objednavky}` : undefined,
+    !payment.iban && paymentAccount ? `Účet: ${paymentAccount}` : undefined,
+  ].filter(Boolean)
+
+  return {
+    original_number: data.cislo_faktury || undefined,
+    issued_on: data.datum_vystaveni,
+    due_on: data.datum_splatnosti,
+    taxable_fulfillment_due: data.datum_duzp ?? data.datum_vystaveni,
+    variable_symbol: data.variabilni_symbol || undefined,
+    document_type: 'invoice',
+    note: noteParts.join(' | ') || undefined,
+    currency: data.mena || 'CZK',
+    supplier_name: data.dodavatel_nazev,
+    supplier_registration_no: data.dodavatel_ico || undefined,
+    ...(data.dodavatel_dic ? { supplier_vat_no: data.dodavatel_dic } : {}),
+    ...(payment.iban ? { iban: payment.iban } : {}),
+    ...(payment.swift ? { swift_bic: payment.swift } : {}),
+    lines: lines.map((line) => ({
+      name: line.nazev.slice(0, 200),
+      quantity: String(line.mnozstvi),
+      unit_name: line.jednotka,
+      unit_price: String(line.jednotkovaCena),
+      vat_rate: String(line.sazbaDph),
+    })),
+    tags: [predkontace?.display ?? data.ucetni_kod ?? '518'],
+  }
 }
 
 /** Ověří, že účet umí vytvářet náklady přes API (ne jen číst). */
@@ -61,31 +104,7 @@ export async function sendToFakturoid(
   data: ExtractedInvoiceData
 ): Promise<{ id: string; number: string }> {
   const { token, slug } = await getFakturoidAccessToken(connection)
-  const predkontace = buildPredkontaceFromExtracted(data)
-
-  const payload = {
-    original_number: data.cislo_faktury || undefined,
-    issued_on: data.datum_vystaveni,
-    due_on: data.datum_splatnosti,
-    variable_symbol: data.variabilni_symbol || undefined,
-    document_type: 'invoice',
-    note: data.popis_plneni || undefined,
-    currency: data.mena || 'CZK',
-    supplier_name: data.dodavatel_nazev,
-    supplier_registration_no: data.dodavatel_ico || undefined,
-    ...(data.dodavatel_dic ? { supplier_vat_no: data.dodavatel_dic } : {}),
-    ...(data.iban ? { iban: data.iban } : {}),
-    lines: [
-      {
-        name: (data.popis_plneni ?? `Faktura ${data.cislo_faktury}`).slice(0, 200),
-        quantity: '1.0',
-        unit_name: 'ks',
-        unit_price: String(data.castka_bez_dph ?? data.castka_celkem ?? 0),
-        vat_rate: String(data.sazba_dph ?? 21),
-      },
-    ],
-    tags: [predkontace?.display ?? data.ucetni_kod ?? '518'],
-  }
+  const payload = buildFakturoidExpensePayload(data)
 
   const res = await fetch(`${FAKTUROID_BASE}/accounts/${slug}/expenses.json`, {
     method: 'POST',

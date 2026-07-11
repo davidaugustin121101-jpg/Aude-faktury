@@ -1,5 +1,11 @@
 import type { ExtractedInvoiceData } from './claude'
 import { buildPredkontaceFromExtracted } from './predkontace'
+import {
+  buildInvoiceOutputLines,
+  buildInvoicePayment,
+  formatPaymentAccount,
+  roundInvoiceAmount,
+} from './invoice-output'
 
 export interface BitFakturaConnection {
   domain: string
@@ -43,26 +49,20 @@ export function buildBitFakturaInvoicePayload(
     ? predkontace.comment
     : `Účetní kód: ${data.ucetni_kod} – ${data.ucetni_kod_nazev}`
 
-  const positions =
-    data.polozky && data.polozky.length > 0
-      ? data.polozky.map((p) => {
-          const net = p.jednotkova_cena * p.mnozstvi
-          const rate = p.sazba_dph ?? data.sazba_dph ?? 21
-          return {
-            name: p.nazev.slice(0, 255),
-            tax: rate,
-            total_price_gross: Math.round(net * (1 + rate / 100) * 100) / 100,
-            quantity: p.mnozstvi,
-          }
-        })
-      : [
-          {
-            name: (data.popis_plneni ?? `Faktura ${data.cislo_faktury}`).slice(0, 255),
-            tax: data.sazba_dph ?? 21,
-            total_price_gross: data.castka_celkem ?? data.castka_bez_dph ?? 0,
-            quantity: 1,
-          },
-        ]
+  const positions = buildInvoiceOutputLines(data).map((line) => {
+    const net = line.castkaBezDph
+    const rate = line.sazbaDph
+    return {
+      name: line.nazev.slice(0, 255),
+      tax: rate,
+      total_price_gross: roundInvoiceAmount(net * (1 + rate / 100)),
+      quantity: line.mnozstvi,
+      unit: line.jednotka,
+    }
+  })
+
+  const payment = buildInvoicePayment(data)
+  const paymentAccount = formatPaymentAccount(payment)
 
   return {
     kind: mapInvoiceKind(data),
@@ -75,9 +75,11 @@ export function buildBitFakturaInvoicePayload(
     delivery_date: data.datum_vystaveni,
     seller_name: data.dodavatel_nazev,
     seller_tax_no: data.dodavatel_ico || undefined,
-    seller_bank_account: data.iban ?? undefined,
+    seller_bank_account: payment.iban ?? paymentAccount ?? undefined,
     buyer_company: '1',
     variable_symbol: data.variabilni_symbol || undefined,
+    constant_symbol: data.konstantni_symbol || undefined,
+    order_number: data.cislo_objednavky || undefined,
     currency: data.mena || 'CZK',
     internal_note: note,
     description: data.popis_plneni ?? undefined,
