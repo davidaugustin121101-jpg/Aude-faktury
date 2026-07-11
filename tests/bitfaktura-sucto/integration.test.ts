@@ -151,8 +151,7 @@ describe('multi-rate invoice (all providers)', () => {
     const items = buildIdokladItems(multiRate)
     assert.equal(items.length, 4)
     assert.equal(items[1].VatRateType, 0)
-    assert.equal(items[1].CustomVatRate, 12)
-    assert.equal(items[0].CustomVatRate, 21)
+    assert.equal(items[0].IsTaxMovement, true)
   })
 })
 

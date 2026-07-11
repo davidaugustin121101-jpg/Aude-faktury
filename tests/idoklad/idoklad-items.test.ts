@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { buildIdokladBankFields, buildIdokladItems, mapIdokladVatRateType } from '../../src/lib/idoklad'
+import { buildIdokladBankFields, buildIdokladItems, formatIdokladAccountNumber, mapIdokladVatRateType } from '../../src/lib/idoklad'
+import { lineGrossAmount, lineVatAmount, buildInvoiceOutputLines } from '../../src/lib/invoice-output'
 import type { ExtractedInvoiceData } from '../../src/lib/claude'
 
 const baseInvoice = {
@@ -45,8 +46,9 @@ describe('idoklad items and bank fields', () => {
     assert.equal(items[0].Unit, 'ks')
     assert.equal(items[3].Unit, 'kg')
     assert.equal(items[1].VatRateType, 0)
-    assert.equal(items[1].CustomVatRate, 12)
-    assert.equal(items[0].CustomVatRate, 21)
+    assert.equal(items[0].VatRateType, 1)
+    assert.equal(items[0].IsTaxMovement, true)
+    assert.ok(!('CustomVatRate' in items[0]))
   })
 
   it('maps Czech VAT rates to iDoklad VatRateType enum (od 2024)', () => {
@@ -78,5 +80,23 @@ describe('idoklad items and bank fields', () => {
     const bank = buildIdokladBankFields(data)
     assert.equal(bank.AccountNumber, '1234567891')
     assert.equal(bank._bankCode, '0321')
+    assert.equal(formatIdokladAccountNumber('1234567891', '0321', null), '1234567891/0321')
+    assert.equal(formatIdokladAccountNumber('1234567891', '0321', 42), '1234567891')
+  })
+
+  it('item gross totals match Czech VAT percentages (not flat +21)', () => {
+    const data = {
+      ...baseInvoice,
+      polozky: [
+        { nazev: 'zboží', mnozstvi: 100, jednotkova_cena: 123.5, sazba_dph: 21, typ: 'zbozi' as const, jednotka: 'ks' },
+        { nazev: 'výrobek', mnozstvi: 10, jednotkova_cena: 11000, sazba_dph: 12, typ: 'zbozi' as const, jednotka: 'ks' },
+      ],
+    } as ExtractedInvoiceData
+
+    const lines = buildInvoiceOutputLines(data)
+    assert.equal(lineGrossAmount(lines[0]), 14943.5)
+    assert.equal(lineGrossAmount(lines[1]), 123200)
+    assert.equal(lineVatAmount(lines[0]), 2593.5)
+    assert.equal(lineVatAmount(lines[1]), 13200)
   })
 })

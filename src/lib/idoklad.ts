@@ -59,7 +59,8 @@ export type IdokladInvoiceItemPayload = {
   UnitPrice: number
   PriceType: number
   VatRateType: number
-  CustomVatRate: number
+  DiscountPercentage: number
+  IsTaxMovement: boolean
   VatCodeId?: number
 }
 
@@ -103,7 +104,8 @@ export function buildIdokladItems(
     UnitPrice: line.jednotkovaCena,
     PriceType: PRICE_TYPE_WITHOUT_VAT,
     VatRateType: mapIdokladVatRateType(line.sazbaDph, taxingDate),
-    CustomVatRate: line.sazbaDph,
+    DiscountPercentage: 0,
+    IsTaxMovement: true,
     ...(options?.vatCodeId ? { VatCodeId: options.vatCodeId } : {}),
   }))
 }
@@ -121,6 +123,19 @@ export function buildIdokladBankFields(data: ExtractedInvoiceData): Record<strin
   if (bank.swift) out.Swift = bank.swift
   if (bank.bankCode) out._bankCode = bank.bankCode
   return out
+}
+
+/** Číslo účtu pro iDoklad — s kódem banky, pokud BankId nelze vyřešit */
+export function formatIdokladAccountNumber(
+  accountNumber: string | null | undefined,
+  bankCode: string | null | undefined,
+  bankId: number | null
+): string | undefined {
+  const account = accountNumber?.replace(/\/$/, '').trim()
+  if (!account) return undefined
+  if (bankId) return account
+  const code = normalizeBankCode(bankCode)
+  return code ? `${account}/${code}` : account
 }
 
 type IdokladVatCode = { Id: number; VatMovementType?: number; Name?: string; Code?: string }
@@ -254,8 +269,8 @@ export function matchIdokladBankByCode(bank: IdokladBank, bankCode: string): boo
   const target = normalizeBankCode(bankCode)
   if (!target) return false
 
-  const candidates = [bank.NumberCode, bank.Code]
-  return candidates.some((value) => normalizeBankCode(value) === target)
+  const candidates = [bank.NumberCode, bank.Code, (bank as { BankCode?: string | number }).BankCode]
+  return candidates.some((value) => value != null && normalizeBankCode(String(value)) === target)
 }
 
 async function resolveBankId(token: string, bankCode: string | null | undefined): Promise<number | null> {
@@ -350,7 +365,10 @@ async function resolvePartnerId(
       const existing = await idokladRequest<IdokladContact>(token, `Contacts/${existingId}`, {
         method: 'GET',
       })
-      if (contactNeedsAddressSync(existing)) {
+      const needsSync =
+        contactNeedsAddressSync(existing) ||
+        Boolean(bankId || bankFields.AccountNumber || bankFields.Iban)
+      if (needsSync) {
         await idokladRequest<IdokladContact>(token, 'Contacts', {
           method: 'PATCH',
           body: JSON.stringify({ Id: existingId, ...contactPayload }),
@@ -458,6 +476,15 @@ export async function sendToIdoklad(
 
   const items = buildIdokladItems(data, { vatCodeId, taxingDate })
   const documentSerialNumber = parseInt(numericSequence.nextSerial, 10)
+  const accountNumber = formatIdokladAccountNumber(
+    bankFields.AccountNumber as string | undefined,
+    bankCode,
+    bankId
+  )
+
+  // #region agent log
+  fetch('http://127.0.0.1:7711/ingest/3cd4d8f4-c62c-4feb-9280-e257beb22e7d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'20dbe5'},body:JSON.stringify({sessionId:'20dbe5',runId:'post-fix',hypothesisId:'H-VAT-BANK',location:'idoklad.ts:payload',message:'idoklad send payload summary',data:{bankCode:bankCode??null,bankId,accountNumber,itemCount:items.length,firstItem:items[0]??null,vatCodeId},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
 
   const payload = {
     PartnerId: partnerId,
@@ -476,7 +503,7 @@ export async function sendToIdoklad(
     ...(data.konstantni_symbol ? { ConstantSymbol: data.konstantni_symbol } : {}),
     ...(data.cislo_objednavky ? { OrderNumber: data.cislo_objednavky } : {}),
     ...(data.cislo_faktury ? { ReceivedDocumentNumber: data.cislo_faktury } : {}),
-    ...(bankFields.AccountNumber ? { AccountNumber: bankFields.AccountNumber } : {}),
+    ...(accountNumber ? { AccountNumber: accountNumber } : {}),
     ...(bankId ? { BankId: bankId } : {}),
     ...(bankFields.Iban ? { Iban: bankFields.Iban } : {}),
     ...(bankFields.Swift ? { Swift: bankFields.Swift } : {}),
