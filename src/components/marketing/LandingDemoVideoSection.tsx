@@ -12,7 +12,7 @@ function Embed({ video }: { video: LandingDemoVideo }) {
   if (video.provider === 'youtube') {
     return (
       <iframe
-        src={`https://www.youtube-nocookie.com/embed/${video.src}?rel=0&modestbranding=1`}
+        src={`https://www.youtube-nocookie.com/embed/${video.src}?rel=0&modestbranding=1&loop=1&playlist=${video.src}`}
         title={video.title}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
         allowFullScreen
@@ -24,7 +24,7 @@ function Embed({ video }: { video: LandingDemoVideo }) {
   if (video.provider === 'vimeo') {
     return (
       <iframe
-        src={`https://player.vimeo.com/video/${video.src}?dnt=1`}
+        src={`https://player.vimeo.com/video/${video.src}?dnt=1&loop=1`}
         title={video.title}
         allow="autoplay; fullscreen; picture-in-picture"
         allowFullScreen
@@ -35,19 +35,30 @@ function Embed({ video }: { video: LandingDemoVideo }) {
 
   return (
     <video
-      controls
+      autoPlay
+      muted
+      loop={video.loop ?? true}
       playsInline
-      preload="metadata"
+      preload="auto"
       poster={video.poster}
       className="absolute inset-0 h-full w-full object-cover bg-gray-900"
+      aria-label={video.title}
     >
-      <source src={video.src} type="video/mp4" />
+      <source src={video.src} type={video.mimeType ?? 'video/mp4'} />
     </video>
   )
 }
 
 function VideoPlayer({ video }: { video: LandingDemoVideo }) {
-  const [active, setActive] = useState(video.provider === 'file')
+  const [active, setActive] = useState(video.provider !== 'file')
+
+  if (video.provider === 'file') {
+    return (
+      <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-gray-200 bg-gray-900 shadow-lg">
+        <Embed video={video} />
+      </div>
+    )
+  }
 
   return (
     <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-gray-200 bg-gray-900 shadow-lg">
@@ -66,37 +77,6 @@ function VideoPlayer({ video }: { video: LandingDemoVideo }) {
           <span className="text-sm font-medium text-white/90">Přehrát ukázku</span>
         </button>
       )}
-    </div>
-  )
-}
-
-function Placeholder() {
-  const isDev = process.env.NODE_ENV === 'development'
-
-  return (
-    <div
-      className="relative aspect-video w-full overflow-hidden rounded-2xl border-2 border-dashed border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50"
-      aria-hidden
-    >
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
-        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-          <Play className="h-6 w-6 fill-blue-600 text-blue-600 ml-0.5" />
-        </span>
-        <p className="text-sm font-semibold text-gray-900">Video ukázka brzy</p>
-        <p className="text-xs text-gray-500 max-w-sm">
-          {isDev ? (
-            <>
-              Nastavte{' '}
-              <code className="rounded bg-white/80 px-1 py-0.5 text-[11px]">
-                NEXT_PUBLIC_LANDING_DEMO_VIDEO_URL
-              </code>{' '}
-              (YouTube, Vimeo nebo /videos/demo.mp4).
-            </>
-          ) : (
-            'Připravujeme krátkou ukázku celého procesu od PDF po export do účetnictví.'
-          )}
-        </p>
-      </div>
     </div>
   )
 }
@@ -131,7 +111,7 @@ export function LandingDemoVideoSection() {
             </ul>
           </div>
 
-          <div>{video ? <VideoPlayer video={video} /> : <Placeholder />}</div>
+          <div>{video ? <VideoPlayer video={video} /> : null}</div>
         </div>
       </div>
     </section>

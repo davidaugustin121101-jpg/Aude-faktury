@@ -4,20 +4,26 @@ export type LandingDemoVideo = {
   provider: LandingDemoVideoProvider
   /** YouTube/Vimeo ID nebo cesta k souboru v /public */
   src: string
+  mimeType?: string
   title: string
   description: string
   /** Volitelný poster pro self-hosted video */
   poster?: string
+  /** Autoplay ve smyčce (self-hosted) */
+  loop?: boolean
 }
 
 const DEFAULT_TITLE = 'Jak funguje Faktury Audeflow'
 const DEFAULT_DESCRIPTION =
   'Od nahrání PDF přes vytěžení a předkontaci až po odeslání do iDokladu, Fakturoidu nebo export do Pohody.'
 
-/** Nastavte NEXT_PUBLIC_LANDING_DEMO_VIDEO_URL po natočení hook videa. */
+/** Výchozí ukázka na landingu — /public/videos/demo.mov */
+export const DEFAULT_LANDING_DEMO_VIDEO_SRC = '/videos/demo.mov'
+
+/** Nastavte NEXT_PUBLIC_LANDING_DEMO_VIDEO_URL pro override (YouTube/Vimeo/MP4). */
 export function getLandingDemoVideo(): LandingDemoVideo | null {
-  const raw = process.env.NEXT_PUBLIC_LANDING_DEMO_VIDEO_URL?.trim()
-  if (!raw) return null
+  const raw =
+    process.env.NEXT_PUBLIC_LANDING_DEMO_VIDEO_URL?.trim() || DEFAULT_LANDING_DEMO_VIDEO_SRC
 
   const youtubeId = parseYouTubeId(raw)
   if (youtubeId) {
@@ -39,17 +45,26 @@ export function getLandingDemoVideo(): LandingDemoVideo | null {
     }
   }
 
-  if (raw.startsWith('/') || raw.endsWith('.mp4') || raw.endsWith('.webm')) {
+  if (raw.startsWith('/') || /\.(mp4|webm|mov)$/i.test(raw)) {
+    const src = raw.startsWith('/') ? raw : `/${raw}`
     return {
       provider: 'file',
-      src: raw.startsWith('/') ? raw : `/${raw}`,
+      src,
+      mimeType: mimeTypeForPath(src),
       title: DEFAULT_TITLE,
       description: DEFAULT_DESCRIPTION,
       poster: process.env.NEXT_PUBLIC_LANDING_DEMO_VIDEO_POSTER?.trim() || undefined,
+      loop: true,
     }
   }
 
   return null
+}
+
+function mimeTypeForPath(path: string): string {
+  if (path.endsWith('.webm')) return 'video/webm'
+  if (path.endsWith('.mov')) return 'video/quicktime'
+  return 'video/mp4'
 }
 
 function parseYouTubeId(url: string): string | null {
