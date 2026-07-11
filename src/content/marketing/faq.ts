@@ -45,7 +45,11 @@ export const MARKETING_FAQ = [
   },
   {
     q: 'Je Audeflow vhodný pro účetní firmy?',
-    a: 'Ano. Režim pro více klientů umožňuje spravovat samostatné workspace a napojení na fakturační systém pro každého klienta — iDoklad, Fakturoid, SuperFaktura, BitFaktura nebo Súčto.',
+    a: 'Ano. Modul více klientů (+299 Kč/měsíc k tarifu Standard nebo Pro) umožňuje neomezený počet workspaces — každý klient může mít jiný fakturační systém a vlastní API napojení. Přepínání trvá jedno kliknutí.',
+  },
+  {
+    q: 'V čem jste jiní než vestavěné vytěžení ve Fakturoidu?',
+    a: 'Audeflow je napříč systémy — jedno rozhraní pro iDoklad, Fakturoid, SuperFaktura, BitFaktura i Súčto, včetně přepínání mezi klienty (workspaces) pro účetní firmy. Navíc exportujeme do desktopových ERP (Pohoda, Money S3, Helios), které Fakturoid nepokrývá. Hodí se hlavně účetním kancelářím se smíšeným portfoliem klientů na různých platformách.',
   },
   {
     q: 'Funguje aplikace na mobilu?',

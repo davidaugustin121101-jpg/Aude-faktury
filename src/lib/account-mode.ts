@@ -170,7 +170,7 @@ export const BILLING_TIERS: BillingTier[] = [
     period: 'navždy',
     tagline: 'Pro podnikatele a OSVČ — jeden fakturační systém',
     benefits: [
-      '1 fakturační systém (iDoklad, Fakturoid nebo SuperFaktura)',
+      '1 fakturační systém (iDoklad, Fakturoid, SuperFaktura, BitFaktura nebo Súčto)',
       '10 faktur měsíčně zdarma',
       'PDF drag & drop + automatické vytěžení',
       'Návrh českého účetního kódu',
@@ -218,12 +218,13 @@ export const MULTI_CLIENT_ADDON = {
   name: 'Modul více klientů',
   price: '299 Kč',
   period: '/ měsíc',
-  tagline: 'Doplňek — vyžaduje kredity Standard nebo tarif Pro',
+  tagline: 'Doplňek k tarifu Standard nebo Pro — pro účetní kanceláře',
   benefits: [
-    'Neomezený počet klientů',
-    'Každý klient = vlastní fakturační systém',
-    'Přepínání klientů jedním klikem',
-    'Limit faktur = váš kredit nebo Pro tarif',
+    'Neomezený počet klientů (workspaces)',
+    'Každý klient může mít jiný systém — iDoklad, Fakturoid, SuperFaktura, BitFaktura nebo Súčto',
+    'Vlastní API napojení a export profil pro každého klienta',
+    'Přepínání klienta jedním klikem',
+    'Objem faktur podle vašeho tarifu (Standard kredit nebo Pro neomezeně)',
   ],
 }
 

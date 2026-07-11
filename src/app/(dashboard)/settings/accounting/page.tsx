@@ -32,10 +32,11 @@ export default async function AccountingSettingsPage() {
   const { data: connections } = await supabase
     .from('accounting_connections')
     .select(
-      'id, user_id, provider, country, is_active, created_at, fakturoid_account_slug, superfaktura_company_id'
+      'id, user_id, provider, country, is_active, created_at, fakturoid_account_slug, superfaktura_company_id, bitfaktura_domain, sucto_company_id'
     )
     .eq('user_id', user.id)
     .eq('workspace_id', workspace.id)
+    .eq('is_active', true)
     .order('created_at', { ascending: false })
     .limit(1)
 

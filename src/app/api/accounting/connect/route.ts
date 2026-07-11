@@ -201,8 +201,6 @@ export async function POST(req: NextRequest) {
     fakturoid_oauth_token: null,
     fakturoid_client_secret: null,
     superfaktura_api_key: null,
-    bitfaktura_api_token: null,
-    sucto_password: null,
   }
 
   if (provider === 'idoklad') {
@@ -319,9 +317,31 @@ export async function POST(req: NextRequest) {
     .maybeSingle()
 
   if (existing) {
-    await admin.from('accounting_connections').update(connData).eq('id', existing.id)
+    const { error: updateError } = await admin
+      .from('accounting_connections')
+      .update(connData)
+      .eq('id', existing.id)
+    if (updateError) {
+      return NextResponse.json({ error: 'Nepodařilo se uložit připojení' }, { status: 500 })
+    }
   } else {
-    await admin.from('accounting_connections').insert(connData)
+    const { error: insertError } = await admin.from('accounting_connections').insert(connData)
+    if (insertError) {
+      return NextResponse.json({ error: 'Nepodařilo se uložit připojení' }, { status: 500 })
+    }
+  }
+
+  const { data: verifyRow, error: verifyError } = await admin
+    .from('accounting_connections')
+    .select('id, provider, workspace_id, is_active')
+    .eq('user_id', user.id)
+    .eq('workspace_id', workspace.id)
+    .eq('provider', provider)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (verifyError || !verifyRow) {
+    return NextResponse.json({ error: 'Připojení se nepodařilo ověřit po uložení' }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { APP_NAME } from '@/lib/brand'
 
 const NAV_LINKS = [
+  { href: '#video', label: 'Ukázka' },
   { href: '#jak-funguje', label: 'Jak to funguje' },
   { href: '#pricing', label: 'Ceník' },
 ]

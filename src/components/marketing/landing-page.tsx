@@ -20,8 +20,13 @@ import {
   getMultiClientAddonHref,
 } from '@/lib/landing-links'
 import { SupportedSystemsSection } from '@/components/marketing/SupportedSystemsSection'
+import { LandingDemoVideoSection } from '@/components/marketing/LandingDemoVideoSection'
 import { SeoRichContentSection } from '@/components/marketing/SeoRichContentSection'
 import { MARKETING_FAQ } from '@/content/marketing/faq'
+import { getExtractionSpeedClaim } from '@/content/marketing/metrics'
+
+const CLOUD_SYSTEMS =
+  'iDoklad, Fakturoid, SuperFaktura, BitFaktura a Súčto'
 
 const STEPS = [
   {
@@ -38,7 +43,7 @@ const STEPS = [
   },
   {
     title: 'Export nebo odeslání',
-    desc: 'Stáhněte Pohoda/Money/Helios, nebo odešlete do iDokladu, Fakturoidu, SuperFaktury, BitFaktury či Súčta včetně PDF přílohy.',
+    desc: `Stáhněte Pohoda/Money/Helios, nebo odešlete do ${CLOUD_SYSTEMS} včetně PDF přílohy.`,
   },
   {
     title: 'Faktura v účetnictví',
@@ -64,10 +69,16 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
             </h1>
             <p className="mt-5 text-base sm:text-lg text-gray-600 leading-relaxed max-w-xl">
               Přetáhněte PDF nebo pošlete e-mailem — Audeflow vytěží data, navrhne předkontaci{' '}
-              <strong className="text-gray-800">504/343/321</strong> a odešle do iDokladu, Fakturoidu,
-              SuperFaktury, BitFaktury nebo Súčta. Export do Pohody, Money S3 a Helios.
+              <strong className="text-gray-800">504/343/321</strong> a odešle do {CLOUD_SYSTEMS}.
+              Export do Pohody, Money S3 a Helios.
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
+              <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-sky-700">
+                  Rychlost
+                </p>
+                <p className="text-sm font-semibold text-sky-900">{getExtractionSpeedClaim()}</p>
+              </div>
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5">
                 <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-700">
                   Cena
@@ -100,8 +111,16 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
                 </Button>
               </a>
             </div>
-            <div className="mt-8 flex flex-wrap gap-2">
-              {['10 faktur zdarma', 'iDoklad · Fakturoid · Pohoda', 'BitFaktura · Súčto · Helios', 'PDF příloha v ERP'].map(
+            <p className="mt-3 text-sm text-gray-500">
+              Bez karty, výsledek za pár vteřin
+            </p>
+            <div className="mt-6 flex flex-wrap gap-2">
+              {[
+                '10 faktur zdarma',
+                'iDoklad · Fakturoid · SuperFaktura',
+                'BitFaktura · Súčto',
+                'Pohoda · Money S3 · Helios',
+              ].map(
                 (tag) => (
                   <span
                     key={tag}
@@ -116,6 +135,8 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
 
           <LandingDropZone isAuthenticated={isAuthenticated} />
         </section>
+
+        <LandingDemoVideoSection />
 
         <SupportedSystemsSection />
 
@@ -142,18 +163,18 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
         </section>
 
         <section className="py-20">
-          <div className="max-w-6xl mx-auto px-4 grid lg:grid-cols-2 gap-10">
-            <div className="bg-emerald-50 border border-emerald-100 rounded-3xl p-8">
+          <div className="max-w-3xl mx-auto px-4">
+            <div className="bg-emerald-50 border border-emerald-100 rounded-3xl p-8 sm:p-10">
               <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-700 bg-emerald-100 rounded-full px-3 py-1 mb-4">
                 <User className="h-3.5 w-3.5" />
                 Solo — zdarma
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-3">Pro podnikatele a OSVČ</h2>
               <p className="text-gray-600 leading-relaxed mb-6">
-                Jeden účet, jeden fakturační systém dle vašeho výběru. 10 faktur měsíčně zdarma.
-                Ideální pokud fakturujete sami za sebe.
+                Jeden účet, jeden fakturační systém dle vašeho výběru ({CLOUD_SYSTEMS}). 10 faktur
+                měsíčně zdarma. Ideální pokud fakturujete sami za sebe.
               </p>
-              <ul className="space-y-2">
+              <ul className="space-y-2 mb-6">
                 {BILLING_TIERS[0].benefits.map((f) => (
                   <li key={f} className="flex items-center gap-2 text-sm text-gray-700">
                     <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
@@ -161,26 +182,13 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
                   </li>
                 ))}
               </ul>
-            </div>
-
-            <div className="bg-violet-600 rounded-3xl p-8 text-white">
-              <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider bg-white/10 rounded-full px-3 py-1 mb-4">
-                <Building2 className="h-3.5 w-3.5" />
-                Účetní firma — 299 Kč/měs
-              </div>
-              <h2 className="text-2xl font-bold mb-3">Více klientů, každý vlastní systém</h2>
-              <p className="text-violet-100 leading-relaxed mb-6">
-                Pro účetní kanceláře. Každý klient má vlastní workspace a vlastní napojení na iDoklad,
-                Fakturoid, SuperFaktura, BitFaktura nebo Súčto. Přepínání klienta trvá jednu sekundu.
+              <p className="text-sm text-gray-600">
+                Účetní kanceláře?{' '}
+                <a href="#ucetni-modul" className="text-violet-700 font-medium hover:underline">
+                  Modul více klientů v ceníku
+                </a>{' '}
+                — neomezený počet klientů, každý s vlastním systémem.
               </p>
-              <ul className="space-y-2">
-                {BILLING_TIERS[1].benefits.map((f) => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-violet-50">
-                    <CheckCircle2 className="h-4 w-4 shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
             </div>
           </div>
         </section>
@@ -201,7 +209,7 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
               {
                 icon: Sparkles,
                 title: '8 účetních systémů',
-                desc: 'API do iDokladu, Fakturoidu, SuperFaktury, BitFaktury, Súčta. Export Pohoda, Money S3, Helios.',
+                desc: `API do ${CLOUD_SYSTEMS}. Export Pohoda, Money S3, Helios.`,
               },
             ].map(({ icon: Icon, title, desc }) => (
               <div key={title} className="bg-white rounded-2xl border border-gray-200 p-6">
@@ -224,8 +232,9 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
               Tarify podle objemu faktur
             </h2>
             <p className="text-gray-500 text-center mb-12">
-              Solo zdarma (10 faktur/měsíc), Standard od 2,99 Kč/faktura — nejnižší cena vytěžení v ČR.
-              Modul více klientů (+299 Kč) jako doplněk k placenému tarifu.
+              Solo zdarma (10 faktur/měsíc, 1 systém). Standard od 2,99 Kč/faktura. Tarify Standard
+              a Pro pokrývají objem faktur — modul více klientů je samostatný doplněk pro účetní
+              kanceláře.
             </p>
             <div className="grid md:grid-cols-3 gap-6 mb-8">
               {BILLING_TIERS.map((plan) => (
@@ -265,14 +274,29 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
                 </div>
               ))}
             </div>
-            <div className="rounded-2xl border border-violet-200 bg-violet-50 p-6 max-w-md mx-auto mt-8 text-center">
-              <h3 className="text-lg font-bold text-gray-900">{MULTI_CLIENT_ADDON.name}</h3>
-              <p className="text-xs text-gray-600 mt-1 mb-3">{MULTI_CLIENT_ADDON.tagline}</p>
-              <p className="text-2xl font-extrabold text-violet-700">
+            <div
+              id="ucetni-modul"
+              className="rounded-2xl border border-violet-300 bg-violet-50 p-6 sm:p-8 max-w-2xl mx-auto mt-8"
+            >
+              <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-violet-700 bg-violet-100 rounded-full px-3 py-1 mb-4">
+                <Building2 className="h-3.5 w-3.5" />
+                Pro účetní kanceláře
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">{MULTI_CLIENT_ADDON.name}</h3>
+              <p className="text-sm text-gray-600 mt-2 mb-4">{MULTI_CLIENT_ADDON.tagline}</p>
+              <p className="text-2xl font-extrabold text-violet-700 mb-5">
                 +{MULTI_CLIENT_ADDON.price}
                 <span className="text-sm font-normal text-gray-500">{MULTI_CLIENT_ADDON.period}</span>
               </p>
-              <Link href={getMultiClientAddonHref(isAuthenticated)} className="inline-block mt-4">
+              <ul className="space-y-2.5 text-left mb-6">
+                {MULTI_CLIENT_ADDON.benefits.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-gray-700">
+                    <CheckCircle2 className="h-4 w-4 text-violet-600 shrink-0 mt-0.5" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <Link href={getMultiClientAddonHref(isAuthenticated)} className="inline-block">
                 <Button className="bg-violet-600 hover:bg-violet-700">
                   {isAuthenticated ? 'Aktivovat modul' : 'Přihlásit se a aktivovat'}
                 </Button>
@@ -329,6 +353,7 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
                 </Button>
               </Link>
             </div>
+            <p className="mt-3 text-sm text-gray-500">Bez karty, výsledek za pár vteřin</p>
           </div>
         </section>
       </main>

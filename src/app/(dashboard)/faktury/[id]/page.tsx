@@ -340,7 +340,7 @@ export default async function InvoiceDetailPage({ params }: Props) {
       {canAct && !accountingConn && (
         <div className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3">
           <p className="text-sm text-gray-600">
-            Pro odeslání přes API připojte iDoklad, Fakturoid nebo SuperFakturu v{' '}
+            Pro odeslání přes API připojte iDoklad, Fakturoid, SuperFakturu, BitFakturu nebo Súčto v{' '}
             <Link href="/settings/accounting" className="underline font-medium text-blue-600">
               nastavení fakturačního systému
             </Link>
