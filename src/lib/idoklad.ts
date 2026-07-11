@@ -63,21 +63,38 @@ export type IdokladInvoiceItemPayload = {
   VatCodeId?: number
 }
 
-/** iDoklad VatRateType: 0=Reduced1 (10%), 1=Basic (21%), 2=Zero, 3=Reduced2 (12%) */
-export function mapIdokladVatRateType(sazbaDph: number): number {
+/** Od 1. 1. 2024 platí v ČR jen 21 % a 12 % — iDoklad zrušil Reduced2 pro novější data */
+const CZECH_VAT_CONSOLIDATION_DATE = '2024-01-01'
+
+/**
+ * iDoklad VatRateType: 0=Reduced1, 1=Basic (21 %), 2=Zero, 3=Reduced2
+ * Před 2024: Reduced1=15 %, Reduced2=10 %. Od 2024: Reduced1=12 %, Reduced2 neplatí.
+ */
+export function mapIdokladVatRateType(sazbaDph: number, taxingDate?: string): number {
   const rate = Math.round(sazbaDph)
   if (rate === 0) return 2
-  if (rate === 10) return 0
-  if (rate === 12) return 3
+
+  const postConsolidation =
+    !taxingDate || taxingDate.slice(0, 10) >= CZECH_VAT_CONSOLIDATION_DATE
+
+  if (postConsolidation) {
+    if (rate === 21) return 1
+    if (rate === 12 || rate === 10) return 0
+    return 1
+  }
+
+  if (rate === 10) return 3
+  if (rate === 15 || rate === 12) return 0
   return 1
 }
 
 /** Položky faktury pro iDoklad — z tabulky polozky[], jinak jedna agregovaná položka */
 export function buildIdokladItems(
   data: ExtractedInvoiceData,
-  options?: { vatCodeId?: number | null }
+  options?: { vatCodeId?: number | null; taxingDate?: string }
 ): IdokladInvoiceItemPayload[] {
   const lines = buildInvoiceOutputLines(data)
+  const taxingDate = options?.taxingDate ?? data.datum_duzp ?? data.datum_vystaveni
 
   return lines.map((line) => ({
     Name: line.nazev.slice(0, 200),
@@ -85,7 +102,7 @@ export function buildIdokladItems(
     Unit: line.jednotka,
     UnitPrice: line.jednotkovaCena,
     PriceType: PRICE_TYPE_WITHOUT_VAT,
-    VatRateType: mapIdokladVatRateType(line.sazbaDph),
+    VatRateType: mapIdokladVatRateType(line.sazbaDph, taxingDate),
     CustomVatRate: line.sazbaDph,
     ...(options?.vatCodeId ? { VatCodeId: options.vatCodeId } : {}),
   }))
@@ -439,7 +456,7 @@ export async function sendToIdoklad(
     resolvePurchaseVatCodeId(token),
   ])
 
-  const items = buildIdokladItems(data, { vatCodeId })
+  const items = buildIdokladItems(data, { vatCodeId, taxingDate })
   const documentSerialNumber = parseInt(numericSequence.nextSerial, 10)
 
   const payload = {

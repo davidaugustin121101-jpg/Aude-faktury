@@ -44,16 +44,21 @@ describe('idoklad items and bank fields', () => {
     assert.equal(items[0].Amount, 100)
     assert.equal(items[0].Unit, 'ks')
     assert.equal(items[3].Unit, 'kg')
-    assert.equal(items[1].VatRateType, 3)
+    assert.equal(items[1].VatRateType, 0)
     assert.equal(items[1].CustomVatRate, 12)
     assert.equal(items[0].CustomVatRate, 21)
   })
 
-  it('maps Czech VAT rates to iDoklad VatRateType enum', () => {
-    assert.equal(mapIdokladVatRateType(21), 1)
-    assert.equal(mapIdokladVatRateType(12), 3)
-    assert.equal(mapIdokladVatRateType(10), 0)
-    assert.equal(mapIdokladVatRateType(0), 2)
+  it('maps Czech VAT rates to iDoklad VatRateType enum (od 2024)', () => {
+    assert.equal(mapIdokladVatRateType(21, '2026-03-12'), 1)
+    assert.equal(mapIdokladVatRateType(12, '2026-03-12'), 0)
+    assert.equal(mapIdokladVatRateType(10, '2026-03-12'), 0)
+    assert.equal(mapIdokladVatRateType(0, '2026-03-12'), 2)
+  })
+
+  it('maps historical 10 % to Reduced2 before 2024', () => {
+    assert.equal(mapIdokladVatRateType(10, '2023-12-31'), 3)
+    assert.equal(mapIdokladVatRateType(15, '2023-12-31'), 0)
   })
 
   it('falls back to single aggregated item when polozky are empty', () => {
