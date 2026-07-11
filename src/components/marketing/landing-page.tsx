@@ -9,7 +9,7 @@ import {
   User,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { BILLING_TIERS, MULTI_CLIENT_ADDON } from '@/lib/account-mode'
+import { BILLING_TIERS, MULTI_CLIENT_ADDON, soloFreeMonthlyLabel, soloFreePerMonthLabel, soloFreeShortLabel } from '@/lib/account-mode'
 import { LandingHeader } from '@/components/marketing/landing-header'
 import { LandingDropZone } from '@/components/marketing/LandingDropZone'
 import { LegalFooter } from '@/components/legal/LegalFooter'
@@ -116,7 +116,7 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
             </p>
             <div className="mt-6 flex flex-wrap gap-2">
               {[
-                '10 faktur zdarma',
+                soloFreeShortLabel(),
                 'iDoklad · Fakturoid · SuperFaktura',
                 'BitFaktura · Súčto',
                 'Pohoda · Money S3 · Helios',
@@ -171,8 +171,8 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-3">Pro podnikatele a OSVČ</h2>
               <p className="text-gray-600 leading-relaxed mb-6">
-                Jeden účet, jeden fakturační systém dle vašeho výběru ({CLOUD_SYSTEMS}). 10 faktur
-                měsíčně zdarma. Ideální pokud fakturujete sami za sebe.
+                Jeden účet, jeden fakturační systém dle vašeho výběru ({CLOUD_SYSTEMS}). {soloFreeMonthlyLabel()}.
+                Ideální pokud fakturujete sami za sebe.
               </p>
               <ul className="space-y-2 mb-6">
                 {BILLING_TIERS[0].benefits.map((f) => (
@@ -232,7 +232,7 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
               Tarify podle objemu faktur
             </h2>
             <p className="text-gray-500 text-center mb-12">
-              Solo zdarma (10 faktur/měsíc, 1 systém). Standard od 2,99 Kč/faktura. Tarify Standard
+              Solo zdarma ({soloFreePerMonthLabel()}, 1 systém). Standard od 2,99 Kč/faktura. Tarify Standard
               a Pro pokrývají objem faktur — modul více klientů je samostatný doplněk pro účetní
               kanceláře.
             </p>
@@ -337,7 +337,7 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
               Zpracujte první fakturu dnes
             </h2>
             <p className="text-gray-600 mb-8">
-              Registrace zabere 2 minuty. Solo režim zdarma — 10 faktur měsíčně, jeden fakturační
+              Registrace zabere 2 minuty. Solo režim zdarma — {soloFreeMonthlyLabel()}, jeden fakturační
               systém. Bez kreditní karty.
             </p>
             <div className="flex flex-wrap justify-center gap-3">

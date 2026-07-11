@@ -1,5 +1,7 @@
 'use client'
 
+import { soloFreeMonthlyLabel } from '@/lib/account-mode'
+
 import { useCallback, useRef, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useRouter } from 'next/navigation'
@@ -124,7 +126,7 @@ export function LandingDropZone({ isAuthenticated }: Props) {
       </div>
       <p className="text-center text-xs text-blue-800/80 mt-4 font-medium">
         {isAuthenticated
-          ? 'Vytěžení + odeslání s PDF přílohou · 10 faktur měsíčně zdarma'
+          ? `Vytěžení + odeslání s PDF přílohou · ${soloFreeMonthlyLabel()}`
           : 'Po nahrání dokončíte registraci — PDF už bude uložené'}
       </p>
     </div>

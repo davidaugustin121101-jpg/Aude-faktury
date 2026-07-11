@@ -8,7 +8,7 @@ describe('invoice allowance accounting', () => {
     const usedFromLedger = 3
     assert.equal(getInvoicesRemaining(profile, usedFromLedger), SOLO_INVOICE_LIMIT - 3)
     // Po smazání faktury zůstane usedFromLedger stejné → slot se nevrátí
-    assert.equal(getInvoicesRemaining(profile, usedFromLedger), 7)
+    assert.equal(getInvoicesRemaining(profile, usedFromLedger), SOLO_INVOICE_LIMIT - 3)
   })
 
   it('credit tier uses profile credits, not monthly invoice count', () => {

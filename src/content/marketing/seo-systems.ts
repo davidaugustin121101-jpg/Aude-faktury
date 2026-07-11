@@ -1,4 +1,6 @@
 /** Integrace přes API — zobrazujeme logem na landingu */
+import { SOLO_INVOICE_LIMIT, soloFreeMonthlyLabel } from '@/lib/account-mode'
+
 export const API_ACCOUNTING_SYSTEMS = [
   {
     id: 'idoklad',
@@ -123,11 +125,12 @@ export const EXTRACTION_FEATURES = [
   },
 ] as const
 
+
 export const PRICING_SEO = {
   headline: 'Nejnižší cena vytěžení faktur v ČR',
   perInvoice: '2,99 Kč',
   pack: '299 Kč / 100 faktur',
-  free: '10 faktur měsíčně zdarma',
+  free: soloFreeMonthlyLabel(),
   keywords: [
     'nejlevnější vytěžení faktur',
     'nejnižší cena OCR faktury',
@@ -135,8 +138,8 @@ export const PRICING_SEO = {
     'vytěžení faktury cena',
     'automatizace faktur levně',
   ],
-  text: 'Tarif Solo je zdarma (10 faktur/měsíc). Standard: 100 faktur za 299 Kč jednorázově — to je 2,99 Kč za fakturu bez expirace kreditu. Pro účetní firmy modul více klientů od 299 Kč/měsíc.',
-} as const
+  text: `Tarif Solo je zdarma (${SOLO_INVOICE_LIMIT} faktur/měsíc). Standard: 100 faktur za 299 Kč jednorázově — to je 2,99 Kč za fakturu bez expirace kreditu. Pro účetní firmy modul více klientů od 299 Kč/měsíc.`,
+}
 
 export function allSeoKeywords(): string[] {
   const fromSystems = [...API_ACCOUNTING_SYSTEMS, ...ERP_EXPORT_SYSTEMS].flatMap((s) => s.keywords)

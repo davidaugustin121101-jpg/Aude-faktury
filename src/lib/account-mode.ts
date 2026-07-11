@@ -1,7 +1,19 @@
 export type BillingPlan = 'free' | 'pro'
 export type AccountMode = 'solo' | 'accountant'
 
-export const SOLO_INVOICE_LIMIT = 10
+export const SOLO_INVOICE_LIMIT = 5
+
+export function soloFreeMonthlyLabel(): string {
+  return `${SOLO_INVOICE_LIMIT} faktur měsíčně zdarma`
+}
+
+export function soloFreeShortLabel(): string {
+  return `${SOLO_INVOICE_LIMIT} faktur zdarma`
+}
+
+export function soloFreePerMonthLabel(): string {
+  return `${SOLO_INVOICE_LIMIT} faktur/měsíc`
+}
 export const STANDARD_PACK_CREDITS = 100
 export const MULTI_CLIENT_ADDON_PRICE = '299 Kč / měsíc'
 
@@ -171,7 +183,7 @@ export const BILLING_TIERS: BillingTier[] = [
     tagline: 'Pro podnikatele a OSVČ — jeden fakturační systém',
     benefits: [
       '1 fakturační systém (iDoklad, Fakturoid, SuperFaktura, BitFaktura nebo Súčto)',
-      '10 faktur měsíčně zdarma',
+      soloFreeMonthlyLabel(),
       'PDF drag & drop + automatické vytěžení',
       'Návrh českého účetního kódu',
       'Kontrola před odesláním',

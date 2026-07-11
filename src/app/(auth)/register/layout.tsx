@@ -1,10 +1,11 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
+import { soloFreeMonthlyLabel } from '@/lib/account-mode'
 import { pageMetadata } from '@/lib/seo'
 
 export const metadata: Metadata = pageMetadata(
   'Registrace zdarma',
-  'Vytvořte účet Faktury Audeflow — 10 faktur měsíčně zdarma, od 2,99 Kč/faktura. Vytěžení PDF, předkontace, export do iDokladu, Fakturoidu, Pohody, BitFaktury a Súčta.',
+  `Vytvořte účet Faktury Audeflow — ${soloFreeMonthlyLabel()}, od 2,99 Kč/faktura. Vytěžení PDF, předkontace, export do iDokladu, Fakturoidu, Pohody, BitFaktury a Súčta.`,
   '/register'
 )
 

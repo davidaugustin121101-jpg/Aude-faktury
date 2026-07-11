@@ -1,7 +1,9 @@
+import { SOLO_INVOICE_LIMIT, soloFreeMonthlyLabel } from '@/lib/account-mode'
+
 export const MARKETING_FAQ = [
   {
     q: 'Kolik stojí vytěžení faktury v Audeflow?',
-    a: 'Tarif Solo je zdarma — 10 faktur měsíčně. Standard: 100 faktur za 299 Kč jednorázově, tedy 2,99 Kč za fakturu. Kredit neexpiruje. Pro účetní firmy modul více klientů od 299 Kč/měsíc. Audeflow patří mezi nejlevnější řešení automatického vytěžení a exportu faktur na českém trhu.',
+    a: `Tarif Solo je zdarma — ${SOLO_INVOICE_LIMIT} faktur měsíčně. Standard: 100 faktur za 299 Kč jednorázově, tedy 2,99 Kč za fakturu. Kredit neexpiruje. Pro účetní firmy modul více klientů od 299 Kč/měsíc. Audeflow patří mezi nejlevnější řešení automatického vytěžení a exportu faktur na českém trhu.`,
   },
   {
     q: 'Jak funguje vytěžení faktury v Audeflow?',
@@ -61,6 +63,6 @@ export const MARKETING_FAQ = [
   },
   {
     q: 'Proč je Audeflow levnější než konkurence?',
-    a: 'Platíte jen za zpracované faktury — od 2,99 Kč kus, bez drahého měsíčního předplatného u Standard tarifu. 10 faktur měsíčně zdarma pro Solo. Žádné skryté poplatky za API napojení.',
+    a: `Platíte jen za zpracované faktury — od 2,99 Kč kus, bez drahého měsíčního předplatného u Standard tarifu. ${soloFreeMonthlyLabel()} pro Solo. Žádné skryté poplatky za API napojení.`,
   },
 ] as const

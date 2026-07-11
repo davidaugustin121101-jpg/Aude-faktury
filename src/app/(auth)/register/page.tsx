@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { soloFreeMonthlyLabel, soloFreeShortLabel } from '@/lib/account-mode'
 import { APP_NAME } from '@/lib/brand'
 import { AuthAccountHelpNotice } from '@/components/auth/AuthAccountHelpNotice'
 import { LEGAL_EMAIL } from '@/lib/legal'
@@ -99,7 +100,7 @@ export default function RegisterPage() {
           <p className="text-sm text-gray-500 mb-6">
             {hasPending
               ? 'Faktura je uložena — po registraci ji hned zpracujeme.'
-              : '10 faktur měsíčně zdarma · Bez kreditní karty'}
+              : `${soloFreeMonthlyLabel()} · Bez kreditní karty`}
           </p>
 
           <form onSubmit={handleRegister} className="space-y-4">
@@ -169,7 +170,7 @@ export default function RegisterPage() {
 
           <ul className="mt-5 space-y-1.5">
             {[
-              '10 faktur zdarma každý měsíc',
+              `${soloFreeShortLabel()} každý měsíc`,
               'PDF drag & drop',
               'iDoklad · Fakturoid · SuperFaktura',
               'České účetní kódy a předkontace',

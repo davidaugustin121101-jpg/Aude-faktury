@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { APP_NAME } from '@/lib/brand'
 import { LEGAL_EMAIL, LEGAL_WEB } from '@/lib/legal'
+import { soloFreeMonthlyLabel } from '@/lib/account-mode'
 import { MARKETING_FAQ } from '@/content/marketing/faq'
 import {
   API_ACCOUNTING_SYSTEMS,
@@ -13,7 +14,7 @@ export const SITE_URL =
   process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ?? 'https://faktury.audeflow.cz'
 
 export const SITE_DESCRIPTION =
-  'Nejlevnější vytěžení PDF faktur v ČR — od 2,99 Kč/faktura, 10 faktur měsíčně zdarma. Automatické OCR, návrh předkontace 504/343/321 a odeslání do iDokladu, Fakturoidu, SuperFaktury, BitFaktury a Súčta. Export Pohoda XML, Money S3, Helios. E-mail @in.audeflow.cz.'
+  `Nejlevnější vytěžení PDF faktur v ČR — od 2,99 Kč/faktura, ${soloFreeMonthlyLabel()}. Automatické OCR, návrh předkontace 504/343/321 a odeslání do iDokladu, Fakturoidu, SuperFaktury, BitFaktury a Súčta. Export Pohoda XML, Money S3, Helios. E-mail @in.audeflow.cz.`
 
 export const SITE_KEYWORDS = [
   ...allSeoKeywords(),
