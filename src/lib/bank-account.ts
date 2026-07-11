@@ -34,6 +34,14 @@ export function parseCzechBankAccount(raw: string | null | undefined): {
   return { accountNumber: cleaned || null, bankCode: null }
 }
 
+/** iDoklad AccountNumber smí obsahovat pouze číslice */
+export function sanitizeIdokladAccountNumber(
+  accountNumber: string | null | undefined
+): string | undefined {
+  const digits = (accountNumber ?? '').replace(/\D/g, '')
+  return digits || undefined
+}
+
 export function normalizeIban(raw: string | null | undefined): string | null {
   const s = (raw ?? '').trim().replace(/\s/g, '').toUpperCase()
   return s || null

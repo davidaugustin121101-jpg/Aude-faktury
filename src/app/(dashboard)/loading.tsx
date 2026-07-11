@@ -1,4 +1,25 @@
+'use client'
+
+import { useEffect } from 'react'
+
 export default function DashboardLoading() {
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7711/ingest/3cd4d8f4-c62c-4feb-9280-e257beb22e7d', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '20dbe5' },
+      body: JSON.stringify({
+        sessionId: '20dbe5',
+        hypothesisId: 'H4',
+        location: 'loading.tsx:mount',
+        message: 'dashboard loading skeleton visible',
+        data: { path: window.location.pathname },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+  }, [])
+
   return (
     <div className="space-y-6 animate-pulse">
       <div className="h-8 w-48 bg-gray-200 rounded-lg" />

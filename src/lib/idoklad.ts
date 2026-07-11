@@ -7,7 +7,7 @@ import {
   contactNeedsAddressSync,
 } from './idoklad-contact'
 import { buildInvoiceOutputLines, buildInvoicePayment } from './invoice-output'
-import { normalizeBankCode } from './bank-account'
+import { normalizeBankCode, sanitizeIdokladAccountNumber } from './bank-account'
 
 const IDOKLAD_API_BASE = 'https://api.idoklad.cz/v3'
 const IDOKLAD_TOKEN_URL = 'https://app.idoklad.cz/identity/server/connect/token'
@@ -118,25 +118,17 @@ export function buildIdokladBankFields(data: ExtractedInvoiceData): Record<strin
   const bank = buildInvoicePayment(data)
 
   const out: Record<string, string | number> = {}
-  if (bank.accountNumber) out.AccountNumber = bank.accountNumber
+  if (bank.accountNumber) {
+    const account = sanitizeIdokladAccountNumber(bank.accountNumber)
+    if (account) out.AccountNumber = account
+  }
   if (bank.iban) out.Iban = bank.iban
   if (bank.swift) out.Swift = bank.swift
   if (bank.bankCode) out._bankCode = bank.bankCode
   return out
 }
 
-/** Číslo účtu pro iDoklad — s kódem banky, pokud BankId nelze vyřešit */
-export function formatIdokladAccountNumber(
-  accountNumber: string | null | undefined,
-  bankCode: string | null | undefined,
-  bankId: number | null
-): string | undefined {
-  const account = accountNumber?.replace(/\/$/, '').trim()
-  if (!account) return undefined
-  if (bankId) return account
-  const code = normalizeBankCode(bankCode)
-  return code ? `${account}/${code}` : account
-}
+export { sanitizeIdokladAccountNumber } from './bank-account'
 
 type IdokladVatCode = { Id: number; VatMovementType?: number; Name?: string; Code?: string }
 
@@ -476,11 +468,7 @@ export async function sendToIdoklad(
 
   const items = buildIdokladItems(data, { vatCodeId, taxingDate })
   const documentSerialNumber = parseInt(numericSequence.nextSerial, 10)
-  const accountNumber = formatIdokladAccountNumber(
-    bankFields.AccountNumber as string | undefined,
-    bankCode,
-    bankId
-  )
+  const accountNumber = sanitizeIdokladAccountNumber(bankFields.AccountNumber as string | undefined)
 
   // #region agent log
   fetch('http://127.0.0.1:7711/ingest/3cd4d8f4-c62c-4feb-9280-e257beb22e7d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'20dbe5'},body:JSON.stringify({sessionId:'20dbe5',runId:'post-fix',hypothesisId:'H-VAT-BANK',location:'idoklad.ts:payload',message:'idoklad send payload summary',data:{bankCode:bankCode??null,bankId,accountNumber,itemCount:items.length,firstItem:items[0]??null,vatCodeId},timestamp:Date.now()})}).catch(()=>{});

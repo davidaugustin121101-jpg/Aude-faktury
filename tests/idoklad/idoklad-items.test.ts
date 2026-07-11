@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { buildIdokladBankFields, buildIdokladItems, formatIdokladAccountNumber, mapIdokladVatRateType } from '../../src/lib/idoklad'
+import { buildIdokladBankFields, buildIdokladItems, mapIdokladVatRateType } from '../../src/lib/idoklad'
+import { sanitizeIdokladAccountNumber } from '../../src/lib/bank-account'
 import { lineGrossAmount, lineVatAmount, buildInvoiceOutputLines } from '../../src/lib/invoice-output'
 import type { ExtractedInvoiceData } from '../../src/lib/claude'
 
@@ -80,8 +81,8 @@ describe('idoklad items and bank fields', () => {
     const bank = buildIdokladBankFields(data)
     assert.equal(bank.AccountNumber, '1234567891')
     assert.equal(bank._bankCode, '0321')
-    assert.equal(formatIdokladAccountNumber('1234567891', '0321', null), '1234567891/0321')
-    assert.equal(formatIdokladAccountNumber('1234567891', '0321', 42), '1234567891')
+    assert.equal(sanitizeIdokladAccountNumber('1234567891'), '1234567891')
+    assert.equal(sanitizeIdokladAccountNumber('1234567891/'), '1234567891')
   })
 
   it('item gross totals match Czech VAT percentages (not flat +21)', () => {

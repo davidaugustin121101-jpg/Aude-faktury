@@ -1,6 +1,6 @@
 import type { ExtractedInvoiceData } from './claude'
 import type { AresSubject } from './invoice-audit/rules/ares-lookup'
-import { parseBankPaymentFields } from './bank-account'
+import { parseBankPaymentFields, sanitizeIdokladAccountNumber } from './bank-account'
 
 /** iDoklad Countries list – 1 = Slovensko, 2 = Česko */
 export const IDOKLAD_COUNTRY_SK = 1
@@ -67,13 +67,19 @@ export function buildIdokladContactPayload(
     (() => {
       const parsed = parseBankPaymentFields(data)
       const out: Record<string, string | number> = {}
-      if (parsed.accountNumber) out.AccountNumber = parsed.accountNumber
+      if (parsed.accountNumber) {
+        const account = sanitizeIdokladAccountNumber(parsed.accountNumber)
+        if (account) out.AccountNumber = account
+      }
       if (parsed.iban) out.Iban = parsed.iban
       if (parsed.swift) out.Swift = parsed.swift
       return out
     })()
 
-  if (bank.AccountNumber) payload.AccountNumber = bank.AccountNumber
+  if (bank.AccountNumber) {
+    const account = sanitizeIdokladAccountNumber(String(bank.AccountNumber))
+    if (account) payload.AccountNumber = account
+  }
   if (bank.Iban) payload.Iban = bank.Iban
   if (bank.Swift) payload.Swift = bank.Swift
   if (options?.bankId) payload.BankId = options.bankId

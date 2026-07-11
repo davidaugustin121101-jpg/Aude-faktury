@@ -7,6 +7,7 @@ import {
   normalizeSwift,
   normalizeBankCode,
 } from '../../src/lib/bank-account'
+import { sanitizeIdokladAccountNumber } from '../../src/lib/bank-account'
 import { matchIdokladBankByCode } from '../../src/lib/idoklad'
 
 describe('bank-account', () => {
@@ -45,6 +46,11 @@ describe('bank-account', () => {
     assert.equal(bank.accountNumber, '1234567891')
     assert.equal(bank.bankCode, '0321')
     assert.equal(bank.swift, 'FIOBCZPP')
+  })
+
+  it('sanitizes account number to digits only for iDoklad', () => {
+    assert.equal(sanitizeIdokladAccountNumber('1234567891'), '1234567891')
+    assert.equal(sanitizeIdokladAccountNumber('1234567891/'), '1234567891')
   })
 
   it('matches iDoklad bank by NumberCode', () => {
