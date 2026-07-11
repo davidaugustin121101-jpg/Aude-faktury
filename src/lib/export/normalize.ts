@@ -7,23 +7,13 @@ import {
   buildInvoiceOutputLines,
   buildInvoicePayment,
   formatPaymentAccount,
+  normalizeCzechVatRate,
 } from '@/lib/invoice-output'
 import type { ExportProfile, NormalizedInvoice } from './types'
 import { formatDateIso } from './xml-utils'
 
-const ALLOWED_VAT = [0, 10, 12, 21] as const
-
 function round2(n: number): number {
   return Math.round(n * 100) / 100
-}
-
-function normalizeVatRate(rate: number | null | undefined): number {
-  if (rate == null || Number.isNaN(rate)) return 21
-  const rounded = Math.round(rate)
-  if ((ALLOWED_VAT as readonly number[]).includes(rounded)) return rounded
-  return ALLOWED_VAT.reduce((best, candidate) =>
-    Math.abs(candidate - rounded) < Math.abs(best - rounded) ? candidate : best
-  )
 }
 
 function normalizeIco(ico: string | null | undefined): string {
@@ -39,7 +29,7 @@ export function normalizeInvoice(
   const payment = buildInvoicePayment(extracted)
   const lines = buildInvoiceOutputLines(extracted)
 
-  const sazbaDph = normalizeVatRate(invoice.sazba_dph)
+  const sazbaDph = normalizeCzechVatRate(invoice.sazba_dph)
   const castkaBezDph = round2(Number(invoice.castka_bez_dph ?? 0))
   const castkaDph = round2(Number(invoice.castka_dph ?? 0))
   const castkaCelkem = round2(Number(invoice.castka_celkem ?? castkaBezDph + castkaDph))

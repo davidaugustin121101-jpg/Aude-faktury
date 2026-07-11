@@ -11,7 +11,6 @@ import { Loader2, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { soloFreeMonthlyLabel, soloFreeShortLabel } from '@/lib/account-mode'
 import { APP_NAME } from '@/lib/brand'
-import { AuthAccountHelpNotice } from '@/components/auth/AuthAccountHelpNotice'
 import { LEGAL_EMAIL } from '@/lib/legal'
 import { LegalFooter } from '@/components/legal/LegalFooter'
 import { getPostAuthUploadPath, hasPendingPdf } from '@/lib/pending-upload'
@@ -151,8 +150,6 @@ export default function RegisterPage() {
                 dle podmínek.
               </span>
             </label>
-
-            <AuthAccountHelpNotice variant="register" />
 
             <Button
               type="submit"

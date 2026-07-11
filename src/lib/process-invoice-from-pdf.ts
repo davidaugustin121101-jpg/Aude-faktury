@@ -10,6 +10,10 @@ import { saveInvoicePdf } from '@/lib/invoice-pdf-storage'
 import { findDuplicateInvoice, formatDuplicateMessage } from '@/lib/duplicate-invoice'
 import { applyPolozkyToExtraction } from '@/lib/polozky-predkontace'
 import { reconcileExtractionAmounts, isZalohovaTyp } from '@/lib/invoice-amounts'
+import {
+  normalizeCzechVatRate,
+  normalizeExtractedBankFields,
+} from '@/lib/invoice-output'
 import type { ProcessedInvoice } from '@/types/invoices'
 import type { AuditResult } from '@/lib/invoice-audit/types'
 import {
@@ -18,7 +22,6 @@ import {
   type AllowanceSource,
 } from '@/lib/invoice-allowance'
 
-const ALLOWED_VAT_RATES = [0, 10, 12, 21] as const
 
 export type ProcessInvoiceSource = 'manual_upload' | 'email_inbound'
 
@@ -70,15 +73,6 @@ export type ProcessInvoiceResult =
   | ProcessInvoiceDuplicate
   | ProcessInvoiceError
 
-function normalizeVatRate(rate: number | null | undefined): number {
-  if (rate == null || Number.isNaN(rate)) return 21
-  const rounded = Math.round(rate)
-  if ((ALLOWED_VAT_RATES as readonly number[]).includes(rounded)) return rounded
-  return ALLOWED_VAT_RATES.reduce((best, candidate) =>
-    Math.abs(candidate - rounded) < Math.abs(best - rounded) ? candidate : best
-  )
-}
-
 export async function processInvoiceFromPdf(
   input: ProcessInvoiceInput
 ): Promise<ProcessInvoiceResult> {
@@ -112,6 +106,7 @@ export async function processInvoiceFromPdf(
 
   extracted = applyPolozkyToExtraction(extracted)
   extracted = reconcileExtractionAmounts(extracted)
+  extracted = normalizeExtractedBankFields(extracted)
 
   if (isZalohovaTyp(extracted)) {
     extracted = {
@@ -135,7 +130,7 @@ export async function processInvoiceFromPdf(
     }
   }
 
-  const sazbaDph = normalizeVatRate(extracted.sazba_dph)
+  const sazbaDph = normalizeCzechVatRate(extracted.sazba_dph)
 
   const duplicate = await findDuplicateInvoice(supabase, userId, workspaceId, {
     dodavatel_ico: extracted.dodavatel_ico,

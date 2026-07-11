@@ -4,7 +4,7 @@ import {
   buildInvoiceOutputLines,
   buildInvoicePayment,
   formatPaymentAccount,
-  roundInvoiceAmount,
+  lineGrossAmount,
 } from './invoice-output'
 
 export interface BitFakturaConnection {
@@ -49,17 +49,13 @@ export function buildBitFakturaInvoicePayload(
     ? predkontace.comment
     : `Účetní kód: ${data.ucetni_kod} – ${data.ucetni_kod_nazev}`
 
-  const positions = buildInvoiceOutputLines(data).map((line) => {
-    const net = line.castkaBezDph
-    const rate = line.sazbaDph
-    return {
-      name: line.nazev.slice(0, 255),
-      tax: rate,
-      total_price_gross: roundInvoiceAmount(net * (1 + rate / 100)),
-      quantity: line.mnozstvi,
-      unit: line.jednotka,
-    }
-  })
+  const positions = buildInvoiceOutputLines(data).map((line) => ({
+    name: line.nazev.slice(0, 255),
+    tax: line.sazbaDph,
+    total_price_gross: lineGrossAmount(line),
+    quantity: line.mnozstvi,
+    unit: line.jednotka,
+  }))
 
   const payment = buildInvoicePayment(data)
   const paymentAccount = formatPaymentAccount(payment)

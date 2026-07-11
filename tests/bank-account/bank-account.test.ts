@@ -5,7 +5,9 @@ import {
   parseCzechBankAccount,
   normalizeIban,
   normalizeSwift,
+  normalizeBankCode,
 } from '../../src/lib/bank-account'
+import { matchIdokladBankByCode } from '../../src/lib/idoklad'
 
 describe('bank-account', () => {
   it('parses Czech account number with bank code', () => {
@@ -13,6 +15,19 @@ describe('bank-account', () => {
       accountNumber: '1234567891',
       bankCode: '0321',
     })
+  })
+
+  it('parses account with trailing slash and separate bank code', () => {
+    const bank = parseBankPaymentFields({
+      cislo_uctu: '1234567891/',
+      kod_banky: '0321',
+    })
+    assert.equal(bank.accountNumber, '1234567891')
+    assert.equal(bank.bankCode, '0321')
+  })
+
+  it('normalizes 3-digit bank codes', () => {
+    assert.equal(normalizeBankCode('321'), '0321')
   })
 
   it('normalizes IBAN and SWIFT', () => {
@@ -30,5 +45,15 @@ describe('bank-account', () => {
     assert.equal(bank.accountNumber, '1234567891')
     assert.equal(bank.bankCode, '0321')
     assert.equal(bank.swift, 'FIOBCZPP')
+  })
+
+  it('matches iDoklad bank by NumberCode', () => {
+    assert.equal(
+      matchIdokladBankByCode(
+        { Id: 42, NumberCode: '321', Name: 'Fio banka', Code: 'FIOBCZPPXXX' },
+        '0321'
+      ),
+      true
+    )
   })
 })

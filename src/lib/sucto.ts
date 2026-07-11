@@ -4,7 +4,8 @@ import {
   buildInvoiceOutputLines,
   buildInvoicePayment,
   formatPaymentAccount,
-  roundInvoiceAmount,
+  lineGrossAmount,
+  lineVatAmount,
 } from './invoice-output'
 
 const SUCTO_API = 'https://moje.sucto.cz/api'
@@ -97,8 +98,8 @@ export function buildSuctoActuarialPayload(params: {
   const outputLines = buildInvoiceOutputLines(data)
 
   const lines = outputLines.map((line) => {
-    const tax = roundInvoiceAmount((line.castkaBezDph * line.sazbaDph) / 100)
-    const total = roundInvoiceAmount(line.castkaBezDph + tax)
+    const tax = lineVatAmount(line)
+    const total = lineGrossAmount(line)
     const vatId = vatIdByRate.get(line.sazbaDph) ?? fallbackVatId
 
     const row: Record<string, unknown> = {

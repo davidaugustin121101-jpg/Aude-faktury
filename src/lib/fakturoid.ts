@@ -52,6 +52,7 @@ export function buildFakturoidExpensePayload(data: ExtractedInvoiceData) {
     taxable_fulfillment_due: data.datum_duzp ?? data.datum_vystaveni,
     variable_symbol: data.variabilni_symbol || undefined,
     document_type: 'invoice',
+    vat_price_mode: 'without_vat',
     note: noteParts.join(' | ') || undefined,
     currency: data.mena || 'CZK',
     supplier_name: data.dodavatel_nazev,

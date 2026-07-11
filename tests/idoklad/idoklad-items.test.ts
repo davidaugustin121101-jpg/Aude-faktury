@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { buildIdokladBankFields, buildIdokladItems } from '../../src/lib/idoklad'
+import { buildIdokladBankFields, buildIdokladItems, mapIdokladVatRateType } from '../../src/lib/idoklad'
 import type { ExtractedInvoiceData } from '../../src/lib/claude'
 
 const baseInvoice = {
@@ -44,7 +44,16 @@ describe('idoklad items and bank fields', () => {
     assert.equal(items[0].Amount, 100)
     assert.equal(items[0].Unit, 'ks')
     assert.equal(items[3].Unit, 'kg')
-    assert.equal(items[1].VatRateType, 2)
+    assert.equal(items[1].VatRateType, 3)
+    assert.equal(items[1].CustomVatRate, 12)
+    assert.equal(items[0].CustomVatRate, 21)
+  })
+
+  it('maps Czech VAT rates to iDoklad VatRateType enum', () => {
+    assert.equal(mapIdokladVatRateType(21), 1)
+    assert.equal(mapIdokladVatRateType(12), 3)
+    assert.equal(mapIdokladVatRateType(10), 0)
+    assert.equal(mapIdokladVatRateType(0), 2)
   })
 
   it('falls back to single aggregated item when polozky are empty', () => {

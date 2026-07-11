@@ -6,6 +6,10 @@ import {
   buildInvoicePayment,
   buildVatRecap,
   formatPaymentAccount,
+  lineGrossAmount,
+  lineVatAmount,
+  normalizeCzechVatRate,
+  normalizeExtractedBankFields,
 } from '../../src/lib/invoice-output'
 import type { ExtractedInvoiceData } from '../../src/lib/claude'
 
@@ -59,6 +63,29 @@ describe('invoice-output', () => {
     assert.equal(recap.find((r) => r.sazbaDph === 21)?.zaklad, 200)
   })
 
+  it('normalizes Czech VAT rates', () => {
+    assert.equal(normalizeCzechVatRate(20.4), 21)
+    assert.equal(normalizeCzechVatRate(11), 10)
+    assert.equal(normalizeCzechVatRate(12), 12)
+    assert.equal(normalizeCzechVatRate(0), 0)
+  })
+
+  it('computes line VAT and gross amounts', () => {
+    const lines = buildInvoiceOutputLines(sample)
+    assert.equal(lineVatAmount(lines[0]), 42)
+    assert.equal(lineGrossAmount(lines[0]), 242)
+  })
+
+  it('normalizes bank code from separate fields', () => {
+    const normalized = normalizeExtractedBankFields({
+      ...sample,
+      cislo_uctu: '1234567891/',
+      kod_banky: '321',
+    })
+    assert.equal(normalized.cislo_uctu, '1234567891')
+    assert.equal(normalized.kod_banky, '0321')
+  })
+
   it('restores extracted data from processed invoice raw_extraction', () => {
     const extracted = buildExtractedDataFromInvoice({
       id: 'x',
@@ -105,7 +132,8 @@ describe('invoice-output', () => {
       audit_score: null,
       email_connection_id: null,
     })
-    assert.equal(extracted.cislo_uctu, '111/0100')
+    assert.equal(extracted.cislo_uctu, '111')
+    assert.equal(extracted.kod_banky, '0100')
     assert.equal(extracted.polozky?.length, 2)
   })
 })

@@ -7,6 +7,7 @@ import {
   contactNeedsAddressSync,
 } from './idoklad-contact'
 import { buildInvoiceOutputLines, buildInvoicePayment } from './invoice-output'
+import { normalizeBankCode } from './bank-account'
 
 const IDOKLAD_API_BASE = 'https://api.idoklad.cz/v3'
 const IDOKLAD_TOKEN_URL = 'https://app.idoklad.cz/identity/server/connect/token'
@@ -48,7 +49,7 @@ type IdokladContact = {
   PostalCode?: string | null
   CountryId?: number | null
 }
-type IdokladBank = { Id: number; Code?: string; Name?: string }
+type IdokladBank = { Id: number; Code?: string; NumberCode?: string; Name?: string; Swift?: string }
 type IdokladReceivedInvoice = { Id: number; DocumentNumber?: string }
 
 export type IdokladInvoiceItemPayload = {
@@ -58,33 +59,40 @@ export type IdokladInvoiceItemPayload = {
   UnitPrice: number
   PriceType: number
   VatRateType: number
-  DiscountPercentage: number
-  IsTaxMovement: boolean
-  AccountingCode?: string
+  CustomVatRate: number
+  VatCodeId?: number
 }
 
-function buildIdokladTaxingDate(data: ExtractedInvoiceData, issue: string): string {
-  return normalizeIdokladDate(data.datum_duzp, issue)
+/** iDoklad VatRateType: 0=Reduced1 (10%), 1=Basic (21%), 2=Zero, 3=Reduced2 (12%) */
+export function mapIdokladVatRateType(sazbaDph: number): number {
+  const rate = Math.round(sazbaDph)
+  if (rate === 0) return 2
+  if (rate === 10) return 0
+  if (rate === 12) return 3
+  return 1
 }
 
 /** Položky faktury pro iDoklad — z tabulky polozky[], jinak jedna agregovaná položka */
-export function buildIdokladItems(data: ExtractedInvoiceData): IdokladInvoiceItemPayload[] {
-  const predkontace = buildPredkontaceFromExtracted(data)
-  const defaultAccountingCode = predkontace?.naklad ?? data.ucetni_kod
+export function buildIdokladItems(
+  data: ExtractedInvoiceData,
+  options?: { vatCodeId?: number | null }
+): IdokladInvoiceItemPayload[] {
+  const lines = buildInvoiceOutputLines(data)
 
-  return buildInvoiceOutputLines(data).map((line) => ({
+  return lines.map((line) => ({
     Name: line.nazev.slice(0, 200),
     Amount: line.mnozstvi,
     Unit: line.jednotka,
     UnitPrice: line.jednotkovaCena,
     PriceType: PRICE_TYPE_WITHOUT_VAT,
-    VatRateType: mapDphSazba(line.sazbaDph),
-    DiscountPercentage: 0,
-    IsTaxMovement: false,
-    ...((line.ucetniKod || defaultAccountingCode)
-      ? { AccountingCode: line.ucetniKod || defaultAccountingCode }
-      : {}),
+    VatRateType: mapIdokladVatRateType(line.sazbaDph),
+    CustomVatRate: line.sazbaDph,
+    ...(options?.vatCodeId ? { VatCodeId: options.vatCodeId } : {}),
   }))
+}
+
+function buildIdokladTaxingDate(data: ExtractedInvoiceData, issue: string): string {
+  return normalizeIdokladDate(data.datum_duzp, issue)
 }
 
 export function buildIdokladBankFields(data: ExtractedInvoiceData): Record<string, string | number> {
@@ -98,11 +106,16 @@ export function buildIdokladBankFields(data: ExtractedInvoiceData): Record<strin
   return out
 }
 
-// VatRateType: 3=exempt(0%), 2=reduced(10%/12%), 1=standard(21%)
-function mapDphSazba(sazba: number): number {
-  if (sazba === 0) return 3
-  if (sazba === 12 || sazba === 10) return 2
-  return 1
+type IdokladVatCode = { Id: number; VatMovementType?: number; Name?: string; Code?: string }
+
+/** Kód DPH pro přijaté faktury (vstupní DPH) */
+const IDOKLAD_VAT_MOVEMENT_ENTRY = 1
+
+async function resolvePurchaseVatCodeId(token: string): Promise<number | null> {
+  const codes = await idokladListAllItems<IdokladVatCode>(token, 'VatCodes')
+  const purchase =
+    codes.find((code) => code.VatMovementType === IDOKLAD_VAT_MOVEMENT_ENTRY) ?? codes[0]
+  return purchase?.Id ?? null
 }
 
 function normalizeIdokladDate(value: string | null | undefined, fallback: string): string {
@@ -205,12 +218,38 @@ async function resolveCurrencyId(token: string, mena: string): Promise<number> {
   throw new Error(`iDoklad: měna ${code} není v účtu podporována`)
 }
 
+async function idokladListAllItems<T>(
+  token: string,
+  resource: string,
+  pageSize = 100
+): Promise<T[]> {
+  const all: T[] = []
+  for (let page = 1; page <= 10; page++) {
+    const items = await idokladListItems<T>(token, resource, `page=${page}&pageSize=${pageSize}`)
+    if (!items.length) break
+    all.push(...items)
+    if (items.length < pageSize) break
+  }
+  return all
+}
+
+export function matchIdokladBankByCode(bank: IdokladBank, bankCode: string): boolean {
+  const target = normalizeBankCode(bankCode)
+  if (!target) return false
+
+  const candidates = [bank.NumberCode, bank.Code]
+  return candidates.some((value) => normalizeBankCode(value) === target)
+}
+
 async function resolveBankId(token: string, bankCode: string | null | undefined): Promise<number | null> {
-  const code = (bankCode ?? '').trim()
+  const code = normalizeBankCode(bankCode)
   if (!code) return null
 
-  const banks = await idokladListItems<IdokladBank>(token, 'Banks', 'pageSize=200')
-  const hit = banks.find((b) => String(b.Code ?? '').padStart(4, '0') === code.padStart(4, '0'))
+  const banks = await idokladListAllItems<IdokladBank>(token, 'Banks')
+  const hit = banks.find((bank) => matchIdokladBankByCode(bank, code))
+  if (!hit?.Id) {
+    console.warn(`[idoklad] BankId nenalezeno pro kód ${code} (načteno ${banks.length} bank)`)
+  }
   return hit?.Id ?? null
 }
 
@@ -384,39 +423,42 @@ export async function sendToIdoklad(
 
   const { issue, maturity, receiving } = buildIdokladDates(data)
   const predkontace = buildPredkontaceFromExtracted(data)
-  const items = buildIdokladItems(data)
   const taxingDate = buildIdokladTaxingDate(data, issue)
 
   const bankFields = buildIdokladBankFields(data)
   const bankCode = bankFields._bankCode as string | undefined
   delete bankFields._bankCode
 
-  const [partnerId, currencyId, paymentOptionId, numericSequence, bankId] = await Promise.all([
+  const [partnerId, currencyId, paymentOptionId, numericSequence, bankId, vatCodeId] =
+    await Promise.all([
     resolvePartnerId(token, data),
     resolveCurrencyId(token, data.mena ?? 'CZK'),
     resolvePaymentOptionId(token),
     resolveNumericSequence(token),
     bankCode ? resolveBankId(token, bankCode) : Promise.resolve(null),
+    resolvePurchaseVatCodeId(token),
   ])
+
+  const items = buildIdokladItems(data, { vatCodeId })
+  const documentSerialNumber = parseInt(numericSequence.nextSerial, 10)
 
   const payload = {
     PartnerId: partnerId,
     CurrencyId: currencyId,
     PaymentOptionId: paymentOptionId,
-    NumericSequenceId: numericSequence.id,
-    DocumentSerialNumber: numericSequence.nextSerial,
+    DocumentSerialNumber: Number.isFinite(documentSerialNumber) ? documentSerialNumber : 1,
     IsIncomeTax: true,
-    IsEet: false,
     DateOfIssue: issue,
     DateOfMaturity: maturity,
     DateOfReceiving: receiving,
     DateOfTaxing: taxingDate,
+    DateOfVatApplication: taxingDate,
     Description: data.popis_plneni ?? 'Přijatá faktura',
     ...(predkontace ? { Note: predkontace.comment } : {}),
     ...(data.variabilni_symbol ? { VariableSymbol: data.variabilni_symbol } : {}),
     ...(data.konstantni_symbol ? { ConstantSymbol: data.konstantni_symbol } : {}),
     ...(data.cislo_objednavky ? { OrderNumber: data.cislo_objednavky } : {}),
-    ...(data.cislo_faktury ? { ExternalDocumentNumber: data.cislo_faktury } : {}),
+    ...(data.cislo_faktury ? { ReceivedDocumentNumber: data.cislo_faktury } : {}),
     ...(bankFields.AccountNumber ? { AccountNumber: bankFields.AccountNumber } : {}),
     ...(bankId ? { BankId: bankId } : {}),
     ...(bankFields.Iban ? { Iban: bankFields.Iban } : {}),

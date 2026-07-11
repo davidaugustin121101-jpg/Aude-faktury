@@ -8,6 +8,13 @@ import {
 import { pickVatId, buildSuctoActuarialPayload, buildVatIdByRate } from '../../src/lib/sucto.ts'
 import { buildSuperFakturaPayload } from '../../src/lib/superfaktura.ts'
 import { buildFakturoidExpensePayload } from '../../src/lib/fakturoid.ts'
+import { buildIdokladItems } from '../../src/lib/idoklad.ts'
+import {
+  buildInvoiceOutputLines,
+  buildVatRecap,
+  lineGrossAmount,
+  lineVatAmount,
+} from '../../src/lib/invoice-output.ts'
 import type { ExtractedInvoiceData } from '../../src/lib/claude.ts'
 
 const sample: ExtractedInvoiceData = {
@@ -42,6 +49,112 @@ const sample: ExtractedInvoiceData = {
   cislo_objednavky: '2600128',
   datum_duzp: '2026-07-01',
 }
+
+/** Reálná faktura se smíšenými sazbami 21 % + 12 % */
+const multiRate: ExtractedInvoiceData = {
+  dodavatel_nazev: 'Firma s.r.o.',
+  dodavatel_ico: '12345678',
+  dodavatel_dic: 'CZ12345678',
+  cislo_faktury: '2600253',
+  datum_vystaveni: '2026-03-12',
+  datum_splatnosti: '2026-03-26',
+  variabilni_symbol: '2600253',
+  castka_bez_dph: 2654722.6,
+  sazba_dph: 21,
+  castka_dph: 547591.75,
+  castka_celkem: 3202315,
+  mena: 'CZK',
+  popis_plneni: 'Faktura za objednané produkty',
+  cislo_uctu: '1234567891/',
+  kod_banky: '321',
+  iban: null,
+  ucetni_kod: '504',
+  ucetni_kod_nazev: 'Prodané zboží',
+  ucetni_kod_duvod: 'zboží',
+  ucetni_kod_confidence: 0.88,
+  confidence: 0.88,
+  problemy: [],
+  typ_dokladu: 'faktura',
+  typ_faktury: 'danovy_doklad',
+  je_prenesena_dan: false,
+  datum_duzp: '2026-03-12',
+  polozky: [
+    { nazev: 'zboží', mnozstvi: 100, jednotkova_cena: 123.5, sazba_dph: 21, typ: 'zbozi', jednotka: 'ks' },
+    { nazev: 'výrobek', mnozstvi: 10, jednotkova_cena: 11000, sazba_dph: 12, typ: 'zbozi', jednotka: 'ks' },
+    { nazev: 'něco', mnozstvi: 10000, jednotkova_cena: 253.23, sazba_dph: 21, typ: 'zbozi', jednotka: 'ks' },
+    { nazev: 'vážené', mnozstvi: 0.22, jednotkova_cena: 330, sazba_dph: 21, typ: 'zbozi', jednotka: 'kg' },
+  ],
+}
+
+describe('multi-rate invoice (all providers)', () => {
+  const lines = buildInvoiceOutputLines(multiRate)
+  const recap = buildVatRecap(lines)
+  const totalBase = lines.reduce((s, l) => s + l.castkaBezDph, 0)
+  const totalVat = lines.reduce((s, l) => s + lineVatAmount(l), 0)
+  const totalGross = lines.reduce((s, l) => s + lineGrossAmount(l), 0)
+
+  it('shared layer matches invoice totals', () => {
+    assert.equal(lines.length, 4)
+    assert.equal(totalBase, 2654722.6)
+    assert.equal(totalVat, 547591.75)
+    assert.equal(totalGross, 3202314.35)
+    assert.equal(recap.length, 2)
+    assert.equal(recap.find((r) => r.sazbaDph === 12)?.dph, 13200)
+  })
+
+  it('superfaktura sends per-line tax and bank 0321', () => {
+    const payload = buildSuperFakturaPayload(multiRate)
+    const items = payload.ExpenseItem as Array<{ tax: number; unit_price: number }>
+    assert.equal(items.length, 4)
+    assert.equal(items[1].tax, 12)
+    assert.equal((payload.Client as { account: string }).account, '1234567891/0321')
+  })
+
+  it('fakturoid uses without_vat and per-line rates', () => {
+    const payload = buildFakturoidExpensePayload(multiRate)
+    assert.equal(payload.vat_price_mode, 'without_vat')
+    assert.equal(payload.lines.length, 4)
+    assert.equal(payload.lines[1].vat_rate, '12')
+  })
+
+  it('bitfaktura sends gross per position', () => {
+    const payload = buildBitFakturaInvoicePayload(multiRate)
+    const positions = payload.positions as Array<{ tax: number; total_price_gross: number }>
+    assert.equal(positions.length, 4)
+    assert.equal(positions[0].tax, 21)
+    assert.equal(positions[1].total_price_gross, 123200)
+    assert.equal(payload.seller_bank_account, '1234567891/0321')
+  })
+
+  it('sucto sends base, tax and total per line', () => {
+    const vats = [
+      { id: 1, value: '21.0' },
+      { id: 2, value: '12.0' },
+    ]
+    const payload = buildSuctoActuarialPayload({
+      data: multiRate,
+      init: { account: { id: 5, country_id: 47 }, currency: { id: 26 } },
+      partnerId: 99,
+      actuarialTypeId: 1,
+      vatIdByRate: buildVatIdByRate(vats),
+      fallbackVatId: 9,
+    })
+    const suctoLines = payload.lines as Array<{ base_price: number; tax: number; total_price: number; vat_id: number }>
+    assert.equal(suctoLines[1].base_price, 110000)
+    assert.equal(suctoLines[1].tax, 13200)
+    assert.equal(suctoLines[1].total_price, 123200)
+    assert.equal(suctoLines[1].vat_id, 2)
+    assert.equal(payload.bank_number, '1234567891/0321')
+  })
+
+  it('idoklad maps mixed VAT rates per item', () => {
+    const items = buildIdokladItems(multiRate)
+    assert.equal(items.length, 4)
+    assert.equal(items[1].VatRateType, 3)
+    assert.equal(items[1].CustomVatRate, 12)
+    assert.equal(items[0].CustomVatRate, 21)
+  })
+})
 
 describe('bitfaktura', () => {
   it('normalizes domain', () => {

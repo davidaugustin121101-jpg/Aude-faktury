@@ -2,6 +2,18 @@ import type { ExtractedInvoiceData, FakturaPolozka } from './claude'
 import type { ProcessedInvoice } from '@/types/invoices'
 import { parseBankPaymentFields, type ParsedBankPayment } from './bank-account'
 
+export const CZECH_VAT_RATES = [0, 10, 12, 21] as const
+
+/** Zaokrouhlí sazbu DPH na povolenou českou sazbu (0, 10, 12, 21 %) */
+export function normalizeCzechVatRate(rate: number | null | undefined): number {
+  if (rate == null || Number.isNaN(rate)) return 21
+  const rounded = Math.round(rate)
+  if ((CZECH_VAT_RATES as readonly number[]).includes(rounded)) return rounded
+  return CZECH_VAT_RATES.reduce((best, candidate) =>
+    Math.abs(candidate - rounded) < Math.abs(best - rounded) ? candidate : best
+  )
+}
+
 export type InvoiceOutputLine = {
   nazev: string
   mnozstvi: number
@@ -30,11 +42,23 @@ function lineFromPolozka(p: FakturaPolozka, fallbackUcetniKod?: string): Invoice
     mnozstvi: qty,
     jednotka: (p.jednotka ?? 'ks').slice(0, 20),
     jednotkovaCena: p.jednotkova_cena,
-    sazbaDph: p.sazba_dph ?? 21,
+    sazbaDph: normalizeCzechVatRate(p.sazba_dph),
     castkaBezDph: roundInvoiceAmount(p.jednotkova_cena * qty),
     ucetniKod: p.ucetni_kod?.trim() || fallbackUcetniKod,
     typ: p.typ,
   }
+}
+
+export function lineVatAmount(
+  line: Pick<InvoiceOutputLine, 'castkaBezDph' | 'sazbaDph'>
+): number {
+  return roundInvoiceAmount((line.castkaBezDph * line.sazbaDph) / 100)
+}
+
+export function lineGrossAmount(
+  line: Pick<InvoiceOutputLine, 'castkaBezDph' | 'sazbaDph'>
+): number {
+  return roundInvoiceAmount(line.castkaBezDph + lineVatAmount(line))
 }
 
 /** Sjednocené položky faktury pro API i exporty */
@@ -56,7 +80,7 @@ export function buildInvoiceOutputLines(
       mnozstvi: 1,
       jednotka: 'ks',
       jednotkovaCena: base,
-      sazbaDph: data.sazba_dph ?? 21,
+      sazbaDph: normalizeCzechVatRate(data.sazba_dph),
       castkaBezDph: base,
       ucetniKod: data.ucetni_kod,
     },
@@ -92,10 +116,23 @@ export function buildVatRecap(lines: InvoiceOutputLine[]): VatRecapEntry[] {
     }))
 }
 
+/** Normalizuje číslo účtu a kód banky po extrakci (např. 321 → 0321, 123/ → číslo + kód) */
+export function normalizeExtractedBankFields(
+  data: ExtractedInvoiceData
+): ExtractedInvoiceData {
+  const payment = parseBankPaymentFields(data)
+  if (!payment.accountNumber && !payment.bankCode) return data
+  return {
+    ...data,
+    cislo_uctu: payment.accountNumber,
+    kod_banky: payment.bankCode,
+  }
+}
+
 export function buildExtractedDataFromInvoice(inv: ProcessedInvoice): ExtractedInvoiceData {
   const raw = (inv.raw_extraction ?? {}) as Record<string, unknown>
 
-  return {
+  return normalizeExtractedBankFields({
     dodavatel_nazev: inv.dodavatel_nazev ?? '',
     dodavatel_ico: inv.dodavatel_ico ?? '',
     dodavatel_dic: inv.dodavatel_dic,
@@ -128,5 +165,5 @@ export function buildExtractedDataFromInvoice(inv: ProcessedInvoice): ExtractedI
     datum_duzp: (raw.datum_duzp as string | null | undefined) ?? null,
     je_prenesena_dan: Boolean(raw.je_prenesena_dan),
     polozky: (raw.polozky as ExtractedInvoiceData['polozky']) ?? [],
-  }
+  })
 }

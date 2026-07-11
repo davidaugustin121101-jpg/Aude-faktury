@@ -1,4 +1,10 @@
 /** Rozparsuje české číslo účtu ve tvaru 123456789/0100 nebo 1234567891/0321 */
+export function normalizeBankCode(raw: string | null | undefined): string | null {
+  const digits = (raw ?? '').replace(/\D/g, '')
+  if (!digits) return null
+  return digits.padStart(4, '0').slice(-4)
+}
+
 export function parseCzechBankAccount(raw: string | null | undefined): {
   accountNumber: string | null
   bankCode: string | null
@@ -6,12 +12,26 @@ export function parseCzechBankAccount(raw: string | null | undefined): {
   const s = (raw ?? '').trim().replace(/\s/g, '')
   if (!s) return { accountNumber: null, bankCode: null }
 
-  const slash = s.match(/^(\d+)\/(\d{4})$/)
-  if (slash) {
-    return { accountNumber: slash[1], bankCode: slash[2] }
+  const slashWithCode = s.match(/^(\d{1,16})\/(\d{1,4})$/)
+  if (slashWithCode) {
+    return {
+      accountNumber: slashWithCode[1],
+      bankCode: normalizeBankCode(slashWithCode[2]),
+    }
   }
 
-  return { accountNumber: s, bankCode: null }
+  const slashOnly = s.match(/^(\d{1,16})\/$/)
+  if (slashOnly) {
+    return { accountNumber: slashOnly[1], bankCode: null }
+  }
+
+  const digitsOnly = s.match(/^(\d+)$/)
+  if (digitsOnly) {
+    return { accountNumber: digitsOnly[1], bankCode: null }
+  }
+
+  const cleaned = s.replace(/\/$/, '')
+  return { accountNumber: cleaned || null, bankCode: null }
 }
 
 export function normalizeIban(raw: string | null | undefined): string | null {
@@ -39,9 +59,10 @@ export function parseBankPaymentFields(input: {
   swift?: string | null
 }): ParsedBankPayment {
   const parsed = parseCzechBankAccount(input.cislo_uctu)
-  const bankCode = (input.kod_banky ?? '').trim() || parsed.bankCode
+  const bankCode = normalizeBankCode(input.kod_banky) || parsed.bankCode
+  const accountNumber = parsed.accountNumber?.replace(/\/$/, '') || null
   return {
-    accountNumber: parsed.accountNumber,
+    accountNumber,
     bankCode: bankCode || null,
     iban: normalizeIban(input.iban),
     swift: normalizeSwift(input.swift),
