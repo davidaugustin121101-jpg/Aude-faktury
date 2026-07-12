@@ -1,3 +1,5 @@
+import { EXTRACTION_PROGRESS_LABEL } from '@/lib/brand'
+
 export type ExtractionProgressUpdate = {
   percent: number
   label: string
@@ -19,7 +21,7 @@ export type ExtractionStreamEvent =
 export const EXTRACTION_PROGRESS = {
   hash: { percent: 8, label: 'Kontroluji soubor…', phase: 'hash' },
   prepare: { percent: 18, label: 'Připravuji PDF…', phase: 'prepare' },
-  extract: { percent: 28, label: 'AI vytěžuje data…', phase: 'extract' },
+  extract: { percent: 28, label: EXTRACTION_PROGRESS_LABEL, phase: 'extract' },
   postprocess: { percent: 76, label: 'Doplňuji účetní údaje…', phase: 'postprocess' },
   audit: { percent: 86, label: 'Kontrolní audit…', phase: 'audit' },
   save: { percent: 94, label: 'Ukládám fakturu…', phase: 'save' },
