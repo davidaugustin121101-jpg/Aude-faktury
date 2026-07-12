@@ -4,9 +4,6 @@ import { getDefaultCurrency } from '@/lib/accounting-codes'
 import { runInvoiceAudit } from '@/lib/invoice-audit/run-audit'
 import { getSupplierRule } from '@/lib/supplier-rules'
 import { insertAuditLog } from '@/lib/audit-log'
-import { sendNewInvoiceNotification } from '@/lib/notifications'
-import { sendInvoiceToAccounting } from '@/lib/send-invoice'
-import { saveInvoicePdf } from '@/lib/invoice-pdf-storage'
 import { findDuplicateInvoice, formatDuplicateMessage } from '@/lib/duplicate-invoice'
 import {
   applyDefaultHeaderUcetniKod,
@@ -30,6 +27,8 @@ import {
   findInvoiceByPdfHash,
   formatPdfHashDuplicateMessage,
 } from '@/lib/invoice-pdf-hash'
+import { reportProgress, type ExtractionProgressReporter } from '@/lib/extraction-progress'
+import { scheduleInvoiceBackgroundFinalize } from '@/lib/process-invoice-background'
 
 
 export type ProcessInvoiceSource = 'manual_upload' | 'email_inbound'
@@ -53,6 +52,7 @@ export type ProcessInvoiceInput = {
     notify_on_new?: boolean | null
     notify_email?: string | null
   } | null
+  onProgress?: ExtractionProgressReporter
 }
 
 export type ProcessInvoiceSuccess = {
@@ -100,8 +100,10 @@ export async function processInvoiceFromPdf(
     receivedAt,
     allowanceSource,
     invoiceSettings,
+    onProgress,
   } = input
 
+  reportProgress(onProgress, 'hash')
   const pdfSha256 = hashPdfBuffer(pdfBuffer)
 
   const hashDuplicate = await findInvoiceByPdfHash(supabase, userId, workspaceId, pdfSha256)
@@ -116,10 +118,12 @@ export async function processInvoiceFromPdf(
     }
   }
 
+  reportProgress(onProgress, 'prepare')
   const prepared = await preparePdfForExtraction(pdfBuffer)
 
   let extracted
   try {
+    reportProgress(onProgress, 'extract')
     extracted = await extractInvoiceFromPrepared(prepared)
   } catch (err) {
     await releaseInvoiceReservation(userId, allowanceSource)
@@ -131,6 +135,7 @@ export async function processInvoiceFromPdf(
   extracted = applyDefaultHeaderUcetniKod(extracted)
   extracted = reconcileExtractionAmounts(extracted)
   extracted = normalizeExtractedBankFields(extracted)
+  reportProgress(onProgress, 'postprocess')
 
   if (isZalohovaTyp(extracted)) {
     extracted = {
@@ -176,6 +181,7 @@ export async function processInvoiceFromPdf(
     }
   }
 
+  reportProgress(onProgress, 'audit')
   const auditResult = await runInvoiceAudit(
     {
       dodavatel_nazev: extracted.dodavatel_nazev,
@@ -201,6 +207,7 @@ export async function processInvoiceFromPdf(
 
   const status = auditResult.hasCritical ? 'needs_manual_check' : 'pending_review'
 
+  reportProgress(onProgress, 'save')
   const { data: invoice, error: dbErr } = await supabase
     .from('processed_invoices')
     .insert({
@@ -280,22 +287,6 @@ export async function processInvoiceFromPdf(
   }
 
   let finalInvoice = invoice as ProcessedInvoice
-  try {
-    const storagePath = await saveInvoicePdf(admin, userId, invoice.id, pdfBuffer)
-    const { data: withPdf, error: pdfUpdateErr } = await supabase
-      .from('processed_invoices')
-      .update({ storage_path: storagePath })
-      .eq('id', invoice.id)
-      .eq('user_id', userId)
-      .select('*')
-      .single()
-
-    if (!pdfUpdateErr && withPdf) {
-      finalInvoice = withPdf as ProcessedInvoice
-    }
-  } catch (pdfErr) {
-    console.error('[process-invoice] PDF storage failed:', pdfErr)
-  }
 
   await insertAuditLog({
     invoice_id: invoice.id,
@@ -317,56 +308,21 @@ export async function processInvoiceFromPdf(
     },
   })
 
-  const notifyEmail = invoiceSettings?.notify_email?.trim() || userEmail || null
-  const shouldNotify = invoiceSettings?.notify_on_new !== false && notifyEmail
+  scheduleInvoiceBackgroundFinalize({
+    admin,
+    supabase,
+    userId,
+    userEmail,
+    fullName,
+    invoiceId: invoice.id,
+    pdfBuffer,
+    extracted,
+    auditResult,
+    allowanceSource,
+    invoiceSettings,
+  })
 
-  const totalAmount =
-    extracted.castka_celkem != null && !Number.isNaN(Number(extracted.castka_celkem))
-      ? Number(extracted.castka_celkem)
-      : null
+  reportProgress(onProgress, 'done')
 
-  const autoThreshold = invoiceSettings?.auto_approve_below
-  const canAutoApprove =
-    autoThreshold != null &&
-    totalAmount != null &&
-    totalAmount > 0 &&
-    !auditResult.hasCritical &&
-    totalAmount <= Number(autoThreshold)
-
-  let autoApproved = false
-
-  if (canAutoApprove) {
-    const sendResult = await sendInvoiceToAccounting({
-      supabase,
-      userId,
-      userEmail,
-      fullName,
-      invoice: finalInvoice,
-      rememberSupplier: true,
-      auditAction: 'auto_approved',
-    })
-
-    if (sendResult.ok) {
-      autoApproved = true
-      const { data: refreshed } = await supabase
-        .from('processed_invoices')
-        .select('*')
-        .eq('id', invoice.id)
-        .single()
-      if (refreshed) finalInvoice = refreshed as ProcessedInvoice
-    }
-  }
-
-  if (shouldNotify && notifyEmail && totalAmount != null) {
-    await sendNewInvoiceNotification({
-      to: notifyEmail,
-      supplierName: extracted.dodavatel_nazev,
-      amount: totalAmount,
-      currency: extracted.mena ?? getDefaultCurrency(),
-      invoiceId: invoice.id,
-      autoApproved,
-    })
-  }
-
-  return { ok: true, invoice: finalInvoice, audit: auditResult, autoApproved }
+  return { ok: true, invoice: finalInvoice, audit: auditResult, autoApproved: false }
 }

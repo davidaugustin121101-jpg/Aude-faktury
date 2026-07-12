@@ -5,12 +5,14 @@ import { soloFreeMonthlyLabel } from '@/lib/account-mode'
 import { useCallback, useRef, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useRouter } from 'next/navigation'
-import { FileText, Loader2, Upload } from 'lucide-react'
+import { FileText, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import { uploadInvoicePdf } from '@/lib/invoice-upload'
+import { uploadInvoicePdf, type UploadProgressHandler } from '@/lib/invoice-upload'
 import { PDF_MAX_BYTES } from '@/lib/pdf-limits'
 import { savePendingPdf } from '@/lib/pending-upload'
+import { InvoiceExtractionProgress } from '@/components/invoices/InvoiceExtractionProgress'
+import { EXTRACTION_PROGRESS } from '@/lib/extraction-progress'
 
 interface Props {
   isAuthenticated: boolean
@@ -20,6 +22,8 @@ export function LandingDropZone({ isAuthenticated }: Props) {
   const router = useRouter()
   const [uploading, setUploading] = useState(false)
   const [fileName, setFileName] = useState<string | null>(null)
+  const [progressPercent, setProgressPercent] = useState(0)
+  const [progressLabel, setProgressLabel] = useState<string>(EXTRACTION_PROGRESS.hash.label)
   const uploadingRef = useRef(false)
 
   const onDrop = useCallback(
@@ -30,6 +34,13 @@ export function LandingDropZone({ isAuthenticated }: Props) {
       uploadingRef.current = true
       setUploading(true)
       setFileName(file.name)
+      setProgressPercent(2)
+      setProgressLabel('Nahrávám soubor…')
+
+      const handleProgress: UploadProgressHandler = (update) => {
+        setProgressPercent(update.percent)
+        setProgressLabel(update.label)
+      }
 
       try {
         if (!isAuthenticated) {
@@ -44,7 +55,7 @@ export function LandingDropZone({ isAuthenticated }: Props) {
           return
         }
 
-        const result = await uploadInvoicePdf(file)
+        const result = await uploadInvoicePdf(file, handleProgress)
         if (!result.ok) {
           if (result.duplicate && result.existingInvoiceId) {
             toast.error(result.error, {
@@ -68,6 +79,8 @@ export function LandingDropZone({ isAuthenticated }: Props) {
         uploadingRef.current = false
         setUploading(false)
         setFileName(null)
+        setProgressPercent(0)
+        setProgressLabel(EXTRACTION_PROGRESS.hash.label)
       }
     },
     [isAuthenticated, router]
@@ -97,13 +110,11 @@ export function LandingDropZone({ isAuthenticated }: Props) {
 
         <div className="flex flex-col items-center gap-4">
           {uploading ? (
-            <>
-              <Loader2 className="h-12 w-12 text-blue-600 animate-spin" />
-              <div>
-                <p className="text-sm font-semibold text-gray-900">Zpracovávám fakturu…</p>
-                {fileName && <p className="text-xs text-gray-500 mt-1">{fileName}</p>}
-              </div>
-            </>
+            <InvoiceExtractionProgress
+              percent={progressPercent}
+              label={progressLabel}
+              fileName={fileName}
+            />
           ) : (
             <>
               <div className="h-14 w-14 rounded-2xl bg-blue-100 flex items-center justify-center">

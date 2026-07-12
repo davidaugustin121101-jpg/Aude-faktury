@@ -70,17 +70,27 @@ export function isSimpleTextInvoice(params: {
 }
 
 export async function preparePdfForExtraction(originalBuffer: Buffer): Promise<PreparedPdfForExtraction> {
-  const { buffer: trimmedBuffer, pageCount } = await trimPdfToMaxPages(originalBuffer)
-
+  let workingBuffer = originalBuffer
   let text: string | null = null
-  let effectivePageCount = pageCount
+  let effectivePageCount = 1
 
   try {
-    const extracted = await extractPdfText(trimmedBuffer)
+    const extracted = await extractPdfText(originalBuffer)
     text = extracted.text
     effectivePageCount = extracted.pageCount
+
+    if (effectivePageCount > PDF_MAX_PAGES) {
+      const trimmed = await trimPdfToMaxPages(originalBuffer)
+      workingBuffer = trimmed.buffer
+      effectivePageCount = trimmed.pageCount
+      const reExtracted = await extractPdfText(workingBuffer)
+      text = reExtracted.text
+    }
   } catch (err) {
     console.warn('[pdf-preprocess] text extraction failed, using document mode:', err)
+    const trimmed = await trimPdfToMaxPages(originalBuffer)
+    workingBuffer = trimmed.buffer
+    effectivePageCount = trimmed.pageCount
   }
 
   const hasUsableText = !!text && text.length >= PDF_MIN_TEXT_CHARS
@@ -88,8 +98,8 @@ export async function preparePdfForExtraction(originalBuffer: Buffer): Promise<P
   const clippedText = hasUsableText ? truncateText(text!, PDF_MAX_TEXT_CHARS) : null
 
   return {
-    pdfBuffer: trimmedBuffer,
-    pdfBase64: trimmedBuffer.toString('base64'),
+    pdfBuffer: workingBuffer,
+    pdfBase64: workingBuffer.toString('base64'),
     pageCount: effectivePageCount,
     text: clippedText,
     inputMode,

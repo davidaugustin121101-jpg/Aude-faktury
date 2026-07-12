@@ -34,15 +34,19 @@ function namesSimilar(a: string, b: string): boolean {
   return na.includes(nb) || nb.includes(na) || na === nb
 }
 
-export async function lookupAres(ico: string): Promise<AresSubject | null> {
+export async function lookupAres(ico: string, timeoutMs = 3000): Promise<AresSubject | null> {
   try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), timeoutMs)
     const res = await fetch(
       `https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty/${ico}`,
       {
         headers: { Accept: 'application/json' },
         next: { revalidate: 86400 },
+        signal: controller.signal,
       }
     )
+    clearTimeout(timeout)
     if (!res.ok) return null
     const json = (await res.json()) as AresSubject
     return json
