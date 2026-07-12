@@ -48,8 +48,24 @@ describe('idoklad items and bank fields', () => {
     assert.equal(items[3].Unit, 'kg')
     assert.equal(items[1].VatRateType, 0)
     assert.equal(items[0].VatRateType, 1)
-    assert.equal(items[0].IsTaxMovement, true)
     assert.ok(!('CustomVatRate' in items[0]))
+    assert.ok(!('IsTaxMovement' in items[0]))
+    assert.ok(!('DiscountPercentage' in items[0]))
+  })
+
+  it('attaches VatCodeId to every item when provided', () => {
+    const data = {
+      ...baseInvoice,
+      polozky: [
+        { nazev: 'zboží', mnozstvi: 1, jednotkova_cena: 100, sazba_dph: 21, typ: 'zbozi' as const, jednotka: 'ks' },
+        { nazev: 'služba', mnozstvi: 2, jednotkova_cena: 50, sazba_dph: 12, typ: 'sluzba' as const, jednotka: 'ks' },
+      ],
+    } as ExtractedInvoiceData
+
+    const items = buildIdokladItems(data, { vatCodeId: 24 })
+    assert.equal(items.length, 2)
+    assert.equal(items[0].VatCodeId, 24)
+    assert.equal(items[1].VatCodeId, 24)
   })
 
   it('maps Czech VAT rates to iDoklad VatRateType enum (od 2024)', () => {

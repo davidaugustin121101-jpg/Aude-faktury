@@ -46,7 +46,7 @@ export async function sendInvoiceToAccounting(params: {
   rememberSupplier?: boolean
   forceSend?: boolean
   auditAction?: 'sent' | 'auto_approved'
-}): Promise<{ ok: true; documentId: string } | { ok: false; error: string; status: number }> {
+}): Promise<{ ok: true; documentId: string; warning?: string } | { ok: false; error: string; status: number }> {
   const {
     supabase,
     userId,
@@ -119,9 +119,17 @@ export async function sendInvoiceToAccounting(params: {
   }
 
   try {
-    let result: { id: string; documentNumber?: string; number?: string; pdfAttached?: boolean; pdfAttachmentError?: string }
+    let result: {
+      id: string
+      documentNumber?: string
+      number?: string
+      pdfAttached?: boolean
+      pdfAttachmentError?: string
+      warning?: string
+    }
     let pdfAttached = false
     let pdfAttachmentError: string | undefined
+    let sendWarning: string | undefined
 
     const pdf = await loadInvoicePdfAttachment(
       createAdminClient(),
@@ -136,9 +144,10 @@ export async function sendInvoiceToAccounting(params: {
         client_secret: conn.idoklad_client_secret ?? '',
       }
       const r = await sendToIdoklad(idokladConn, extractedData, pdf)
-      result = { id: r.id, documentNumber: r.documentNumber, pdfAttached: r.pdfAttached }
+      result = { id: r.id, documentNumber: r.documentNumber, pdfAttached: r.pdfAttached, warning: r.warning }
       pdfAttached = r.pdfAttached
       pdfAttachmentError = r.pdfAttachmentError
+      sendWarning = r.warning
     } else if (conn.provider === 'superfaktura') {
       const r = await sendToSuperFaktura(
         {
@@ -225,11 +234,12 @@ export async function sendInvoiceToAccounting(params: {
         pdf_attached: pdfAttached,
         pdf_available: !!pdf,
         ...(pdfAttachmentError ? { pdf_attachment_error: pdfAttachmentError } : {}),
+        ...(sendWarning ? { warning: sendWarning } : {}),
         forced: forceSend && !!audit?.hasCritical,
       },
     })
 
-    return { ok: true, documentId: result.id }
+    return { ok: true, documentId: result.id, ...(sendWarning ? { warning: sendWarning } : {}) }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Neznámá chyba'
 

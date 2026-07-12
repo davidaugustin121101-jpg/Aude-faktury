@@ -53,10 +53,17 @@ describe('bank-account', () => {
     assert.equal(sanitizeIdokladAccountNumber('1234567891/'), '1234567891')
   })
 
-  it('matches iDoklad bank by NumberCode', () => {
+  it('matches iDoklad bank by NumberCode as number', () => {
     assert.equal(
       matchIdokladBankByCode(
         { Id: 42, NumberCode: '321', Name: 'Fio banka', Code: 'FIOBCZPPXXX' },
+        '0321'
+      ),
+      true
+    )
+    assert.equal(
+      matchIdokladBankByCode(
+        { Id: 7, NumberCode: '0321', Name: 'Fio banka', Code: 'FIOBCZPPXXX' },
         '0321'
       ),
       true

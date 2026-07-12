@@ -148,10 +148,11 @@ describe('multi-rate invoice (all providers)', () => {
   })
 
   it('idoklad maps mixed VAT rates per item', () => {
-    const items = buildIdokladItems(multiRate)
+    const items = buildIdokladItems(multiRate, { vatCodeId: 24 })
     assert.equal(items.length, 4)
     assert.equal(items[1].VatRateType, 0)
-    assert.equal(items[0].IsTaxMovement, true)
+    assert.equal(items[0].VatCodeId, 24)
+    assert.ok(!('IsTaxMovement' in items[0]))
   })
 })
 

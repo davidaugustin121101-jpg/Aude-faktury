@@ -47,7 +47,9 @@ export function InvoiceActions({
     })
     setLoading(false)
     if (res.ok) {
+      const data = await res.json().catch(() => ({}))
       toast.success(`Faktura odeslána do ${providerLabel}`)
+      if (data.warning) toast.warning(data.warning)
       router.refresh()
     } else {
       const { error } = await res.json().catch(() => ({ error: 'Neznámá chyba' }))

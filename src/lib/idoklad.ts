@@ -59,9 +59,21 @@ export type IdokladInvoiceItemPayload = {
   UnitPrice: number
   PriceType: number
   VatRateType: number
-  DiscountPercentage: number
-  IsTaxMovement: boolean
   VatCodeId?: number
+}
+
+type IdokladRecountTotals = {
+  TotalWithoutVat?: number
+  TotalVat?: number
+  TotalWithVat?: number
+}
+
+export type IdokladSendResult = {
+  id: string
+  documentNumber: string
+  pdfAttached: boolean
+  pdfAttachmentError?: string
+  warning?: string
 }
 
 /** Od 1. 1. 2024 platí v ČR jen 21 % a 12 % — iDoklad zrušil Reduced2 pro novější data */
@@ -97,6 +109,8 @@ export function buildIdokladItems(
   const lines = buildInvoiceOutputLines(data)
   const taxingDate = options?.taxingDate ?? data.datum_duzp ?? data.datum_vystaveni
 
+  const vatCodeId = options?.vatCodeId ?? null
+
   return lines.map((line) => ({
     Name: line.nazev.slice(0, 200),
     Amount: line.mnozstvi,
@@ -104,9 +118,7 @@ export function buildIdokladItems(
     UnitPrice: line.jednotkovaCena,
     PriceType: PRICE_TYPE_WITHOUT_VAT,
     VatRateType: mapIdokladVatRateType(line.sazbaDph, taxingDate),
-    DiscountPercentage: 0,
-    IsTaxMovement: true,
-    ...(options?.vatCodeId ? { VatCodeId: options.vatCodeId } : {}),
+    ...(vatCodeId ? { VatCodeId: vatCodeId } : {}),
   }))
 }
 
@@ -261,20 +273,93 @@ export function matchIdokladBankByCode(bank: IdokladBank, bankCode: string): boo
   const target = normalizeBankCode(bankCode)
   if (!target) return false
 
+  const targetNum = parseInt(target, 10)
   const candidates = [bank.NumberCode, bank.Code, (bank as { BankCode?: string | number }).BankCode]
-  return candidates.some((value) => value != null && normalizeBankCode(String(value)) === target)
+
+  return candidates.some((value) => {
+    if (value == null) return false
+    if (normalizeBankCode(String(value)) === target) return true
+    const digits = String(value).replace(/\D/g, '')
+    if (!digits) return false
+    const num = parseInt(digits, 10)
+    return Number.isFinite(num) && num === targetNum
+  })
 }
 
-async function resolveBankId(token: string, bankCode: string | null | undefined): Promise<number | null> {
+type BankResolution = { bankId: number | null; warning?: string }
+
+async function resolveBankId(
+  token: string,
+  bankCode: string | null | undefined
+): Promise<BankResolution> {
   const code = normalizeBankCode(bankCode)
-  if (!code) return null
+  if (!code) return { bankId: null }
 
   const banks = await idokladListAllItems<IdokladBank>(token, 'Banks')
   const hit = banks.find((bank) => matchIdokladBankByCode(bank, code))
-  if (!hit?.Id) {
-    console.warn(`[idoklad] BankId nenalezeno pro kód ${code} (načteno ${banks.length} bank)`)
+  if (hit?.Id) return { bankId: hit.Id }
+
+  const sampleCodes = banks
+    .map((bank) => bank.NumberCode)
+    .filter(Boolean)
+    .slice(0, 8)
+    .join(', ')
+  console.warn(
+    `[idoklad] BankId nenalezeno pro kód ${code} (načteno ${banks.length} bank, ukázka NumberCode: ${sampleCodes || '—'})`
+  )
+  return {
+    bankId: null,
+    warning: `Kód banky ${code} se v iDokladu nenašel — platební údaje v dokladu zkontrolujte ručně.`,
   }
-  return hit?.Id ?? null
+}
+
+async function recountReceivedInvoice(
+  token: string,
+  payload: {
+    CurrencyId: number
+    DateOfTaxing: string
+    Items: IdokladInvoiceItemPayload[]
+  }
+): Promise<IdokladRecountTotals> {
+  return idokladRequest<IdokladRecountTotals>(token, 'ReceivedInvoices/Recount', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+const RECOUNT_TOLERANCE = 0.02
+
+function validateRecountAgainstInvoice(
+  recount: IdokladRecountTotals,
+  data: ExtractedInvoiceData
+): string | undefined {
+  const warnings: string[] = []
+
+  if (data.castka_bez_dph != null && recount.TotalWithoutVat != null) {
+    const diff = Math.abs(recount.TotalWithoutVat - data.castka_bez_dph)
+    if (diff > RECOUNT_TOLERANCE) {
+      warnings.push(
+        `základ ${recount.TotalWithoutVat.toFixed(2)} Kč (očekáváno ${data.castka_bez_dph.toFixed(2)} Kč)`
+      )
+    }
+  }
+  if (data.castka_dph != null && recount.TotalVat != null) {
+    const diff = Math.abs(recount.TotalVat - data.castka_dph)
+    if (diff > RECOUNT_TOLERANCE) {
+      warnings.push(`DPH ${recount.TotalVat.toFixed(2)} Kč (očekáváno ${data.castka_dph.toFixed(2)} Kč)`)
+    }
+  }
+  if (data.castka_celkem != null && recount.TotalWithVat != null) {
+    const diff = Math.abs(recount.TotalWithVat - data.castka_celkem)
+    if (diff > RECOUNT_TOLERANCE) {
+      warnings.push(
+        `celkem ${recount.TotalWithVat.toFixed(2)} Kč (očekáváno ${data.castka_celkem.toFixed(2)} Kč)`
+      )
+    }
+  }
+
+  if (!warnings.length) return undefined
+  return `Rekapitulace DPH v iDokladu neodpovídá faktuře: ${warnings.join('; ')}.`
 }
 
 async function resolvePaymentOptionId(token: string): Promise<number> {
@@ -335,16 +420,19 @@ async function findContactByIco(token: string, ico: string): Promise<number | nu
 
 async function resolvePartnerId(
   token: string,
-  data: ExtractedInvoiceData
+  data: ExtractedInvoiceData,
+  options?: { bankId?: number | null; bankFields?: Record<string, string | number> }
 ): Promise<number> {
   const ico = (data.dodavatel_ico ?? '').replace(/\D/g, '')
   const existingId = await findContactByIco(token, ico)
   const ares = ico ? await lookupAres(ico).catch(() => null) : null
 
-  const bankFields = buildIdokladBankFields(data)
-  const bankCode = bankFields._bankCode as string | undefined
-  delete bankFields._bankCode
-  const bankId = bankCode ? await resolveBankId(token, bankCode) : null
+  const bankFields = options?.bankFields ?? (() => {
+    const fields = buildIdokladBankFields(data)
+    delete fields._bankCode
+    return fields
+  })()
+  const bankId = options?.bankId ?? null
 
   const contactPayload = buildIdokladContactPayload(data, {
     ares,
@@ -440,7 +528,7 @@ export async function sendToIdoklad(
   connection: IdokladConnection,
   data: ExtractedInvoiceData,
   pdf?: InvoicePdfAttachment | null
-): Promise<{ id: string; documentNumber: string; pdfAttached: boolean; pdfAttachmentError?: string }> {
+): Promise<IdokladSendResult> {
   let token: string
   if (connection.client_id) {
     token = await getAccessToken(connection.client_id, connection.client_secret)
@@ -456,23 +544,37 @@ export async function sendToIdoklad(
   const bankCode = bankFields._bankCode as string | undefined
   delete bankFields._bankCode
 
-  const [partnerId, currencyId, paymentOptionId, numericSequence, bankId, vatCodeId] =
-    await Promise.all([
-    resolvePartnerId(token, data),
+  const bankResolution = bankCode ? await resolveBankId(token, bankCode) : { bankId: null as number | null }
+  const bankId = bankResolution.bankId
+  const warnings: string[] = []
+  if (bankResolution.warning) warnings.push(bankResolution.warning)
+
+  const [partnerId, currencyId, paymentOptionId, numericSequence, vatCodeId] = await Promise.all([
+    resolvePartnerId(token, data, { bankId, bankFields }),
     resolveCurrencyId(token, data.mena ?? 'CZK'),
     resolvePaymentOptionId(token),
     resolveNumericSequence(token),
-    bankCode ? resolveBankId(token, bankCode) : Promise.resolve(null),
     resolvePurchaseVatCodeId(token),
   ])
+
+  if (!vatCodeId) {
+    console.warn('[idoklad] VatCodeId pro vstupní DPH nenalezen — položky bez členění DPH')
+  }
 
   const items = buildIdokladItems(data, { vatCodeId, taxingDate })
   const documentSerialNumber = parseInt(numericSequence.nextSerial, 10)
   const accountNumber = sanitizeIdokladAccountNumber(bankFields.AccountNumber as string | undefined)
 
-  // #region agent log
-  fetch('http://127.0.0.1:7711/ingest/3cd4d8f4-c62c-4feb-9280-e257beb22e7d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'20dbe5'},body:JSON.stringify({sessionId:'20dbe5',runId:'post-fix',hypothesisId:'H-VAT-BANK',location:'idoklad.ts:payload',message:'idoklad send payload summary',data:{bankCode:bankCode??null,bankId,accountNumber,itemCount:items.length,firstItem:items[0]??null,vatCodeId},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
+  const recount = await recountReceivedInvoice(token, {
+    CurrencyId: currencyId,
+    DateOfTaxing: taxingDate,
+    Items: items,
+  })
+  const recountWarning = validateRecountAgainstInvoice(recount, data)
+  if (recountWarning) {
+    console.warn(`[idoklad] ${recountWarning}`)
+    warnings.push(recountWarning)
+  }
 
   const payload = {
     PartnerId: partnerId,
@@ -524,6 +626,7 @@ export async function sendToIdoklad(
     documentNumber: result.DocumentNumber ?? String(result.Id),
     pdfAttached,
     pdfAttachmentError,
+    ...(warnings.length ? { warning: warnings.join(' ') } : {}),
   }
 }
 

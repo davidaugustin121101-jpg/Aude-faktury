@@ -11,7 +11,6 @@ import { requireUser } from '@/lib/auth-server'
 import { MODE_LABELS } from '@/lib/account-mode'
 import { cn } from '@/lib/utils'
 import { InvoiceStatusBadge } from '@/components/invoices/InvoiceStatusBadge'
-import { DashboardContentProbe } from '@/components/debug/DashboardContentProbe'
 
 const PROVIDER_NAMES = {
   idoklad: 'iDoklad',
@@ -22,23 +21,16 @@ const PROVIDER_NAMES = {
 }
 
 export default async function DashboardPage() {
-  // #region agent log
-  fetch('http://127.0.0.1:7711/ingest/3cd4d8f4-c62c-4feb-9280-e257beb22e7d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'20dbe5'},body:JSON.stringify({sessionId:'20dbe5',hypothesisId:'H2',location:'dashboard/page.tsx:entry',message:'dashboard page start',data:{},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   const { supabase, user } = await requireUser()
   const ctx = await getDashboardContext(supabase, user.id, user.email ?? '')
 
-  const { data: recentInvoices, error: recentError } = await supabase
+  const { data: recentInvoices } = await supabase
     .from('processed_invoices')
     .select('id, dodavatel_nazev, castka_celkem, status, created_at, ucetni_kod')
     .eq('user_id', user.id)
     .eq('workspace_id', ctx.workspaceId)
     .order('created_at', { ascending: false })
     .limit(5)
-
-  // #region agent log
-  fetch('http://127.0.0.1:7711/ingest/3cd4d8f4-c62c-4feb-9280-e257beb22e7d',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'20dbe5'},body:JSON.stringify({sessionId:'20dbe5',hypothesisId:'H2',location:'dashboard/page.tsx:data',message:'dashboard page data loaded',data:{recentCount:recentInvoices?.length??0,recentError:recentError?.message??null,workspaceId:ctx.workspaceId},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
 
   const isUnlimited = ctx.invoiceLimit >= 999_999
   const usagePercent = isUnlimited
@@ -49,7 +41,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <DashboardContentProbe />
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Přehled</h1>
         <p className="text-sm text-gray-500 mt-1">{user.email}</p>
