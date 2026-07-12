@@ -61,7 +61,6 @@ export function buildSuperFakturaPayload(
   const lines = buildInvoiceOutputLines(data)
   const payment = buildInvoicePayment(data)
   const paymentAccount = formatPaymentAccount(payment)
-  const useItems = (data.polozky?.filter((p) => p.nazev?.trim()).length ?? 0) > 0
 
   const expense: Record<string, unknown> = {
     name: (data.popis_plneni ?? `Faktura ${data.cislo_faktury}`).slice(0, 200),
@@ -72,15 +71,10 @@ export function buildSuperFakturaPayload(
     constant: data.konstantni_symbol || undefined,
     taxable_supply: data.datum_duzp ?? data.datum_vystaveni,
     currency: data.mena || 'CZK',
-    version: useItems ? 'items' : 'basic',
+    version: 'items',
     type: 'invoice',
     comment: expenseComment,
     ...(options?.includePdfBase64 ? { attachment: options.includePdfBase64 } : {}),
-  }
-
-  if (!useItems) {
-    expense.amount = data.castka_bez_dph ?? data.castka_celkem ?? 0
-    expense.vat = String(data.sazba_dph ?? 21)
   }
 
   const client: Record<string, unknown> = {
@@ -93,16 +87,16 @@ export function buildSuperFakturaPayload(
   else if (paymentAccount) client.account = paymentAccount
   if (payment.swift) client.swift = payment.swift
 
-  const payload: Record<string, unknown> = { Expense: expense, Client: client }
-
-  if (useItems) {
-    payload.ExpenseItem = lines.map((line) => ({
+  const payload: Record<string, unknown> = {
+    Expense: expense,
+    Client: client,
+    ExpenseItem: lines.map((line) => ({
       name: line.nazev,
       quantity: line.mnozstvi,
       unit: line.jednotka,
       tax: line.sazbaDph,
       unit_price: line.jednotkovaCena,
-    }))
+    })),
   }
 
   return payload

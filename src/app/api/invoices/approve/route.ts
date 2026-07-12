@@ -63,5 +63,6 @@ export async function POST(req: NextRequest) {
     ok: true,
     documentId: result.documentId,
     ...(result.warning ? { warning: result.warning } : {}),
+    ...(result.totalsSummary ? { totalsSummary: result.totalsSummary } : {}),
   })
 }

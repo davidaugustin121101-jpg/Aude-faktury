@@ -39,6 +39,7 @@ export function buildFakturoidExpensePayload(data: ExtractedInvoiceData) {
   const lines = buildInvoiceOutputLines(data)
 
   const noteParts = [
+    predkontace?.comment,
     data.popis_plneni || undefined,
     data.konstantni_symbol ? `KS: ${data.konstantni_symbol}` : undefined,
     data.cislo_objednavky ? `Objednávka: ${data.cislo_objednavky}` : undefined,

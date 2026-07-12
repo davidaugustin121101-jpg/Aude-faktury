@@ -117,13 +117,23 @@ describe('multi-rate invoice (all providers)', () => {
     assert.equal(payload.lines[1].vat_rate, '12')
   })
 
-  it('bitfaktura sends gross per position', () => {
+  it('bitfaktura sends net, VAT and gross per position', () => {
     const payload = buildBitFakturaInvoicePayload(multiRate)
-    const positions = payload.positions as Array<{ tax: number; total_price_gross: number }>
+    const positions = payload.positions as Array<{
+      tax: number
+      price_net: number
+      total_price_net: number
+      total_price_tax: number
+      total_price_gross: number
+    }>
     assert.equal(positions.length, 4)
     assert.equal(positions[0].tax, 21)
+    assert.equal(positions[0].price_net, 123.5)
+    assert.equal(positions[1].total_price_net, 110000)
+    assert.equal(positions[1].total_price_tax, 13200)
     assert.equal(positions[1].total_price_gross, 123200)
     assert.equal(payload.seller_bank_account, '1234567891/0321')
+    assert.equal(payload.seller_tax_no, '12345678')
   })
 
   it('sucto sends base, tax and total per line', () => {
@@ -180,6 +190,12 @@ describe('superfaktura payload', () => {
     assert.equal((payload.ExpenseItem as unknown[]).length, 1)
     assert.equal((payload.Client as { account: string }).account, '1234567891/0321')
   })
+
+  it('always sends items mode even without polozky array', () => {
+    const payload = buildSuperFakturaPayload({ ...sample, polozky: [] })
+    assert.equal((payload.Expense as { version: string }).version, 'items')
+    assert.equal((payload.ExpenseItem as unknown[]).length, 1)
+  })
 })
 
 describe('fakturoid payload', () => {
@@ -188,6 +204,13 @@ describe('fakturoid payload', () => {
     assert.equal(payload.taxable_fulfillment_due, '2026-07-01')
     assert.equal(payload.lines.length, 1)
     assert.match(payload.note ?? '', /KS: 308/)
+    assert.match(payload.note ?? '', /Předkontace:/)
+  })
+
+  it('includes full predkontace in note for multi-rate invoice', () => {
+    const payload = buildFakturoidExpensePayload(multiRate)
+    assert.match(payload.note ?? '', /Předkontace: 504 \/ 343 \/ 321/)
+    assert.match(payload.note ?? '', /Dal 321/)
   })
 })
 

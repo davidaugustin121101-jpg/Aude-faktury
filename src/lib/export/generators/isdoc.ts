@@ -17,7 +17,7 @@ function invoiceLinesXml(inv: NormalizedInvoice): string {
       const total = line.castkaBezDph + vat
       return `    <InvoiceLine>
       <ID>${index + 1}</ID>
-      <InvoicedQuantity>${line.mnozstvi}</InvoicedQuantity>
+      <InvoicedQuantity unitCode="${escapeXml(line.jednotka)}">${line.mnozstvi}</InvoicedQuantity>
       <LineExtensionAmount>${formatMoney(line.castkaBezDph)}</LineExtensionAmount>
       <LineExtensionAmountTaxInclusive>${formatMoney(total)}</LineExtensionAmountTaxInclusive>
       <LineExtensionTaxAmount>${formatMoney(vat)}</LineExtensionTaxAmount>
@@ -107,6 +107,7 @@ ${invoiceLinesXml(inv)}
   </LegalMonetaryTotal>
   ${inv.konstantniSymbol ? `<Note>Konstantní symbol: ${escapeXml(inv.konstantniSymbol)}</Note>` : ''}
   ${inv.cisloObjednavky ? `<Note>Číslo objednávky: ${escapeXml(inv.cisloObjednavky)}</Note>` : ''}
+  ${inv.predkontace?.comment ? `<Note>${escapeXml(inv.predkontace.comment)}</Note>` : ''}
   ${inv.swift ? `<Note>SWIFT: ${escapeXml(inv.swift)}</Note>` : ''}
 </Invoice>`
 }

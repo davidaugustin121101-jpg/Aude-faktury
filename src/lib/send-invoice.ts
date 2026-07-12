@@ -46,7 +46,7 @@ export async function sendInvoiceToAccounting(params: {
   rememberSupplier?: boolean
   forceSend?: boolean
   auditAction?: 'sent' | 'auto_approved'
-}): Promise<{ ok: true; documentId: string; warning?: string } | { ok: false; error: string; status: number }> {
+}): Promise<{ ok: true; documentId: string; warning?: string; totalsSummary?: string } | { ok: false; error: string; status: number }> {
   const {
     supabase,
     userId,
@@ -126,10 +126,12 @@ export async function sendInvoiceToAccounting(params: {
       pdfAttached?: boolean
       pdfAttachmentError?: string
       warning?: string
+      totalsSummary?: string
     }
     let pdfAttached = false
     let pdfAttachmentError: string | undefined
     let sendWarning: string | undefined
+    let sendTotalsSummary: string | undefined
 
     const pdf = await loadInvoicePdfAttachment(
       createAdminClient(),
@@ -144,10 +146,17 @@ export async function sendInvoiceToAccounting(params: {
         client_secret: conn.idoklad_client_secret ?? '',
       }
       const r = await sendToIdoklad(idokladConn, extractedData, pdf)
-      result = { id: r.id, documentNumber: r.documentNumber, pdfAttached: r.pdfAttached, warning: r.warning }
+      result = {
+        id: r.id,
+        documentNumber: r.documentNumber,
+        pdfAttached: r.pdfAttached,
+        warning: r.warning,
+        totalsSummary: r.totalsSummary,
+      }
       pdfAttached = r.pdfAttached
       pdfAttachmentError = r.pdfAttachmentError
       sendWarning = r.warning
+      sendTotalsSummary = r.totalsSummary
     } else if (conn.provider === 'superfaktura') {
       const r = await sendToSuperFaktura(
         {
@@ -239,7 +248,12 @@ export async function sendInvoiceToAccounting(params: {
       },
     })
 
-    return { ok: true, documentId: result.id, ...(sendWarning ? { warning: sendWarning } : {}) }
+    return {
+      ok: true,
+      documentId: result.id,
+      ...(sendWarning ? { warning: sendWarning } : {}),
+      ...(sendTotalsSummary ? { totalsSummary: sendTotalsSummary } : {}),
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Neznámá chyba'
 

@@ -68,12 +68,32 @@ type IdokladRecountTotals = {
   TotalWithVat?: number
 }
 
+type IdokladInvoicePrices = {
+  TotalWithoutVat?: number
+  TotalVat?: number
+  TotalWithVat?: number
+}
+
+type IdokladReceivedInvoiceDefaults = {
+  VatRegime?: number
+  PaymentOptionId?: number
+  CurrencyId?: number
+  Items?: Array<{ PriceType?: number; VatCodeId?: number; VatRateType?: number }>
+}
+
+type IdokladReceivedInvoiceDetail = {
+  VatRegime?: number
+  Prices?: IdokladInvoicePrices
+  Items?: Array<{ VatRate?: number; PriceType?: number; Prices?: IdokladInvoicePrices }>
+}
+
 export type IdokladSendResult = {
   id: string
   documentNumber: string
   pdfAttached: boolean
   pdfAttachmentError?: string
   warning?: string
+  totalsSummary?: string
 }
 
 /** Od 1. 1. 2024 platí v ČR jen 21 % a 12 % — iDoklad zrušil Reduced2 pro novější data */
@@ -152,6 +172,45 @@ async function resolvePurchaseVatCodeId(token: string): Promise<number | null> {
   const purchase =
     codes.find((code) => code.VatMovementType === IDOKLAD_VAT_MOVEMENT_ENTRY) ?? codes[0]
   return purchase?.Id ?? null
+}
+
+async function fetchReceivedInvoiceDefaults(token: string): Promise<IdokladReceivedInvoiceDefaults> {
+  return idokladRequest<IdokladReceivedInvoiceDefaults>(token, 'ReceivedInvoices/Default', {
+    method: 'GET',
+  })
+}
+
+function formatIdokladAmount(amount: number, mena = 'CZK'): string {
+  try {
+    return new Intl.NumberFormat('cs-CZ', {
+      style: 'currency',
+      currency: mena,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount)
+  } catch {
+    return `${amount.toFixed(2)} ${mena}`
+  }
+}
+
+export function formatIdokladTotalsSummary(
+  totals: IdokladRecountTotals | IdokladInvoicePrices,
+  mena = 'CZK'
+): string | undefined {
+  const parts: string[] = []
+  if (totals.TotalWithoutVat != null) parts.push(`základ ${formatIdokladAmount(totals.TotalWithoutVat, mena)}`)
+  if (totals.TotalVat != null && totals.TotalVat > 0.009) {
+    parts.push(`DPH ${formatIdokladAmount(totals.TotalVat, mena)}`)
+  }
+  if (totals.TotalWithVat != null) parts.push(`celkem ${formatIdokladAmount(totals.TotalWithVat, mena)}`)
+  return parts.length ? parts.join(' · ') : undefined
+}
+
+function invoiceExpectsVat(data: ExtractedInvoiceData): boolean {
+  if (data.je_prenesena_dan) return false
+  if ((data.castka_dph ?? 0) > 0.009) return true
+  const lines = buildInvoiceOutputLines(data)
+  return lines.some((line) => line.sazbaDph > 0)
 }
 
 function normalizeIdokladDate(value: string | null | undefined, fallback: string): string {
@@ -334,6 +393,13 @@ function validateRecountAgainstInvoice(
   data: ExtractedInvoiceData
 ): string | undefined {
   const warnings: string[] = []
+  const expectsVat = invoiceExpectsVat(data)
+
+  if (expectsVat && (recount.TotalVat ?? 0) < 0.009) {
+    warnings.push(
+      'iDoklad Recount nepočítá DPH — v iDokladu ověřte Nastavení → Firma (plátce DPH) a Nastavení → Nákup (typ ceny „bez DPH")'
+    )
+  }
 
   if (data.castka_bez_dph != null && recount.TotalWithoutVat != null) {
     const diff = Math.abs(recount.TotalWithoutVat - data.castka_bez_dph)
@@ -360,6 +426,34 @@ function validateRecountAgainstInvoice(
 
   if (!warnings.length) return undefined
   return `Rekapitulace DPH v iDokladu neodpovídá faktuře: ${warnings.join('; ')}.`
+}
+
+async function verifyReceivedInvoiceAfterCreate(
+  token: string,
+  invoiceId: number,
+  data: ExtractedInvoiceData
+): Promise<string | undefined> {
+  const detail = await idokladRequest<IdokladReceivedInvoiceDetail>(
+    token,
+    `ReceivedInvoices/${invoiceId}`,
+    { method: 'GET' }
+  )
+
+  if (!invoiceExpectsVat(data)) return undefined
+
+  const totalVat = detail.Prices?.TotalVat ?? 0
+  if (totalVat > 0.009) return undefined
+
+  if (detail.VatRegime === 0) {
+    return 'iDoklad uložil doklad bez DPH (režim NonVatRegime) — účet pravděpodobně není nastaven jako plátce DPH.'
+  }
+
+  const firstItemVat = detail.Items?.find((item) => (item.VatRate ?? 0) > 0)?.VatRate
+  if (firstItemVat == null) {
+    return 'iDoklad uložil položky bez sazby DPH — zkontrolujte nastavení DPH v účtu a znovu odešlete fakturu.'
+  }
+
+  return 'iDoklad uložil doklad bez vypočteného DPH — ověřte rekapitulaci v detailu faktury.'
 }
 
 async function resolvePaymentOptionId(token: string): Promise<number> {
@@ -549,19 +643,30 @@ export async function sendToIdoklad(
   const warnings: string[] = []
   if (bankResolution.warning) warnings.push(bankResolution.warning)
 
-  const [partnerId, currencyId, paymentOptionId, numericSequence, vatCodeId] = await Promise.all([
-    resolvePartnerId(token, data, { bankId, bankFields }),
-    resolveCurrencyId(token, data.mena ?? 'CZK'),
-    resolvePaymentOptionId(token),
-    resolveNumericSequence(token),
-    resolvePurchaseVatCodeId(token),
-  ])
+  const [defaults, partnerId, currencyId, paymentOptionId, numericSequence, vatCodeId] =
+    await Promise.all([
+      fetchReceivedInvoiceDefaults(token).catch(() => ({} as IdokladReceivedInvoiceDefaults)),
+      resolvePartnerId(token, data, { bankId, bankFields }),
+      resolveCurrencyId(token, data.mena ?? 'CZK'),
+      resolvePaymentOptionId(token),
+      resolveNumericSequence(token),
+      resolvePurchaseVatCodeId(token),
+    ])
 
-  if (!vatCodeId) {
+  if (defaults.VatRegime === 0 && invoiceExpectsVat(data)) {
+    warnings.push(
+      'iDoklad účet není v režimu plátce DPH — přijaté faktury se uloží bez DPH. Nastavte plátce DPH v iDokladu → Nastavení → Firma.'
+    )
+  }
+
+  const defaultItem = defaults.Items?.[0]
+  const resolvedVatCodeId = vatCodeId ?? defaultItem?.VatCodeId ?? null
+
+  if (!resolvedVatCodeId) {
     console.warn('[idoklad] VatCodeId pro vstupní DPH nenalezen — položky bez členění DPH')
   }
 
-  const items = buildIdokladItems(data, { vatCodeId, taxingDate })
+  const items = buildIdokladItems(data, { vatCodeId: resolvedVatCodeId, taxingDate })
   const documentSerialNumber = parseInt(numericSequence.nextSerial, 10)
   const accountNumber = sanitizeIdokladAccountNumber(bankFields.AccountNumber as string | undefined)
 
@@ -609,6 +714,16 @@ export async function sendToIdoklad(
     throw new Error('iDoklad nevrátil ID vytvořené faktury')
   }
 
+  const verifyWarning = await verifyReceivedInvoiceAfterCreate(token, result.Id, data).catch(
+    (err) => {
+      console.warn('[idoklad] ověření dokladu po vytvoření selhalo:', err)
+      return undefined
+    }
+  )
+  if (verifyWarning) warnings.push(verifyWarning)
+
+  const totalsSummary = formatIdokladTotalsSummary(recount, data.mena ?? 'CZK')
+
   let pdfAttached = false
   let pdfAttachmentError: string | undefined
   if (pdf) {
@@ -627,6 +742,7 @@ export async function sendToIdoklad(
     pdfAttached,
     pdfAttachmentError,
     ...(warnings.length ? { warning: warnings.join(' ') } : {}),
+    ...(totalsSummary ? { totalsSummary } : {}),
   }
 }
 

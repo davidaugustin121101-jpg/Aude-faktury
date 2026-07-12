@@ -49,6 +49,7 @@ export function InvoiceActions({
     if (res.ok) {
       const data = await res.json().catch(() => ({}))
       toast.success(`Faktura odeslána do ${providerLabel}`)
+      if (data.totalsSummary) toast.info(`iDoklad: ${data.totalsSummary}`)
       if (data.warning) toast.warning(data.warning)
       router.refresh()
     } else {

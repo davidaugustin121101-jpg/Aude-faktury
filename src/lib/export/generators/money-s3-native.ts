@@ -29,6 +29,8 @@ function polozkyXml(inv: NormalizedInvoice): string {
 export function generateMoneyNativeXml(inv: NormalizedInvoice, profile?: ExportProfile): string {
   const docType = profile?.moneyDocumentType ?? 'FP'
   const taxDate = inv.datumDuzp ?? inv.datumVystaveni
+  const vatRates = [...new Set(inv.polozky.map((line) => line.sazbaDph))]
+  const singleVatRate = vatRates.length === 1 ? vatRates[0] : null
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <S5Data>
@@ -51,7 +53,7 @@ export function generateMoneyNativeXml(inv: NormalizedInvoice, profile?: ExportP
       <Celkem>${formatMoney(inv.castkaCelkem)}</Celkem>
       <Zaklad>${formatMoney(inv.castkaBezDph)}</Zaklad>
       <DPH>${formatMoney(inv.castkaDph)}</DPH>
-      <SazbaDPH>${inv.sazbaDph}</SazbaDPH>
+      ${singleVatRate != null ? `<SazbaDPH>${singleVatRate}</SazbaDPH>` : ''}
       <UcetniKod>${escapeXml(inv.ucetniKod)}</UcetniKod>
       <Popis>${escapeXml(inv.popisPlneni)}</Popis>
       ${inv.paymentAccount ? `<CisloUctu>${escapeXml(inv.paymentAccount)}</CisloUctu>` : ''}

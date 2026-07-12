@@ -5,6 +5,7 @@ import {
   buildInvoicePayment,
   formatPaymentAccount,
   lineGrossAmount,
+  lineVatAmount,
 } from './invoice-output'
 
 export interface BitFakturaConnection {
@@ -52,9 +53,13 @@ export function buildBitFakturaInvoicePayload(
   const positions = buildInvoiceOutputLines(data).map((line) => ({
     name: line.nazev.slice(0, 255),
     tax: line.sazbaDph,
-    total_price_gross: lineGrossAmount(line),
     quantity: line.mnozstvi,
+    quantity_unit: line.jednotka,
     unit: line.jednotka,
+    price_net: line.jednotkovaCena,
+    total_price_net: line.castkaBezDph,
+    total_price_tax: lineVatAmount(line),
+    total_price_gross: lineGrossAmount(line),
   }))
 
   const payment = buildInvoicePayment(data)
@@ -70,7 +75,7 @@ export function buildBitFakturaInvoicePayload(
     payment_to: data.datum_splatnosti,
     delivery_date: data.datum_vystaveni,
     seller_name: data.dodavatel_nazev,
-    seller_tax_no: data.dodavatel_ico || undefined,
+    seller_tax_no: data.dodavatel_dic?.replace(/^(CZ|SK)/i, '') || data.dodavatel_ico || undefined,
     seller_bank_account: payment.iban ?? paymentAccount ?? undefined,
     buyer_company: '1',
     variable_symbol: data.variabilni_symbol || undefined,
