@@ -42,6 +42,14 @@ function mapInvoiceKind(data: ExtractedInvoiceData): string {
   return 'vat'
 }
 
+function buildBitFakturaInternalNote(data: ExtractedInvoiceData, baseNote: string): string {
+  const parts = [baseNote]
+  if (data.variabilni_symbol) parts.push(`VS: ${data.variabilni_symbol}`)
+  if (data.konstantni_symbol) parts.push(`KS: ${data.konstantni_symbol}`)
+  if (data.cislo_objednavky) parts.push(`Obj. č.: ${data.cislo_objednavky}`)
+  return parts.filter(Boolean).join('\n')
+}
+
 export function buildBitFakturaInvoicePayload(
   data: ExtractedInvoiceData
 ): Record<string, unknown> {
@@ -55,7 +63,6 @@ export function buildBitFakturaInvoicePayload(
     tax: line.sazbaDph,
     quantity: line.mnozstvi,
     quantity_unit: line.jednotka,
-    unit: line.jednotka,
     price_net: line.jednotkovaCena,
     total_price_net: line.castkaBezDph,
     total_price_tax: lineVatAmount(line),
@@ -78,11 +85,9 @@ export function buildBitFakturaInvoicePayload(
     seller_tax_no: data.dodavatel_dic?.replace(/^(CZ|SK)/i, '') || data.dodavatel_ico || undefined,
     seller_bank_account: payment.iban ?? paymentAccount ?? undefined,
     buyer_company: '1',
-    variable_symbol: data.variabilni_symbol || undefined,
-    constant_symbol: data.konstantni_symbol || undefined,
-    order_number: data.cislo_objednavky || undefined,
+    oid: data.cislo_objednavky || undefined,
     currency: data.mena || 'CZK',
-    internal_note: note,
+    internal_note: buildBitFakturaInternalNote(data, note),
     description: data.popis_plneni ?? undefined,
     positions,
   }
