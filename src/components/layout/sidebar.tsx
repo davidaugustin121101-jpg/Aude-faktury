@@ -36,7 +36,6 @@ interface SidebarProps {
   invoiceLimit: number
   invoicesRemaining: number
   creditsConsumed: number
-  hasActiveSubscription: boolean
   totalInvoices: number
 }
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { type AccountMode, SOLO_INVOICE_LIMIT } from '@/lib/account-mode'
+import { SOLO_INVOICE_LIMIT } from '@/lib/account-mode'
 import type { AccountingProvider } from '@/lib/accounting-connection'
 import { Zap } from 'lucide-react'
 
