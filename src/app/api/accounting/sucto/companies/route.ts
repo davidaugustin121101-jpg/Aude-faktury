@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            'Přihlášení proběhlo, ale účet nemá přístup k žádné firmě. Přihlaste se na moje.sucto.cz a ověřte, že vidíte firmu klienta.',
+            'Přihlášení proběhlo, ale účet nemá přístup k žádné firmě. Přihlaste se na www.sucto.cz a ověřte, že vidíte firmu klienta.',
         },
         { status: 400 }
       )

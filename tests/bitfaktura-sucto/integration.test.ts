@@ -5,7 +5,7 @@ import {
   normalizeBitFakturaDomain,
   bitfakturaBaseUrl,
 } from '../../src/lib/bitfaktura.ts'
-import { pickVatId, buildSuctoActuarialPayload, buildVatIdByRate } from '../../src/lib/sucto.ts'
+import { pickVatId, buildSuctoActuarialPayload, buildVatIdByRate, SUCTO_APP_URL } from '../../src/lib/sucto.ts'
 import { buildSuperFakturaPayload } from '../../src/lib/superfaktura.ts'
 import { buildFakturoidExpensePayload } from '../../src/lib/fakturoid.ts'
 import { buildIdokladItems } from '../../src/lib/idoklad.ts'
@@ -220,6 +220,10 @@ describe('fakturoid payload', () => {
 })
 
 describe('sucto', () => {
+  it('uses live www.sucto.cz API host', () => {
+    assert.equal(SUCTO_APP_URL, 'https://www.sucto.cz')
+  })
+
   it('picks vat by rate', () => {
     const vats = [
       { id: 1, value: '21.0' },

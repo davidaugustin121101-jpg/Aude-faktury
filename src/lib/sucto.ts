@@ -8,7 +8,8 @@ import {
   lineVatAmount,
 } from './invoice-output'
 
-const SUCTO_API = 'https://moje.sucto.cz/api'
+export const SUCTO_APP_URL = 'https://www.sucto.cz'
+const SUCTO_API = `${SUCTO_APP_URL}/api`
 
 export interface SuctoConnection {
   email: string
@@ -57,23 +58,42 @@ async function suctoRequest<T>(
 }
 
 export async function suctoLogin(email: string, password: string): Promise<string> {
-  const res = await fetch(`${SUCTO_API}/sessions/create`, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({ email, password }),
-  })
-
-  const raw = await res.text()
-  if (!res.ok) {
-    throw new Error(`Súčto přihlášení selhalo (${res.status})`)
+  let res: Response
+  try {
+    res = await fetch(`${SUCTO_API}/sessions/create`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({ email: email.trim(), password }),
+    })
+  } catch {
+    throw new Error(
+      `Nepodařilo se spojit se Súčtem (${SUCTO_APP_URL}). Zkuste to znovu za chvíli.`
+    )
   }
 
-  const json = JSON.parse(raw) as { authentication_token?: string }
+  const raw = await res.text()
+  let json: { authentication_token?: string; error?: string } = {}
+  try {
+    json = JSON.parse(raw) as typeof json
+  } catch {
+    json = {}
+  }
+
+  if (!res.ok) {
+    if (res.status === 401 || res.status === 422) {
+      throw new Error(
+        'E-mail nebo heslo nesedí. Použijte heslo k účtu Súčto — přihlášení přes Google do API nefunguje. Ověřte údaje na www.sucto.cz → Přihlásit.'
+      )
+    }
+    const detail = json.error ? ` (${json.error})` : ''
+    throw new Error(`Súčto API odpovědělo chybou ${res.status}${detail}.`)
+  }
+
   if (!json.authentication_token) {
-    throw new Error('Súčto nevrátilo autentizační token')
+    throw new Error('Súčto nevrátilo autentizační token.')
   }
   return json.authentication_token
 }
@@ -202,7 +222,7 @@ export async function listSuctoCompanies(email: string, password: string): Promi
     token = await suctoLogin(email, password)
   } catch {
     throw new Error(
-      'E-mail nebo heslo nesedí. Použijte stejné přihlašovací údaje jako při přihlášení na moje.sucto.cz.'
+      'E-mail nebo heslo nesedí. Použijte heslo k účtu Súčto (ne Google přihlášení) z www.sucto.cz.'
     )
   }
 
@@ -216,14 +236,14 @@ export async function validateSuctoConnection(connection: SuctoConnection): Prom
     token = await suctoLogin(connection.email, connection.password)
   } catch {
     throw new Error(
-      'E-mail nebo heslo nesedí. Použijte stejné přihlašovací údaje jako při přihlášení na moje.sucto.cz.'
+      'E-mail nebo heslo nesedí. Použijte heslo k účtu Súčto (ne Google přihlášení) z www.sucto.cz.'
     )
   }
 
   const companyId = connection.companyId.trim()
   if (!/^\d+$/.test(companyId)) {
     throw new Error(
-      'ID firmy musí být číslo (např. 42). Klikněte na „Načíst firmy“ nebo ho vezměte z URL moje.sucto.cz/companies/42/…'
+      'ID firmy musí být číslo (např. 42). Klikněte na „Načíst firmy“ nebo ho vezměte z URL www.sucto.cz/companies/42/…'
     )
   }
 
@@ -247,7 +267,7 @@ export async function validateSuctoConnection(connection: SuctoConnection): Prom
     throw new Error(
       known
         ? `K firmě „${known.name}“ (ID ${companyId}) nelze zapisovat přijaté doklady. Ve Súčtu otevřete Nastavení firmy, zaškrtněte „Aktivní API“ a uložte. Ověřte také oprávnění uživatele.`
-        : `Nelze otevřít firmu ${companyId}. Aktivujte API v Nastavení firmy ve Súčtu a ověřte ID z adresy moje.sucto.cz/companies/ČÍSLO/…`
+        : `Nelze otevřít firmu ${companyId}. Aktivujte API v Nastavení firmy ve Súčtu a ověřte ID z adresy www.sucto.cz/companies/ČÍSLO/…`
     )
   }
 }

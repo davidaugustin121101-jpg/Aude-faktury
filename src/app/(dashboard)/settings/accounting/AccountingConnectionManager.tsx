@@ -73,7 +73,7 @@ const PROVIDER_CONFIG = {
     text: 'text-teal-700',
     border: 'border-teal-600',
     soft: 'bg-teal-50',
-    desc: 'Přihlášení moje.sucto.cz + firma',
+    desc: 'Přihlášení www.sucto.cz + firma',
   },
 } as const
 
@@ -630,34 +630,45 @@ export function AccountingConnectionManager({
                 <p className="font-semibold text-teal-900">Jak připojit Súčto — krok za krokem</p>
                 <ol className="list-decimal pl-4 space-y-2 leading-relaxed">
                   <li>
-                    Přihlaste se na{' '}
+                    Otevřete{' '}
                     <a
-                      href="https://moje.sucto.cz"
+                      href="https://www.sucto.cz/users/sign_in"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="font-medium text-teal-800 underline"
                     >
-                      moje.sucto.cz
-                    </a>
-                    . Použijte stejný e-mail a heslo jako níže —{' '}
-                    <strong>nejde o samostatný API klíč</strong>.
+                      www.sucto.cz
+                    </a>{' '}
+                    a přihlaste se <strong>e-mailem a heslem</strong> (stejné jako níže). Účet přes
+                    Google do API nefunguje — pokud nemáte heslo, nastavte si ho ve Súčtu.
                   </li>
-                  <li>Vyberte firmu klienta, se kterou chcete pracovat.</li>
+                  <li>Po přihlášení klikněte na firmu klienta v přehledu.</li>
                   <li>
                     Otevřete <strong>Nastavení firmy</strong> a na konci stránky zaškrtněte{' '}
                     <strong>Aktivní API</strong>. Uložte změny.
                   </li>
                   <li>
-                    Vyplňte e-mail a heslo níže a klikněte na <strong>Načíst firmy</strong>.
-                    Systém doplní ID firmy sám. Ručně ho najdete v URL:{' '}
-                    <span className="font-mono text-[11px]">
-                      moje.sucto.cz/companies/<strong>42</strong>/…
-                    </span>
+                    Vyplňte e-mail a heslo níže a klikněte <strong>Načíst firmy</strong> — ID
+                    doplníme automaticky.
                   </li>
                 </ol>
+                <div className="rounded-lg border border-teal-200 bg-white px-3 py-2.5 font-mono text-[11px] leading-relaxed text-gray-700">
+                  <p className="font-sans font-semibold text-teal-900 mb-1">
+                    Kde najdu ID firmy ručně?
+                  </p>
+                  <p>Po výběru firmy se podívejte do adresního řádku prohlížeče:</p>
+                  <p className="mt-1 break-all">
+                    www.sucto.cz/companies/<span className="font-bold text-teal-800">42</span>
+                    /dashboard
+                  </p>
+                  <p className="mt-1 font-sans text-gray-600">
+                    Číslo <strong>42</strong> (mezi <code>/companies/</code> a dalším lomítkem) je
+                    ID firmy.
+                  </p>
+                </div>
                 <p className="text-gray-500">
-                  Účetní kancelář: použijte svůj Súčto účet, který má přístup k firmě klienta. Pro
-                  každého klienta (workspace) připojte jeho firmu zvlášť.
+                  Účetní kancelář: použijte svůj Súčto účet s přístupem k firmě klienta. Pro každého
+                  klienta (workspace) připojte jeho firmu zvlášť.
                 </p>
               </div>
               <div>
@@ -665,7 +676,7 @@ export function AccountingConnectionManager({
                 <Input
                   id="sucto-email"
                   type="email"
-                  placeholder="stejný e-mail jako na moje.sucto.cz"
+                  placeholder="stejný e-mail jako na www.sucto.cz"
                   value={apiEmail}
                   onChange={(e) => {
                     setApiEmail(e.target.value)
@@ -680,7 +691,7 @@ export function AccountingConnectionManager({
                 <Input
                   id="sucto-password"
                   type="password"
-                  placeholder="heslo k účtu na moje.sucto.cz"
+                  placeholder="heslo k účtu (ne Google přihlášení)"
                   value={suctoPassword}
                   onChange={(e) => {
                     setSuctoPassword(e.target.value)
