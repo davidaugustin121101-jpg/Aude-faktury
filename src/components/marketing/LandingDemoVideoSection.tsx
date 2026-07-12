@@ -77,33 +77,34 @@ export function LandingDemoVideoSection() {
   const video = getLandingDemoVideo()
 
   return (
-    <section id="video" className="py-16 sm:py-20 bg-white border-t border-gray-100">
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-3">
-              Ukázka v praxi
-            </p>
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
-              {video?.title ?? 'Jak celá aplikace funguje'}
-            </h2>
-            <p className="text-gray-600 leading-relaxed mb-6">
-              {video?.description ??
-                'Krátké video projde celým procesem — od PDF faktury přes vytěžení a předkontaci až po export nebo odeslání do vašeho účetního systému.'}
-            </p>
-            <ul className="space-y-3">
-              {LANDING_DEMO_CHAPTERS.map((chapter, i) => (
-                <li key={chapter} className="flex items-start gap-3 text-sm text-gray-700">
-                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
-                    {i + 1}
-                  </span>
-                  {chapter}
-                </li>
-              ))}
-            </ul>
-          </div>
+    <section id="video" className="bg-white border-t border-gray-100">
+      <div className="max-w-6xl mx-auto px-4 pt-16 sm:pt-20">
+        {video ? <VideoPlayer video={video} /> : null}
 
-          <div>{video ? <VideoPlayer video={video} /> : null}</div>
+        <div className="mt-10 sm:mt-12 pb-16 sm:pb-20 max-w-3xl">
+          <p className="text-xs font-bold uppercase tracking-wider text-blue-600 mb-3">
+            Ukázka v praxi
+          </p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
+            {video?.title ?? 'Jak celá aplikace funguje'}
+          </h2>
+          <p className="text-gray-600 leading-relaxed mb-6">
+            {video?.description ??
+              'Krátké video projde celým procesem — od PDF faktury přes vytěžení a předkontaci až po export nebo odeslání do vašeho účetního systému.'}
+          </p>
+          <ul className="grid sm:grid-cols-3 gap-3">
+            {LANDING_DEMO_CHAPTERS.map((chapter, i) => (
+              <li
+                key={chapter}
+                className="flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-3 py-3 text-sm text-gray-700"
+              >
+                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
+                  {i + 1}
+                </span>
+                {chapter}
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </section>
