@@ -54,7 +54,7 @@ export function getLandingDemoVideo(): LandingDemoVideo | null {
       title: DEFAULT_TITLE,
       description: DEFAULT_DESCRIPTION,
       poster: process.env.NEXT_PUBLIC_LANDING_DEMO_VIDEO_POSTER?.trim() || undefined,
-      loop: false,
+      loop: true,
     }
   }
 
