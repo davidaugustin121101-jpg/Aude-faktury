@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { CheckCircle2, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -31,7 +32,7 @@ const PROVIDERS: Provider[] = [
 const PROVIDER_CONFIG = {
   idoklad: {
     label: 'iDoklad',
-    emoji: '🧾',
+    logo: '/logos/systems/idoklad.png',
     bg: 'bg-blue-50',
     text: 'text-blue-700',
     border: 'border-blue-600',
@@ -40,7 +41,7 @@ const PROVIDER_CONFIG = {
   },
   fakturoid: {
     label: 'Fakturoid',
-    emoji: '📊',
+    logo: '/logos/systems/fakturoid.png',
     bg: 'bg-indigo-50',
     text: 'text-indigo-700',
     border: 'border-indigo-600',
@@ -49,7 +50,7 @@ const PROVIDER_CONFIG = {
   },
   superfaktura: {
     label: 'SuperFaktura',
-    emoji: '📋',
+    logo: '/logos/systems/superfaktura.png',
     bg: 'bg-violet-50',
     text: 'text-violet-700',
     border: 'border-violet-600',
@@ -58,7 +59,7 @@ const PROVIDER_CONFIG = {
   },
   bitfaktura: {
     label: 'BitFaktura',
-    emoji: '🧮',
+    logo: '/logos/systems/bitfaktura.png',
     bg: 'bg-amber-50',
     text: 'text-amber-700',
     border: 'border-amber-600',
@@ -67,14 +68,43 @@ const PROVIDER_CONFIG = {
   },
   sucto: {
     label: 'Súčto',
-    emoji: '📒',
+    logo: '/logos/systems/sucto.png',
     bg: 'bg-teal-50',
     text: 'text-teal-700',
     border: 'border-teal-600',
     soft: 'bg-teal-50',
-    desc: 'Přihlášení + ID firmy',
+    desc: 'Přihlášení moje.sucto.cz + firma',
   },
 } as const
+
+function ProviderLogo({
+  logo,
+  label,
+  className,
+  imageClassName,
+}: {
+  logo: string
+  label: string
+  className?: string
+  imageClassName?: string
+}) {
+  return (
+    <div
+      className={cn(
+        'relative shrink-0 overflow-hidden rounded-lg border border-gray-100 bg-white',
+        className
+      )}
+    >
+      <Image
+        src={logo}
+        alt={`Logo ${label}`}
+        fill
+        className={cn('object-contain object-center p-1.5', imageClassName)}
+        sizes="120px"
+      />
+    </div>
+  )
+}
 
 function ModeToggle({
   options,
@@ -128,6 +158,10 @@ export function AccountingConnectionManager({
   const [apiEmail, setApiEmail] = useState('')
   const [companyId, setCompanyId] = useState('')
   const [suctoPassword, setSuctoPassword] = useState('')
+  const [suctoCompanies, setSuctoCompanies] = useState<
+    Array<{ id: number; name: string; ic?: string | null }>
+  >([])
+  const [loadingSuctoCompanies, setLoadingSuctoCompanies] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const showPicker = !activeConnection || changing
@@ -158,6 +192,8 @@ export function AccountingConnectionManager({
     setApiEmail('')
     setCompanyId('')
     setSuctoPassword('')
+    setSuctoCompanies([])
+    setLoadingSuctoCompanies(false)
     setIdokladMode('oauth2')
     setFakturoidMode('apikeys')
   }
@@ -165,6 +201,45 @@ export function AccountingConnectionManager({
   function startChange() {
     setChanging(true)
     setPicking(null)
+  }
+
+  async function loadSuctoCompanies() {
+    if (!apiEmail || !suctoPassword) {
+      toast.error('Nejdřív vyplňte e-mail a heslo ze Súčta')
+      return
+    }
+
+    setLoadingSuctoCompanies(true)
+    try {
+      const res = await fetch('/api/accounting/sucto/companies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: apiEmail, password: suctoPassword }),
+      })
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string
+        companies?: Array<{ id: number; name: string; ic?: string | null }>
+      }
+      if (!res.ok) {
+        toast.error(data.error ?? 'Nepodařilo se načíst firmy ze Súčta')
+        return
+      }
+
+      const companies = data.companies ?? []
+      setSuctoCompanies(companies)
+      if (companies.length === 1) {
+        setCompanyId(String(companies[0].id))
+      }
+      toast.success(
+        companies.length === 1
+          ? `Načtena firma ${companies[0].name}`
+          : `Načteno ${companies.length} firem — vyberte správnou`
+      )
+    } catch {
+      toast.error('Nepodařilo se načíst firmy ze Súčta')
+    } finally {
+      setLoadingSuctoCompanies(false)
+    }
   }
 
   async function handleSave() {
@@ -283,14 +358,11 @@ export function AccountingConnectionManager({
       {activeConnection && !changing && (
         <div className="bg-white rounded-xl border-2 border-green-200 p-5">
           <div className="flex items-start gap-4">
-            <div
-              className={cn(
-                'h-12 w-12 rounded-xl flex items-center justify-center text-2xl',
-                PROVIDER_CONFIG[activeConnection.provider].bg
-              )}
-            >
-              {PROVIDER_CONFIG[activeConnection.provider].emoji}
-            </div>
+            <ProviderLogo
+              logo={PROVIDER_CONFIG[activeConnection.provider].logo}
+              label={PROVIDER_CONFIG[activeConnection.provider].label}
+              className="h-12 w-28"
+            />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="text-base font-semibold text-gray-900">
@@ -353,9 +425,7 @@ export function AccountingConnectionManager({
                     'border-gray-200 bg-white hover:bg-gray-50'
                   )}
                 >
-                  <div className={cn('h-10 w-10 rounded-lg flex items-center justify-center text-xl mb-3', cfg.bg)}>
-                    {cfg.emoji}
-                  </div>
+                  <ProviderLogo logo={cfg.logo} label={cfg.label} className="h-11 w-full max-w-[140px] mb-3" />
                   <p className="text-sm font-semibold text-gray-900">{cfg.label}</p>
                   <p className="text-xs text-gray-500 mt-1">{cfg.desc}</p>
                 </button>
@@ -373,9 +443,7 @@ export function AccountingConnectionManager({
       {adding && activeCfg && (
         <div id={adding} className="bg-white rounded-xl border border-gray-200 p-5 space-y-4 scroll-mt-24">
           <div className="flex items-center gap-3">
-            <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center text-lg', activeCfg.bg)}>
-              {activeCfg.emoji}
-            </div>
+            <ProviderLogo logo={activeCfg.logo} label={activeCfg.label} className="h-9 w-24" />
             <p className="text-sm font-semibold text-gray-900">Připojit {activeCfg.label}</p>
           </div>
 
@@ -558,39 +626,111 @@ export function AccountingConnectionManager({
 
           {adding === 'sucto' && (
             <>
-              <p className="text-xs text-gray-500">
-                Přihlašovací údaje z moje.sucto.cz. ID firmy najdete v URL po výběru firmy
-                (např. /companies/<span className="font-mono">123</span>/…).
-              </p>
+              <div className="rounded-xl border border-teal-100 bg-teal-50/60 p-4 text-xs text-gray-700 space-y-3">
+                <p className="font-semibold text-teal-900">Jak připojit Súčto — krok za krokem</p>
+                <ol className="list-decimal pl-4 space-y-2 leading-relaxed">
+                  <li>
+                    Přihlaste se na{' '}
+                    <a
+                      href="https://moje.sucto.cz"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-teal-800 underline"
+                    >
+                      moje.sucto.cz
+                    </a>
+                    . Použijte stejný e-mail a heslo jako níže —{' '}
+                    <strong>nejde o samostatný API klíč</strong>.
+                  </li>
+                  <li>Vyberte firmu klienta, se kterou chcete pracovat.</li>
+                  <li>
+                    Otevřete <strong>Nastavení firmy</strong> a na konci stránky zaškrtněte{' '}
+                    <strong>Aktivní API</strong>. Uložte změny.
+                  </li>
+                  <li>
+                    Vyplňte e-mail a heslo níže a klikněte na <strong>Načíst firmy</strong>.
+                    Systém doplní ID firmy sám. Ručně ho najdete v URL:{' '}
+                    <span className="font-mono text-[11px]">
+                      moje.sucto.cz/companies/<strong>42</strong>/…
+                    </span>
+                  </li>
+                </ol>
+                <p className="text-gray-500">
+                  Účetní kancelář: použijte svůj Súčto účet, který má přístup k firmě klienta. Pro
+                  každého klienta (workspace) připojte jeho firmu zvlášť.
+                </p>
+              </div>
               <div>
-                <Label htmlFor="sucto-email">E-mail</Label>
+                <Label htmlFor="sucto-email">E-mail ze Súčta</Label>
                 <Input
                   id="sucto-email"
                   type="email"
+                  placeholder="stejný e-mail jako na moje.sucto.cz"
                   value={apiEmail}
-                  onChange={(e) => setApiEmail(e.target.value)}
+                  onChange={(e) => {
+                    setApiEmail(e.target.value)
+                    setSuctoCompanies([])
+                    setCompanyId('')
+                  }}
                   className="mt-1"
                 />
               </div>
               <div>
-                <Label htmlFor="sucto-password">Heslo</Label>
+                <Label htmlFor="sucto-password">Heslo ze Súčta</Label>
                 <Input
                   id="sucto-password"
                   type="password"
+                  placeholder="heslo k účtu na moje.sucto.cz"
                   value={suctoPassword}
-                  onChange={(e) => setSuctoPassword(e.target.value)}
+                  onChange={(e) => {
+                    setSuctoPassword(e.target.value)
+                    setSuctoCompanies([])
+                    setCompanyId('')
+                  }}
                   className="mt-1"
                 />
               </div>
               <div>
-                <Label htmlFor="sucto-company">ID firmy ve Súčtu</Label>
-                <Input
-                  id="sucto-company"
-                  placeholder="123"
-                  value={companyId}
-                  onChange={(e) => setCompanyId(e.target.value)}
-                  className="mt-1"
-                />
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="sucto-company">Firma ve Súčtu</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={loadSuctoCompanies}
+                    disabled={loadingSuctoCompanies}
+                  >
+                    {loadingSuctoCompanies ? 'Načítám…' : 'Načíst firmy'}
+                  </Button>
+                </div>
+                {suctoCompanies.length > 0 ? (
+                  <select
+                    id="sucto-company"
+                    value={companyId}
+                    onChange={(e) => setCompanyId(e.target.value)}
+                    className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    <option value="">Vyberte firmu</option>
+                    {suctoCompanies.map((company) => (
+                      <option key={company.id} value={String(company.id)}>
+                        {company.id} — {company.name}
+                        {company.ic ? ` (IČO ${company.ic})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <Input
+                    id="sucto-company"
+                    placeholder="např. 42 — nebo klikněte Načíst firmy"
+                    value={companyId}
+                    onChange={(e) => setCompanyId(e.target.value)}
+                    className="mt-1"
+                  />
+                )}
+                <p className="mt-1.5 text-[11px] text-gray-500">
+                  ID firmy je číslo v adrese po výběru firmy ve Súčtu. Tlačítko „Načíst firmy“ ho
+                  doplní automaticky.
+                </p>
               </div>
             </>
           )}

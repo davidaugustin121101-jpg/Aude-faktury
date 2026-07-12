@@ -16,6 +16,12 @@ export interface SuctoConnection {
   companyId: string
 }
 
+export type SuctoCompany = {
+  id: number
+  name: string
+  ic?: string | null
+}
+
 type SuctoInit = {
   account?: { id?: number; country_id?: number | null }
   currency?: { id?: number; iso_code?: string }
@@ -190,16 +196,59 @@ async function resolveActuarialTypeId(token: string): Promise<number> {
   return invoiceType.id
 }
 
-export async function validateSuctoConnection(connection: SuctoConnection): Promise<boolean> {
+export async function listSuctoCompanies(email: string, password: string): Promise<SuctoCompany[]> {
+  let token: string
   try {
-    const token = await suctoLogin(connection.email, connection.password)
-    await suctoRequest<SuctoInit>(
-      `companies/${connection.companyId}/actuarials_ins/new`,
-      token
-    )
-    return true
+    token = await suctoLogin(email, password)
   } catch {
-    return false
+    throw new Error(
+      'E-mail nebo heslo nesedí. Použijte stejné přihlašovací údaje jako při přihlášení na moje.sucto.cz.'
+    )
+  }
+
+  const companies = await suctoRequest<SuctoCompany[]>('companies', token)
+  return Array.isArray(companies) ? companies : []
+}
+
+export async function validateSuctoConnection(connection: SuctoConnection): Promise<void> {
+  let token: string
+  try {
+    token = await suctoLogin(connection.email, connection.password)
+  } catch {
+    throw new Error(
+      'E-mail nebo heslo nesedí. Použijte stejné přihlašovací údaje jako při přihlášení na moje.sucto.cz.'
+    )
+  }
+
+  const companyId = connection.companyId.trim()
+  if (!/^\d+$/.test(companyId)) {
+    throw new Error(
+      'ID firmy musí být číslo (např. 42). Klikněte na „Načíst firmy“ nebo ho vezměte z URL moje.sucto.cz/companies/42/…'
+    )
+  }
+
+  let companies: SuctoCompany[] = []
+  try {
+    companies = await suctoRequest<SuctoCompany[]>('companies', token)
+    if (!Array.isArray(companies)) companies = []
+  } catch {
+    companies = []
+  }
+
+  const known = companies.find((company) => String(company.id) === companyId)
+  if (companies.length > 0 && !known) {
+    const hints = companies.map((company) => `${company.id} — ${company.name}`).join('; ')
+    throw new Error(`K tomuto účtu nemáte přístup k firmě ${companyId}. Dostupné firmy: ${hints}`)
+  }
+
+  try {
+    await suctoRequest<SuctoInit>(`companies/${companyId}/actuarials_ins/new`, token)
+  } catch {
+    throw new Error(
+      known
+        ? `K firmě „${known.name}“ (ID ${companyId}) nelze zapisovat přijaté doklady. Ve Súčtu otevřete Nastavení firmy, zaškrtněte „Aktivní API“ a uložte. Ověřte také oprávnění uživatele.`
+        : `Nelze otevřít firmu ${companyId}. Aktivujte API v Nastavení firmy ve Súčtu a ověřte ID z adresy moje.sucto.cz/companies/ČÍSLO/…`
+    )
   }
 }
 

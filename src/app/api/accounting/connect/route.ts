@@ -150,16 +150,20 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         )
       }
-      valid = await validateSuctoConnection({
-        email: apiEmail,
-        password,
-        companyId,
-      })
-      if (!valid) {
+      try {
+        await validateSuctoConnection({
+          email: apiEmail,
+          password,
+          companyId,
+        })
+        valid = true
+      } catch (error) {
         return NextResponse.json(
           {
             error:
-              'Súčto odmítlo přihlášení. Zkontrolujte přihlašovací údaje a ID firmy (číslo v URL po přihlášení na moje.sucto.cz).',
+              error instanceof Error
+                ? error.message
+                : 'Súčto odmítlo přihlášení. Zkontrolujte přihlašovací údaje a ID firmy.',
           },
           { status: 400 }
         )
