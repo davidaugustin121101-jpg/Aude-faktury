@@ -62,11 +62,61 @@ export function suggestUcetniKodForPolozka(polozka: FakturaPolozka): {
   return { kod: '518', nazev: 'Ostatní služby' }
 }
 
+/** Doplní hlavičkový účetní kód, pokud LLM / položky nic nenavrhly */
+export function applyDefaultHeaderUcetniKod(data: ExtractedInvoiceData): ExtractedInvoiceData {
+  if (data.polozky?.length) return data
+
+  const popis = `${data.popis_plneni ?? ''}`.toLowerCase()
+  let kod = '518'
+  let nazev = 'Ostatní služby'
+
+  if (/energie|elektř|plyn|voda|topn/.test(popis)) {
+    kod = '502'
+    nazev = 'Spotřeba energie'
+  } else if (/oprav|servis|údržb/.test(popis)) {
+    kod = '511'
+    nazev = 'Opravy a udržba'
+  } else if (/materiál|zboží|hardware|komponent/.test(popis)) {
+    kod = '501'
+    nazev = 'Spotřeba materiálu'
+  } else if (/nájem|pronájem/.test(popis)) {
+    kod = '518'
+    nazev = 'Nájemné'
+  }
+
+  return {
+    ...data,
+    ucetni_kod: data.ucetni_kod?.trim() || kod,
+    ucetni_kod_nazev: data.ucetni_kod_nazev?.trim() || nazev,
+    ucetni_kod_duvod:
+      data.ucetni_kod_duvod?.trim() || 'Automatický návrh z popisu plnění (bez tabulky položek).',
+    ucetni_kod_confidence: data.ucetni_kod_confidence ?? 0.55,
+  }
+}
+
+export type FinalizedExtractedInvoice = ExtractedInvoiceData & {
+  ucetni_kod: string
+  ucetni_kod_nazev: string
+  ucetni_kod_duvod: string
+  ucetni_kod_confidence: number
+}
+
+export function ensureAccountingFields(data: ExtractedInvoiceData): FinalizedExtractedInvoice {
+  return {
+    ...data,
+    ucetni_kod: data.ucetni_kod?.trim() || '518',
+    ucetni_kod_nazev: data.ucetni_kod_nazev?.trim() || 'Ostatní služby',
+    ucetni_kod_duvod: data.ucetni_kod_duvod?.trim() || 'Automatický návrh účetního kódu.',
+    ucetni_kod_confidence: data.ucetni_kod_confidence ?? 0.5,
+  }
+}
+
 export function applyPolozkyToExtraction(data: ExtractedInvoiceData): ExtractedInvoiceData {
   const polozky = data.polozky?.filter((p) => p.nazev?.trim()) ?? []
   if (polozky.length === 0) return data
 
-  const enriched = polozky.map((p) => {
+  const enriched = polozky.map((raw) => {
+    const p = raw as FakturaPolozka
     const suggestion = suggestUcetniKodForPolozka(p)
     return {
       ...p,
@@ -86,8 +136,8 @@ export function applyPolozkyToExtraction(data: ExtractedInvoiceData): ExtractedI
       polozky: enriched,
       ucetni_kod: suggestion.kod,
       ucetni_kod_nazev: suggestion.nazev,
-      ucetni_kod_duvod: `Účetní kód z položek faktury (${enriched.length}× ${first.typ}). ${data.ucetni_kod_duvod}`,
-      ucetni_kod_confidence: Math.max(data.ucetni_kod_confidence, 0.88),
+      ucetni_kod_duvod: `Účetní kód z položek faktury (${enriched.length}× ${first.typ}). ${data.ucetni_kod_duvod ?? ''}`,
+      ucetni_kod_confidence: Math.max(data.ucetni_kod_confidence ?? 0, 0.88),
     }
   }
 
@@ -97,8 +147,8 @@ export function applyPolozkyToExtraction(data: ExtractedInvoiceData): ExtractedI
     polozky: enriched,
     ucetni_kod: enriched[0] ? suggestUcetniKodForPolozka(enriched[0]).kod : data.ucetni_kod,
     ucetni_kod_nazev: 'Smíšené položky',
-    ucetni_kod_duvod: `Faktura obsahuje smíšené položky — navrženo rozdělení předkontace (${summary}). ${data.ucetni_kod_duvod}`,
-    ucetni_kod_confidence: Math.max(data.ucetni_kod_confidence, 0.75),
+    ucetni_kod_duvod: `Faktura obsahuje smíšené položky — navrženo rozdělení předkontace (${summary}). ${data.ucetni_kod_duvod ?? ''}`,
+    ucetni_kod_confidence: Math.max(data.ucetni_kod_confidence ?? 0, 0.75),
   }
 }
 

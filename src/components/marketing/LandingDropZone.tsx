@@ -9,6 +9,7 @@ import { FileText, Loader2, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { uploadInvoicePdf } from '@/lib/invoice-upload'
+import { PDF_MAX_BYTES } from '@/lib/pdf-limits'
 import { savePendingPdf } from '@/lib/pending-upload'
 
 interface Props {
@@ -76,7 +77,7 @@ export function LandingDropZone({ isAuthenticated }: Props) {
     onDrop,
     accept: { 'application/pdf': ['.pdf'] },
     maxFiles: 1,
-    maxSize: 10 * 1024 * 1024,
+    maxSize: PDF_MAX_BYTES,
     disabled: uploading,
   })
 
@@ -117,7 +118,7 @@ export function LandingDropZone({ isAuthenticated }: Props) {
                   {isDragActive ? 'Pusť fakturu sem' : 'Přetáhni PDF fakturu sem'}
                 </p>
                 <p className="text-sm text-gray-500 mt-1">
-                  nebo klikni pro výběr · max 10 MB
+                  nebo klikni pro výběr · max 5 MB
                 </p>
               </div>
             </>

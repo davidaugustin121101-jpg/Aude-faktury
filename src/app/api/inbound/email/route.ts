@@ -5,6 +5,7 @@ import { processInvoiceFromPdf } from '@/lib/process-invoice-from-pdf'
 import { reserveInvoiceAllowance, releaseInvoiceReservation } from '@/lib/invoice-allowance'
 import { getActiveWorkspace } from '@/lib/workspace'
 import { verifyInboundWebhookSecret, verifyResendWebhook } from '@/lib/inbound-webhook-auth'
+import { PDF_MAX_BYTES } from '@/lib/pdf-limits'
 import {
   fetchPdfAttachmentsFromResendEmail,
   parseResendReceivedEvent,
@@ -55,7 +56,7 @@ function parsePdfAttachments(attachments: InboundAttachment[] | undefined): {
 
     try {
       const buffer = Buffer.from(att.content, 'base64')
-      if (buffer.length > 0 && buffer.length <= 10 * 1024 * 1024) {
+      if (buffer.length > 0 && buffer.length <= PDF_MAX_BYTES) {
         pdfs.push({ filename: name, buffer })
       }
     } catch {

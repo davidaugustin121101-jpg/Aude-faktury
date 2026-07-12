@@ -1,3 +1,5 @@
+import { PDF_MAX_BYTES } from '@/lib/pdf-limits'
+
 type ResendAttachmentMeta = {
   id?: string
   filename?: string
@@ -56,7 +58,7 @@ export async function fetchPdfAttachmentsFromResendEmail(
     if (!fileRes.ok) continue
 
     const buffer = Buffer.from(await fileRes.arrayBuffer())
-    if (buffer.length > 0 && buffer.length <= 10 * 1024 * 1024) {
+    if (buffer.length > 0 && buffer.length <= PDF_MAX_BYTES) {
       pdfs.push({ filename: att.filename || 'faktura.pdf', buffer })
     }
   }

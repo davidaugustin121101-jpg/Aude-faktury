@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { extractInvoiceFromPdf, type ExtractedInvoiceData } from '@/lib/claude'
+import { extractInvoiceFromPrepared } from '@/lib/claude'
 import { getDefaultCurrency } from '@/lib/accounting-codes'
 import { runInvoiceAudit } from '@/lib/invoice-audit/run-audit'
 import { getSupplierRule } from '@/lib/supplier-rules'
@@ -8,7 +8,11 @@ import { sendNewInvoiceNotification } from '@/lib/notifications'
 import { sendInvoiceToAccounting } from '@/lib/send-invoice'
 import { saveInvoicePdf } from '@/lib/invoice-pdf-storage'
 import { findDuplicateInvoice, formatDuplicateMessage } from '@/lib/duplicate-invoice'
-import { applyPolozkyToExtraction } from '@/lib/polozky-predkontace'
+import {
+  applyDefaultHeaderUcetniKod,
+  applyPolozkyToExtraction,
+  ensureAccountingFields,
+} from '@/lib/polozky-predkontace'
 import { reconcileExtractionAmounts, isZalohovaTyp } from '@/lib/invoice-amounts'
 import {
   normalizeCzechVatRate,
@@ -21,6 +25,11 @@ import {
   releaseInvoiceReservation,
   type AllowanceSource,
 } from '@/lib/invoice-allowance'
+import { hashPdfBuffer, preparePdfForExtraction } from '@/lib/pdf-preprocess'
+import {
+  findInvoiceByPdfHash,
+  formatPdfHashDuplicateMessage,
+} from '@/lib/invoice-pdf-hash'
 
 
 export type ProcessInvoiceSource = 'manual_upload' | 'email_inbound'
@@ -93,11 +102,25 @@ export async function processInvoiceFromPdf(
     invoiceSettings,
   } = input
 
-  const base64 = pdfBuffer.toString('base64')
+  const pdfSha256 = hashPdfBuffer(pdfBuffer)
 
-  let extracted: ExtractedInvoiceData
+  const hashDuplicate = await findInvoiceByPdfHash(supabase, userId, workspaceId, pdfSha256)
+  if (hashDuplicate) {
+    await releaseInvoiceReservation(userId, allowanceSource)
+    return {
+      ok: false,
+      duplicate: true,
+      existingInvoiceId: hashDuplicate.id,
+      message: formatPdfHashDuplicateMessage(hashDuplicate),
+      existingStatus: hashDuplicate.status,
+    }
+  }
+
+  const prepared = await preparePdfForExtraction(pdfBuffer)
+
+  let extracted
   try {
-    extracted = await extractInvoiceFromPdf(base64)
+    extracted = await extractInvoiceFromPrepared(prepared)
   } catch (err) {
     await releaseInvoiceReservation(userId, allowanceSource)
     const message = err instanceof Error ? err.message : 'Chyba při vytěžení faktury'
@@ -105,16 +128,17 @@ export async function processInvoiceFromPdf(
   }
 
   extracted = applyPolozkyToExtraction(extracted)
+  extracted = applyDefaultHeaderUcetniKod(extracted)
   extracted = reconcileExtractionAmounts(extracted)
   extracted = normalizeExtractedBankFields(extracted)
 
   if (isZalohovaTyp(extracted)) {
     extracted = {
       ...extracted,
-      typ_faktury: 'zalohova',
+      typ_faktury: 'zalohova' as const,
       ucetni_kod: '314',
       ucetni_kod_nazev: 'Poskytnuté zálohy',
-      ucetni_kod_duvod: `Zálohová faktura — předkontace 314/315/321. ${extracted.ucetni_kod_duvod}`,
+      ucetni_kod_duvod: `Zálohová faktura — předkontace 314/315/321. ${extracted.ucetni_kod_duvod ?? ''}`,
     }
   }
 
@@ -125,10 +149,12 @@ export async function processInvoiceFromPdf(
       ...extracted,
       ucetni_kod: supplierRule.default_ucetni_kod,
       ucetni_kod_nazev: supplierRule.default_ucetni_kod_nazev ?? extracted.ucetni_kod_nazev,
-      ucetni_kod_duvod: `Dodavatel známý z minula (${supplierRule.use_count}× schváleno). ${extracted.ucetni_kod_duvod}`,
-      ucetni_kod_confidence: Math.max(extracted.ucetni_kod_confidence, 0.92),
+      ucetni_kod_duvod: `Dodavatel známý z minula (${supplierRule.use_count}× schváleno). ${extracted.ucetni_kod_duvod ?? ''}`,
+      ucetni_kod_confidence: Math.max(extracted.ucetni_kod_confidence ?? 0, 0.92),
     }
   }
+
+  extracted = ensureAccountingFields(extracted)
 
   const sazbaDph = normalizeCzechVatRate(extracted.sazba_dph)
 
@@ -209,6 +235,7 @@ export async function processInvoiceFromPdf(
       audit_result: auditResult,
       audit_score: auditResult.score,
       allowance_source: allowanceSource,
+      pdf_sha256: pdfSha256,
     })
     .select()
     .single()
@@ -284,6 +311,9 @@ export async function processInvoiceFromPdf(
       supplier_rule: !!supplierRule,
       allowance_source: allowanceSource,
       polozky_count: extracted.polozky?.length ?? 0,
+      extraction_mode: prepared.inputMode,
+      extraction_pages: prepared.pageCount,
+      pdf_sha256: pdfSha256,
     },
   })
 

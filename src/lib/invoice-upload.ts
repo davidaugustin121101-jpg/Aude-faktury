@@ -25,7 +25,7 @@ function parseErrorBody(text: string, status: number): {
   }
   if (status === 401) return { error: 'Nejste přihlášeni. Obnovte stránku a zkuste znovu.' }
   if (status === 409) return { error: 'Faktura už existuje.' }
-  if (status === 413) return { error: 'Soubor je příliš velký (max 10 MB).' }
+  if (status === 413) return { error: 'Soubor je příliš velký (max 5 MB).' }
   if (status >= 500) return { error: 'Chyba serveru při zpracování. Zkuste to za chvíli znovu.' }
   return { error: `Nahrání se nezdařilo (${status})` }
 }

@@ -7,6 +7,7 @@ import { FileText, Loader2, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { uploadInvoicePdf } from '@/lib/invoice-upload'
+import { PDF_MAX_BYTES } from '@/lib/pdf-limits'
 
 export function DropZone() {
   const router = useRouter()
@@ -57,7 +58,7 @@ export function DropZone() {
     onDrop,
     accept: { 'application/pdf': ['.pdf'] },
     maxFiles: 1,
-    maxSize: 10 * 1024 * 1024,
+    maxSize: PDF_MAX_BYTES,
     disabled: uploading,
   })
 
@@ -96,7 +97,7 @@ export function DropZone() {
               <p className="text-base font-semibold text-gray-900">
                 {isDragActive ? 'Pusť soubor sem' : 'Přetáhni PDF fakturu sem'}
               </p>
-              <p className="text-sm text-gray-500 mt-1">nebo klikni pro výběr souboru · max 10 MB</p>
+              <p className="text-sm text-gray-500 mt-1">nebo klikni pro výběr souboru · max 5 MB</p>
             </div>
           </>
         )}

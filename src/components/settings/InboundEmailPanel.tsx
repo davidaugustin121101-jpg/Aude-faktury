@@ -54,7 +54,7 @@ export function InboundEmailPanel() {
         </Button>
       </div>
       <p className="text-xs text-gray-500">
-        Příchozí e-mail musí obsahovat alespoň jednu PDF přílohu (max 10 MB).
+        Příchozí e-mail musí obsahovat alespoň jednu PDF přílohu (max 5 MB).
       </p>
     </div>
   )

@@ -5,6 +5,7 @@ import { getActiveWorkspace } from '@/lib/workspace'
 import { processInvoiceFromPdf } from '@/lib/process-invoice-from-pdf'
 import { reserveInvoiceAllowance, releaseInvoiceReservation, type AllowanceSource } from '@/lib/invoice-allowance'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { PDF_MAX_BYTES } from '@/lib/pdf-limits'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -39,8 +40,8 @@ export async function POST(req: NextRequest) {
     if (!isPdfFile(file)) {
       return NextResponse.json({ error: 'Nahraj prosím PDF soubor' }, { status: 400 })
     }
-    if (file.size > 10 * 1024 * 1024) {
-      return NextResponse.json({ error: 'Soubor je příliš velký (max 10 MB)' }, { status: 400 })
+    if (file.size > PDF_MAX_BYTES) {
+      return NextResponse.json({ error: 'Soubor je příliš velký (max 5 MB)' }, { status: 400 })
     }
 
     const rate = checkRateLimit(`extract:${user.id}`, 12, 60_000)
