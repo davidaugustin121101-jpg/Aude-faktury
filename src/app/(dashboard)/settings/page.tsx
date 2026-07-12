@@ -7,8 +7,10 @@ import { LegalFooter } from '@/components/legal/LegalFooter'
 import { APP_NAME } from '@/lib/brand'
 import {
   getAccountMode,
+  getInvoiceCredits,
   getInvoiceLimitLabel,
   getPlanLabel,
+  hasActiveProSubscription,
   MODE_LABELS,
   hasActiveAccountantSubscription,
 } from '@/lib/account-mode'
@@ -24,7 +26,7 @@ export default async function SettingsPage() {
 
   const { data: profile } = await supabase
     .from('user_profiles')
-    .select('plan, is_accountant, stripe_subscription_id')
+    .select('plan, invoice_credits, is_accountant, stripe_subscription_id, stripe_addon_subscription_id')
     .eq('id', user.id)
     .maybeSingle()
 
@@ -32,6 +34,8 @@ export default async function SettingsPage() {
   const isAccountant = hasActiveAccountantSubscription(profile)
   const invoiceLimitLabel = getInvoiceLimitLabel(profile)
   const planLabel = getPlanLabel(profile)
+  const credits = getInvoiceCredits(profile)
+  const isPro = hasActiveProSubscription(profile)
 
   const { count } = await supabase
     .from('processed_invoices')
@@ -79,9 +83,19 @@ export default async function SettingsPage() {
               <p className="font-medium text-gray-900">{invoiceLimitLabel}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-400 mb-0.5">Faktur tento měsíc</p>
-              <p className="font-medium text-gray-900">{count ?? 0}</p>
+              <p className="text-xs text-gray-400 mb-0.5">
+                {credits > 0 ? 'Zbývá kreditů' : isPro ? 'Faktur tento měsíc' : 'Faktur tento měsíc (Solo)'}
+              </p>
+              <p className="font-medium text-gray-900">
+                {credits > 0 ? credits : count ?? 0}
+              </p>
             </div>
+            {credits > 0 ? (
+              <div>
+                <p className="text-xs text-gray-400 mb-0.5">Zpracováno tento měsíc</p>
+                <p className="font-medium text-gray-900">{count ?? 0}</p>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
