@@ -1,5 +1,8 @@
-import type { ExtractionProgressUpdate, ExtractionStreamEvent } from '@/lib/extraction-progress'
-import { EXTRACTION_LLM_PROGRESS_CAP } from '@/lib/extraction-progress'
+import {
+  EXTRACTION_LLM_PROGRESS_CAP,
+  EXTRACTION_PROGRESS,
+  type ExtractionProgressUpdate,
+} from '@/lib/extraction-progress'
 
 export type UploadInvoiceResult =
   | { ok: true; invoiceId: string }
@@ -8,32 +11,9 @@ export type UploadInvoiceResult =
       error: string
       duplicate?: boolean
       existingInvoiceId?: string
-      /** Stream spadl, ale server mohl fakturu stihnout uložit */
-      maybeProcessed?: boolean
     }
 
 export type UploadProgressHandler = (update: ExtractionProgressUpdate) => void
-
-const STREAM_LIKELY_DONE_PERCENT = 90
-
-function isNetworkStreamError(message: string): boolean {
-  const lower = message.toLowerCase()
-  return (
-    lower === 'load failed' ||
-    lower.includes('failed to fetch') ||
-    lower.includes('networkerror') ||
-    lower.includes('network request failed') ||
-    lower.includes('the operation was aborted') ||
-    lower.includes('aborted')
-  )
-}
-
-function normalizeUploadErrorMessage(message: string): string {
-  if (isNetworkStreamError(message)) {
-    return 'Spojení se serverem bylo přerušeno. Zkontrolujte přehled faktur — zpracování mohlo proběhnout na pozadí.'
-  }
-  return message
-}
 
 function parseErrorBody(text: string, status: number): {
   error: string
@@ -68,7 +48,7 @@ function createLlmProgressTicker(onProgress: UploadProgressHandler): {
   stop: () => void
 } {
   let timer: ReturnType<typeof setInterval> | null = null
-  let current = 28
+  let current = EXTRACTION_PROGRESS.extract.percent
 
   return {
     start() {
@@ -78,7 +58,7 @@ function createLlmProgressTicker(onProgress: UploadProgressHandler): {
         current += 1
         onProgress({
           percent: current,
-          label: 'AI vytěžuje data…',
+          label: EXTRACTION_PROGRESS.extract.label,
           phase: 'extract',
         })
       }, 450)
@@ -90,142 +70,52 @@ function createLlmProgressTicker(onProgress: UploadProgressHandler): {
   }
 }
 
-async function consumeNdjsonStream(
-  body: ReadableStream<Uint8Array>,
-  onProgress?: UploadProgressHandler
-): Promise<UploadInvoiceResult> {
-  const reader = body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-  let result: UploadInvoiceResult = { ok: false, error: 'Neplatná odpověď serveru' }
-  const llmTicker = onProgress ? createLlmProgressTicker(onProgress) : null
-  let llmPhaseActive = false
-  let maxProgressPercent = 0
+function startClientProgress(onProgress: UploadProgressHandler): ReturnType<typeof createLlmProgressTicker> {
+  onProgress({ percent: 2, label: 'Nahrávám soubor…', phase: 'upload' })
+  onProgress(EXTRACTION_PROGRESS.hash)
+  onProgress(EXTRACTION_PROGRESS.prepare)
+  onProgress(EXTRACTION_PROGRESS.extract)
+  const ticker = createLlmProgressTicker(onProgress)
+  ticker.start()
+  return ticker
+}
 
-  const parseLine = (line: string) => {
-    if (!line.trim()) return
-    let event: ExtractionStreamEvent
-    try {
-      event = JSON.parse(line) as ExtractionStreamEvent
-    } catch {
-      return
-    }
-
-    if (event.type === 'progress') {
-      maxProgressPercent = Math.max(maxProgressPercent, event.percent)
-      if (event.phase === 'extract') {
-        if (!llmPhaseActive) {
-          llmPhaseActive = true
-          llmTicker?.start()
-        }
-        onProgress?.(event)
-      } else {
-        if (llmPhaseActive) {
-          llmPhaseActive = false
-          llmTicker?.stop()
-        }
-        onProgress?.(event)
-      }
-    }
-
-    if (event.type === 'done') {
-      llmTicker?.stop()
-      const invoiceId = event.invoice?.id
-      if (invoiceId) {
-        result = { ok: true, invoiceId: String(invoiceId) }
-      }
-    }
-
-    if (event.type === 'error') {
-      llmTicker?.stop()
-      result = {
-        ok: false,
-        error: event.error,
-        duplicate: event.duplicate,
-        existingInvoiceId: event.existingInvoiceId,
-      }
-    }
-  }
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read()
-      if (value) {
-        buffer += decoder.decode(value, { stream: !done })
-      }
-      if (done) break
-
-      const lines = buffer.split('\n')
-      buffer = lines.pop() ?? ''
-
-      for (const line of lines) {
-        parseLine(line)
-      }
-    }
-
-    buffer += decoder.decode()
-    if (buffer.trim()) {
-      parseLine(buffer)
-    }
-  } catch (err) {
-    llmTicker?.stop()
-    const message = err instanceof Error ? err.message : ''
-    if (maxProgressPercent >= STREAM_LIKELY_DONE_PERCENT && isNetworkStreamError(message)) {
-      return {
-        ok: false,
-        error: normalizeUploadErrorMessage(message),
-        maybeProcessed: true,
-      }
-    }
-    throw err
-  }
-
-  llmTicker?.stop()
-  return result
+function finishClientProgress(onProgress: UploadProgressHandler | undefined): void {
+  if (!onProgress) return
+  onProgress(EXTRACTION_PROGRESS.postprocess)
+  onProgress(EXTRACTION_PROGRESS.audit)
+  onProgress(EXTRACTION_PROGRESS.save)
+  onProgress(EXTRACTION_PROGRESS.done)
 }
 
 export async function uploadInvoicePdf(
   file: File,
   onProgress?: UploadProgressHandler
 ): Promise<UploadInvoiceResult> {
+  const llmTicker = onProgress ? startClientProgress(onProgress) : null
+
   const formData = new FormData()
   formData.append('file', file)
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 90_000)
 
-  const endpoint = onProgress ? '/api/extract?stream=1' : '/api/extract'
-
   let res: Response
   try {
-    res = await fetch(endpoint, { method: 'POST', body: formData, signal: controller.signal })
+    res = await fetch('/api/extract', { method: 'POST', body: formData, signal: controller.signal })
   } catch (err) {
     clearTimeout(timeout)
+    llmTicker?.stop()
     if (err instanceof Error && err.name === 'AbortError') {
       return { ok: false, error: 'Zpracování trvá příliš dlouho. Zkuste to znovu.' }
     }
-    const message = err instanceof Error ? err.message : ''
-    return {
-      ok: false,
-      error: normalizeUploadErrorMessage(message || 'Nepodařilo se spojit se serverem. Zkontrolujte připojení.'),
-    }
+    return { ok: false, error: 'Nepodařilo se spojit se serverem. Zkontrolujte připojení.' }
   }
   clearTimeout(timeout)
-
-  if (onProgress && res.body && res.ok) {
-    try {
-      return await consumeNdjsonStream(res.body, onProgress)
-    } catch (err) {
-      return {
-        ok: false,
-        error: normalizeUploadErrorMessage(
-          err instanceof Error ? err.message : 'Chyba při čtení odpovědi serveru'
-        ),
-      }
-    }
-  }
+  llmTicker?.stop()
 
   const text = await res.text()
+
   if (!res.ok) {
     const parsed = parseErrorBody(text, res.status)
     return {
@@ -248,6 +138,6 @@ export async function uploadInvoicePdf(
     return { ok: false, error: 'Neplatná odpověď serveru' }
   }
 
-  onProgress?.({ percent: 100, label: 'Hotovo', phase: 'done' })
+  finishClientProgress(onProgress)
   return { ok: true, invoiceId }
 }
