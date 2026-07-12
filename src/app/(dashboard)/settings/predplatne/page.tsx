@@ -10,6 +10,7 @@ import {
   hasActiveBaseSubscription,
   hasActiveMultiClientModule,
 } from '@/lib/account-mode'
+import { countMonthlyUsageFromLedger } from '@/lib/invoice-allowance'
 
 export default async function PredplatnePage() {
   const supabase = await createClient()
@@ -30,12 +31,7 @@ export default async function PredplatnePage() {
   const hasActiveSub = hasActiveBaseSubscription(profile)
   const hasMultiClient = hasActiveMultiClientModule(profile)
   const invoiceLimit = getInvoiceLimit(profile)
-
-  const { count } = await supabase
-    .from('processed_invoices')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
+  const extractedThisMonth = await countMonthlyUsageFromLedger(user.id)
 
   return (
     <div className="space-y-8 max-w-5xl">
@@ -59,7 +55,7 @@ export default async function PredplatnePage() {
         hasMultiClient={hasMultiClient}
         hasActiveSubscription={hasActiveSub}
         profile={profile ?? {}}
-        invoicesThisMonth={count ?? 0}
+        invoicesThisMonth={extractedThisMonth}
         invoiceLimit={invoiceLimit}
         stripeConfigured={isStripeConfigured()}
         hasStripeCustomer={!!profile?.stripe_customer_id}

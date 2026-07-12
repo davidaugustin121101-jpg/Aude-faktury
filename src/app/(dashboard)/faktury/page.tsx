@@ -71,6 +71,12 @@ export default async function FakturyPage({ searchParams }: Props) {
     .eq('workspace_id', workspace.id)
     .gte('created_at', firstOfMonth)
 
+  const { count: extractedThisMonth } = await supabase
+    .from('invoice_usage_ledger')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .gte('created_at', firstOfMonth)
+
   const { count: attentionCount } = await supabase
     .from('processed_invoices')
     .select('id', { count: 'exact', head: true })
@@ -81,7 +87,7 @@ export default async function FakturyPage({ searchParams }: Props) {
   const invoices = (invoiceRows ?? []) as ProcessedInvoice[]
   const thisMonthRows = monthRows ?? []
   const monthApproved = sumInvoiceAmounts(thisMonthRows as ProcessedInvoice[], { approvedOnly: true })
-  const totalThisMonth = thisMonthRows.length
+  const totalThisMonth = extractedThisMonth ?? 0
   const sentThisMonth = thisMonthRows.filter((i) =>
     ['sent', 'sent_to_accounting', 'approved'].includes(i.status ?? '')
   ).length
@@ -121,7 +127,7 @@ export default async function FakturyPage({ searchParams }: Props) {
           icon={<FileText className="h-5 w-5 text-blue-600" />}
           label="Tento měsíc"
           value={String(totalThisMonth)}
-          sub="faktur přijato"
+          sub="vytěženo"
           color="blue"
         />
         <StatCard

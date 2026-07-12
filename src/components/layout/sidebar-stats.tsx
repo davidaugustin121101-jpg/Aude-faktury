@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { type AccountMode } from '@/lib/account-mode'
+import { type AccountMode, SOLO_INVOICE_LIMIT } from '@/lib/account-mode'
 import type { AccountingProvider } from '@/lib/accounting-connection'
 import { Zap } from 'lucide-react'
 
@@ -14,26 +14,26 @@ const PROVIDER_NAMES: Record<AccountingProvider, string> = {
 }
 
 export function SidebarStats({
-  accountMode,
-  hasActiveSubscription,
   invoicesThisMonth,
   invoiceLimit,
   invoicesRemaining,
-  totalInvoices,
+  creditsConsumed,
   connectedProvider,
 }: {
-  accountMode: AccountMode
-  hasActiveSubscription: boolean
   invoicesThisMonth: number
   invoiceLimit: number
   invoicesRemaining: number
-  totalInvoices: number
+  creditsConsumed: number
   connectedProvider: AccountingProvider | null
 }) {
   const isUnlimited = invoiceLimit >= 999_999
+  const creditPool = creditsConsumed + invoicesRemaining
+  const usesCredits = !isUnlimited && creditPool > SOLO_INVOICE_LIMIT
   const usagePercent = isUnlimited
     ? 0
-    : Math.min(100, Math.round((invoicesThisMonth / invoiceLimit) * 100))
+    : usesCredits
+      ? Math.min(100, Math.round((creditsConsumed / Math.max(creditPool, 1)) * 100))
+      : Math.min(100, Math.round((invoicesThisMonth / SOLO_INVOICE_LIMIT) * 100))
 
   return (
     <div className="mx-3 mb-2 space-y-2">
@@ -45,7 +45,9 @@ export function SidebarStats({
           </div>
           {!isUnlimited && (
             <span className="text-[10px] text-gray-400">
-              {invoicesThisMonth}/{invoiceLimit}
+              {usesCredits
+                ? `${creditsConsumed}/${creditPool} vytěženo`
+                : `${invoicesThisMonth}/${SOLO_INVOICE_LIMIT} tento měsíc`}
             </span>
           )}
         </div>

@@ -58,24 +58,51 @@ export async function confirmInvoiceUsage(params: {
   }
 }
 
-export async function countMonthlyFreeUsage(userId: string): Promise<number> {
+export async function countInvoiceUsageFromLedger(
+  userId: string,
+  filter?: { allowanceSource?: AllowanceSource; fromDate?: Date }
+): Promise<number> {
   const admin = createAdminClient()
-  const firstOfMonth = new Date()
-  firstOfMonth.setUTCDate(1)
-  firstOfMonth.setUTCHours(0, 0, 0, 0)
-
-  const { count, error } = await admin
+  let query = admin
     .from('invoice_usage_ledger')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', userId)
-    .eq('allowance_source', 'free_monthly')
-    .gte('created_at', firstOfMonth.toISOString())
 
+  if (filter?.allowanceSource) {
+    query = query.eq('allowance_source', filter.allowanceSource)
+  }
+  if (filter?.fromDate) {
+    query = query.gte('created_at', filter.fromDate.toISOString())
+  }
+
+  const { count, error } = await query
   if (error) {
-    console.error('[allowance] count monthly usage failed:', error.message)
+    console.error('[allowance] count ledger usage failed:', error.message)
     return 0
   }
   return count ?? 0
+}
+
+function startOfCurrentMonthUtc(): Date {
+  const firstOfMonth = new Date()
+  firstOfMonth.setUTCDate(1)
+  firstOfMonth.setUTCHours(0, 0, 0, 0)
+  return firstOfMonth
+}
+
+export async function countMonthlyUsageFromLedger(userId: string): Promise<number> {
+  return countInvoiceUsageFromLedger(userId, { fromDate: startOfCurrentMonthUtc() })
+}
+
+export async function countCreditUsageFromLedger(userId: string): Promise<number> {
+  return countInvoiceUsageFromLedger(userId, { allowanceSource: 'credit' })
+}
+
+export async function countMonthlyFreeUsage(userId: string): Promise<number> {
+  return countInvoiceUsageFromLedger(userId, {
+    allowanceSource: 'free_monthly',
+    fromDate: startOfCurrentMonthUtc(),
+  })
 }
 
 /** @deprecated Použijte confirmInvoiceUsage */

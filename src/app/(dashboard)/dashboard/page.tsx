@@ -8,7 +8,7 @@ import {
 import Link from 'next/link'
 import { getDashboardContext } from '@/lib/dashboard-context'
 import { requireUser } from '@/lib/auth-server'
-import { MODE_LABELS } from '@/lib/account-mode'
+import { MODE_LABELS, SOLO_INVOICE_LIMIT } from '@/lib/account-mode'
 import { cn } from '@/lib/utils'
 import { InvoiceStatusBadge } from '@/components/invoices/InvoiceStatusBadge'
 
@@ -33,9 +33,13 @@ export default async function DashboardPage() {
     .limit(5)
 
   const isUnlimited = ctx.invoiceLimit >= 999_999
+  const creditPool = ctx.creditsConsumed + ctx.invoicesRemaining
+  const usesCredits = !isUnlimited && creditPool > SOLO_INVOICE_LIMIT
   const usagePercent = isUnlimited
     ? 0
-    : Math.min(100, Math.round((ctx.invoicesThisMonth / ctx.invoiceLimit) * 100))
+    : usesCredits
+      ? Math.min(100, Math.round((ctx.creditsConsumed / Math.max(creditPool, 1)) * 100))
+      : Math.min(100, Math.round((ctx.invoicesThisMonth / ctx.invoiceLimit) * 100))
 
   const isReady = !!ctx.connectedProvider
 
@@ -69,8 +73,10 @@ export default async function DashboardPage() {
             {ctx.hasActiveSubscription
               ? ctx.isAccountant
                 ? `Klient: ${ctx.workspaceName} · neomezeně faktur`
-                : `Tarif aktivní · ${ctx.invoicesThisMonth}/${ctx.invoiceLimit >= 999_999 ? '∞' : ctx.invoiceLimit} faktur`
-              : `Solo · ${ctx.invoicesThisMonth}/${ctx.invoiceLimit} faktur tento měsíc`}
+                : usesCredits
+                  ? `Tarif aktivní · ${ctx.creditsConsumed} vytěženo · ${ctx.invoicesRemaining} zbývá`
+                  : `Tarif aktivní · ${ctx.invoicesThisMonth}/${ctx.invoiceLimit >= 999_999 ? '∞' : ctx.invoiceLimit} faktur`
+              : `Solo · ${ctx.invoicesThisMonth}/${SOLO_INVOICE_LIMIT} vytěženo tento měsíc`}
           </p>
           {!ctx.hasActiveSubscription && (
             <Link
@@ -103,7 +109,9 @@ export default async function DashboardPage() {
                 />
               </div>
               <p className="text-xs text-gray-400 mt-1.5">
-                {ctx.invoicesThisMonth} z {ctx.invoiceLimit} využito tento měsíc
+                {usesCredits
+                  ? `${ctx.creditsConsumed} vytěženo celkem · ${ctx.invoicesThisMonth} tento měsíc`
+                  : `${ctx.invoicesThisMonth} z ${ctx.invoiceLimit} vytěženo tento měsíc`}
               </p>
             </>
           )}

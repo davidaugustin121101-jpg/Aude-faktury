@@ -35,6 +35,8 @@ interface SidebarProps {
   invoicesThisMonth: number
   invoiceLimit: number
   invoicesRemaining: number
+  creditsConsumed: number
+  hasActiveSubscription: boolean
   totalInvoices: number
 }
 
@@ -65,6 +67,7 @@ export function Sidebar({
   invoicesThisMonth,
   invoiceLimit,
   invoicesRemaining,
+  creditsConsumed,
   totalInvoices,
 }: SidebarProps) {
   const pathname = usePathname()
@@ -143,12 +146,10 @@ export function Sidebar({
       </div>
 
       <SidebarStats
-        accountMode={accountMode}
-        hasActiveSubscription={hasActiveSubscription}
         invoicesThisMonth={invoicesThisMonth}
         invoiceLimit={invoiceLimit}
         invoicesRemaining={invoicesRemaining}
-        totalInvoices={totalInvoices}
+        creditsConsumed={creditsConsumed}
         connectedProvider={connectedProvider}
       />
 

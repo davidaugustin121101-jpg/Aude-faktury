@@ -93,8 +93,8 @@ export function SubscriptionPlans({
           {hasPro
             ? `Neomezeně faktur${hasMultiClient ? ' · modul více klientů aktivní' : ''}`
             : credits > 0
-              ? `${credits} kreditů zbývá${hasMultiClient ? ' · modul více klientů' : ''}`
-              : `Solo · ${invoicesThisMonth} / ${invoiceLimit} faktur tento měsíc`}
+              ? `${credits} kreditů zbývá · ${invoicesThisMonth} vytěženo tento měsíc${hasMultiClient ? ' · modul více klientů' : ''}`
+              : `Solo · ${invoicesThisMonth} / ${invoiceLimit} vytěženo tento měsíc`}
         </p>
       </div>
 

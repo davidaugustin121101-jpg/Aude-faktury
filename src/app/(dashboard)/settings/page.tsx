@@ -14,6 +14,10 @@ import {
   MODE_LABELS,
   hasActiveAccountantSubscription,
 } from '@/lib/account-mode'
+import {
+  countCreditUsageFromLedger,
+  countMonthlyUsageFromLedger,
+} from '@/lib/invoice-allowance'
 import { InvoiceSettingsPanel } from '@/components/settings/InvoiceSettingsPanel'
 import { InboundEmailPanel } from '@/components/settings/InboundEmailPanel'
 
@@ -36,12 +40,8 @@ export default async function SettingsPage() {
   const planLabel = getPlanLabel(profile)
   const credits = getInvoiceCredits(profile)
   const isPro = hasActiveProSubscription(profile)
-
-  const { count } = await supabase
-    .from('processed_invoices')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
+  const extractedThisMonth = await countMonthlyUsageFromLedger(user.id)
+  const creditsConsumed = isPro ? 0 : await countCreditUsageFromLedger(user.id)
 
   return (
     <div className="space-y-8 max-w-2xl">
@@ -82,20 +82,29 @@ export default async function SettingsPage() {
               <p className="text-xs text-gray-400 mb-0.5">Limit faktur</p>
               <p className="font-medium text-gray-900">{invoiceLimitLabel}</p>
             </div>
-            <div>
-              <p className="text-xs text-gray-400 mb-0.5">
-                {credits > 0 ? 'Zbývá kreditů' : isPro ? 'Faktur tento měsíc' : 'Faktur tento měsíc (Solo)'}
-              </p>
-              <p className="font-medium text-gray-900">
-                {credits > 0 ? credits : count ?? 0}
-              </p>
-            </div>
             {credits > 0 ? (
+              <>
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">Zbývá kreditů</p>
+                  <p className="font-medium text-gray-900">{credits}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">Vytěženo celkem</p>
+                  <p className="font-medium text-gray-900">{creditsConsumed}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">Vytěženo tento měsíc</p>
+                  <p className="font-medium text-gray-900">{extractedThisMonth}</p>
+                </div>
+              </>
+            ) : (
               <div>
-                <p className="text-xs text-gray-400 mb-0.5">Zpracováno tento měsíc</p>
-                <p className="font-medium text-gray-900">{count ?? 0}</p>
+                <p className="text-xs text-gray-400 mb-0.5">
+                  {isPro ? 'Faktur tento měsíc' : 'Faktur tento měsíc (Solo)'}
+                </p>
+                <p className="font-medium text-gray-900">{extractedThisMonth}</p>
               </div>
-            ) : null}
+            )}
           </div>
         </div>
       </div>

@@ -13,7 +13,10 @@ import {
   hasActiveProSubscription,
   type AccountMode,
 } from '@/lib/account-mode'
-import { countMonthlyFreeUsage } from '@/lib/invoice-allowance'
+import {
+  countCreditUsageFromLedger,
+  countMonthlyUsageFromLedger,
+} from '@/lib/invoice-allowance'
 import type { AccountingProvider } from '@/lib/accounting-connection'
 
 export type DashboardContext = {
@@ -26,6 +29,7 @@ export type DashboardContext = {
   invoicesThisMonth: number
   invoiceLimit: number
   invoicesRemaining: number
+  creditsConsumed: number
   totalInvoices: number
   sentTotal: number
   attentionTotal: number
@@ -47,8 +51,6 @@ async function loadDashboardContext(
     profile
   )
 
-  const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
-
   const [{ data: connRows }, { data: invoiceRows }] = await Promise.all([
     supabase
       .from('accounting_connections')
@@ -66,12 +68,10 @@ async function loadDashboardContext(
   ])
 
   const rows = invoiceRows ?? []
-  const invoicesCreatedThisMonth = rows.filter((r) => r.created_at >= firstOfMonth).length
-
-  let invoicesThisMonth = invoicesCreatedThisMonth
-  if (!hasActiveProSubscription(profile) && getInvoiceCredits(profile) === 0) {
-    invoicesThisMonth = await countMonthlyFreeUsage(userId)
-  }
+  const invoicesExtractedThisMonth = await countMonthlyUsageFromLedger(userId)
+  const creditsConsumed = hasActiveProSubscription(profile)
+    ? 0
+    : await countCreditUsageFromLedger(userId)
 
   const totalCount = rows.length
   const sentCount = rows.filter((r) => r.status === 'sent_to_accounting').length
@@ -82,7 +82,7 @@ async function loadDashboardContext(
   const conn = connRows?.[0] ?? null
   const hasActiveSub = hasActiveBaseSubscription(profile)
   const invoiceLimit = getInvoiceLimit(profile)
-  const invoicesRemaining = getInvoicesRemaining(profile, invoicesThisMonth)
+  const invoicesRemaining = getInvoicesRemaining(profile, invoicesExtractedThisMonth)
 
   end()
   return {
@@ -92,9 +92,10 @@ async function loadDashboardContext(
     workspaceId: workspace.id,
     workspaceName: workspace.name,
     connectedProvider: (conn?.provider as AccountingProvider) ?? null,
-    invoicesThisMonth,
+    invoicesThisMonth: invoicesExtractedThisMonth,
     invoiceLimit,
     invoicesRemaining,
+    creditsConsumed,
     totalInvoices: totalCount,
     sentTotal: sentCount,
     attentionTotal: attentionCount,
