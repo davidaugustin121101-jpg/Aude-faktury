@@ -163,6 +163,8 @@ export async function POST(req: NextRequest) {
           controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`))
         }
 
+        emit({ type: 'progress', percent: 1, label: 'Zahajuji zpracování…', phase: 'start' })
+
         try {
           const result = await processInvoiceFromPdf({
             supabase,
@@ -199,6 +201,7 @@ export async function POST(req: NextRequest) {
       headers: {
         'Content-Type': 'application/x-ndjson; charset=utf-8',
         'Cache-Control': 'no-cache, no-transform',
+        'X-Accel-Buffering': 'no',
       },
     })
   } catch (err) {

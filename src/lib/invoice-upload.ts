@@ -3,9 +3,37 @@ import { EXTRACTION_LLM_PROGRESS_CAP } from '@/lib/extraction-progress'
 
 export type UploadInvoiceResult =
   | { ok: true; invoiceId: string }
-  | { ok: false; error: string; duplicate?: boolean; existingInvoiceId?: string }
+  | {
+      ok: false
+      error: string
+      duplicate?: boolean
+      existingInvoiceId?: string
+      /** Stream spadl, ale server mohl fakturu stihnout uložit */
+      maybeProcessed?: boolean
+    }
 
 export type UploadProgressHandler = (update: ExtractionProgressUpdate) => void
+
+const STREAM_LIKELY_DONE_PERCENT = 90
+
+function isNetworkStreamError(message: string): boolean {
+  const lower = message.toLowerCase()
+  return (
+    lower === 'load failed' ||
+    lower.includes('failed to fetch') ||
+    lower.includes('networkerror') ||
+    lower.includes('network request failed') ||
+    lower.includes('the operation was aborted') ||
+    lower.includes('aborted')
+  )
+}
+
+function normalizeUploadErrorMessage(message: string): string {
+  if (isNetworkStreamError(message)) {
+    return 'Spojení se serverem bylo přerušeno. Zkontrolujte přehled faktur — zpracování mohlo proběhnout na pozadí.'
+  }
+  return message
+}
 
 function parseErrorBody(text: string, status: number): {
   error: string
@@ -72,6 +100,7 @@ async function consumeNdjsonStream(
   let result: UploadInvoiceResult = { ok: false, error: 'Neplatná odpověď serveru' }
   const llmTicker = onProgress ? createLlmProgressTicker(onProgress) : null
   let llmPhaseActive = false
+  let maxProgressPercent = 0
 
   const parseLine = (line: string) => {
     if (!line.trim()) return
@@ -83,6 +112,7 @@ async function consumeNdjsonStream(
     }
 
     if (event.type === 'progress') {
+      maxProgressPercent = Math.max(maxProgressPercent, event.percent)
       if (event.phase === 'extract') {
         if (!llmPhaseActive) {
           llmPhaseActive = true
@@ -117,24 +147,37 @@ async function consumeNdjsonStream(
     }
   }
 
-  while (true) {
-    const { done, value } = await reader.read()
-    if (value) {
-      buffer += decoder.decode(value, { stream: !done })
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (value) {
+        buffer += decoder.decode(value, { stream: !done })
+      }
+      if (done) break
+
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
+
+      for (const line of lines) {
+        parseLine(line)
+      }
     }
-    if (done) break
 
-    const lines = buffer.split('\n')
-    buffer = lines.pop() ?? ''
-
-    for (const line of lines) {
-      parseLine(line)
+    buffer += decoder.decode()
+    if (buffer.trim()) {
+      parseLine(buffer)
     }
-  }
-
-  buffer += decoder.decode()
-  if (buffer.trim()) {
-    parseLine(buffer)
+  } catch (err) {
+    llmTicker?.stop()
+    const message = err instanceof Error ? err.message : ''
+    if (maxProgressPercent >= STREAM_LIKELY_DONE_PERCENT && isNetworkStreamError(message)) {
+      return {
+        ok: false,
+        error: normalizeUploadErrorMessage(message),
+        maybeProcessed: true,
+      }
+    }
+    throw err
   }
 
   llmTicker?.stop()
@@ -161,7 +204,11 @@ export async function uploadInvoicePdf(
     if (err instanceof Error && err.name === 'AbortError') {
       return { ok: false, error: 'Zpracování trvá příliš dlouho. Zkuste to znovu.' }
     }
-    return { ok: false, error: 'Nepodařilo se spojit se serverem. Zkontrolujte připojení.' }
+    const message = err instanceof Error ? err.message : ''
+    return {
+      ok: false,
+      error: normalizeUploadErrorMessage(message || 'Nepodařilo se spojit se serverem. Zkontrolujte připojení.'),
+    }
   }
   clearTimeout(timeout)
 
@@ -171,7 +218,9 @@ export async function uploadInvoicePdf(
     } catch (err) {
       return {
         ok: false,
-        error: err instanceof Error ? err.message : 'Chyba při čtení odpovědi serveru',
+        error: normalizeUploadErrorMessage(
+          err instanceof Error ? err.message : 'Chyba při čtení odpovědi serveru'
+        ),
       }
     }
   }

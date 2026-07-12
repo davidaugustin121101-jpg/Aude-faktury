@@ -38,6 +38,12 @@ export function DropZone() {
       try {
         const result = await uploadInvoicePdf(file, handleProgress)
         if (!result.ok) {
+          if (result.maybeProcessed) {
+            toast.warning(result.error)
+            router.push('/faktury')
+            router.refresh()
+            return
+          }
           if (result.duplicate && result.existingInvoiceId) {
             toast.error(result.error, {
               action: {

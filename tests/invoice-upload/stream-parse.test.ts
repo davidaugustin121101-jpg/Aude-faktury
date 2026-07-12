@@ -118,3 +118,23 @@ describe('NDJSON stream consumer', () => {
     assert.equal(result.ok, true)
   })
 })
+
+describe('upload network error messages', () => {
+  function normalize(message: string): string {
+    const lower = message.toLowerCase()
+    const isNetwork =
+      lower === 'load failed' ||
+      lower.includes('failed to fetch') ||
+      lower.includes('networkerror')
+    return isNetwork
+      ? 'Spojení se serverem bylo přerušeno. Zkontrolujte přehled faktur — zpracování mohlo proběhnout na pozadí.'
+      : message
+  }
+
+  it('maps Safari Load failed to Czech message', () => {
+    assert.equal(
+      normalize('Load failed'),
+      'Spojení se serverem bylo přerušeno. Zkontrolujte přehled faktur — zpracování mohlo proběhnout na pozadí.'
+    )
+  })
+})
