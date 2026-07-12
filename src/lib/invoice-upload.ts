@@ -73,54 +73,68 @@ async function consumeNdjsonStream(
   const llmTicker = onProgress ? createLlmProgressTicker(onProgress) : null
   let llmPhaseActive = false
 
+  const parseLine = (line: string) => {
+    if (!line.trim()) return
+    let event: ExtractionStreamEvent
+    try {
+      event = JSON.parse(line) as ExtractionStreamEvent
+    } catch {
+      return
+    }
+
+    if (event.type === 'progress') {
+      if (event.phase === 'extract') {
+        if (!llmPhaseActive) {
+          llmPhaseActive = true
+          llmTicker?.start()
+        }
+        onProgress?.(event)
+      } else {
+        if (llmPhaseActive) {
+          llmPhaseActive = false
+          llmTicker?.stop()
+        }
+        onProgress?.(event)
+      }
+    }
+
+    if (event.type === 'done') {
+      llmTicker?.stop()
+      const invoiceId = event.invoice?.id
+      if (invoiceId) {
+        result = { ok: true, invoiceId: String(invoiceId) }
+      }
+    }
+
+    if (event.type === 'error') {
+      llmTicker?.stop()
+      result = {
+        ok: false,
+        error: event.error,
+        duplicate: event.duplicate,
+        existingInvoiceId: event.existingInvoiceId,
+      }
+    }
+  }
+
   while (true) {
     const { done, value } = await reader.read()
+    if (value) {
+      buffer += decoder.decode(value, { stream: !done })
+    }
     if (done) break
 
-    buffer += decoder.decode(value, { stream: true })
     const lines = buffer.split('\n')
     buffer = lines.pop() ?? ''
 
     for (const line of lines) {
-      if (!line.trim()) continue
-      let event: ExtractionStreamEvent
-      try {
-        event = JSON.parse(line) as ExtractionStreamEvent
-      } catch {
-        continue
-      }
-
-      if (event.type === 'progress') {
-        if (event.phase === 'extract') {
-          if (!llmPhaseActive) {
-            llmPhaseActive = true
-            llmTicker?.start()
-          }
-          onProgress?.(event)
-        } else {
-          if (llmPhaseActive) {
-            llmPhaseActive = false
-            llmTicker?.stop()
-          }
-          onProgress?.(event)
-        }
-      }
-
-      if (event.type === 'done') {
-        llmTicker?.stop()
-        result = { ok: true, invoiceId: event.invoice.id }
-      }
-
-      if (event.type === 'error') {
-        llmTicker?.stop()
-        result = {
-          ok: false,
-          error: event.error,
-          duplicate: event.duplicate,
-          existingInvoiceId: event.existingInvoiceId,
-        }
-      }
+      parseLine(line)
     }
+  }
+
+  buffer += decoder.decode()
+  if (buffer.trim()) {
+    parseLine(buffer)
   }
 
   llmTicker?.stop()
@@ -151,8 +165,15 @@ export async function uploadInvoicePdf(
   }
   clearTimeout(timeout)
 
-  if (onProgress && res.body && res.headers.get('content-type')?.includes('ndjson')) {
-    return consumeNdjsonStream(res.body, onProgress)
+  if (onProgress && res.body && res.ok) {
+    try {
+      return await consumeNdjsonStream(res.body, onProgress)
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : 'Chyba při čtení odpovědi serveru',
+      }
+    }
   }
 
   const text = await res.text()
