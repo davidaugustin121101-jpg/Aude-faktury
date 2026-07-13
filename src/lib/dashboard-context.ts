@@ -51,7 +51,21 @@ async function loadDashboardContext(
     profile
   )
 
-  const [{ data: connRows }, { data: invoiceRows }] = await Promise.all([
+  const invoiceBase = () =>
+    supabase
+      .from('processed_invoices')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('workspace_id', workspace.id)
+
+  const [
+    { data: connRows },
+    { count: totalCount },
+    { count: sentCount },
+    { count: attentionCount },
+    invoicesExtractedThisMonth,
+    creditsConsumed,
+  ] = await Promise.all([
     supabase
       .from('accounting_connections')
       .select('provider')
@@ -60,24 +74,14 @@ async function loadDashboardContext(
       .eq('is_active', true)
       .order('created_at', { ascending: false })
       .limit(1),
-    supabase
-      .from('processed_invoices')
-      .select('status, created_at')
-      .eq('user_id', userId)
-      .eq('workspace_id', workspace.id),
+    invoiceBase(),
+    invoiceBase().eq('status', 'sent_to_accounting'),
+    invoiceBase().in('status', ['needs_manual_check', 'error']),
+    countMonthlyUsageFromLedger(userId),
+    hasActiveProSubscription(profile)
+      ? Promise.resolve(0)
+      : countCreditUsageFromLedger(userId),
   ])
-
-  const rows = invoiceRows ?? []
-  const invoicesExtractedThisMonth = await countMonthlyUsageFromLedger(userId)
-  const creditsConsumed = hasActiveProSubscription(profile)
-    ? 0
-    : await countCreditUsageFromLedger(userId)
-
-  const totalCount = rows.length
-  const sentCount = rows.filter((r) => r.status === 'sent_to_accounting').length
-  const attentionCount = rows.filter((r) =>
-    r.status === 'needs_manual_check' || r.status === 'error'
-  ).length
 
   const conn = connRows?.[0] ?? null
   const hasActiveSub = hasActiveBaseSubscription(profile)
@@ -96,9 +100,9 @@ async function loadDashboardContext(
     invoiceLimit,
     invoicesRemaining,
     creditsConsumed,
-    totalInvoices: totalCount,
-    sentTotal: sentCount,
-    attentionTotal: attentionCount,
+    totalInvoices: totalCount ?? 0,
+    sentTotal: sentCount ?? 0,
+    attentionTotal: attentionCount ?? 0,
   }
 }
 

@@ -59,7 +59,7 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
       <LandingHeader isAuthenticated={isAuthenticated} />
 
       <main className="pt-14 sm:pt-16">
-        <section className="max-w-6xl mx-auto px-4 py-12 sm:py-20 lg:py-28 grid lg:grid-cols-2 gap-10 lg:gap-12 items-center">
+        <section id="uvod" className="max-w-6xl mx-auto px-4 py-12 sm:py-20 lg:py-28 grid lg:grid-cols-2 gap-10 lg:gap-12 items-center scroll-mt-16 sm:scroll-mt-20">
           <div>
             <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-blue-600 bg-blue-50 border border-blue-100 rounded-full px-3 py-1 mb-6">
               <Sparkles className="h-3.5 w-3.5" />

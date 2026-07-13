@@ -59,7 +59,7 @@ export function SubscriptionBillingFeedback() {
     if (credits === '1') {
       router.replace('/settings/predplatne', { scroll: false })
       toast.success('Balíček 100 faktur zakoupen — kredity se připíší během chvíle.')
-      setTimeout(() => router.refresh(), 2500)
+      setTimeout(() => router.refresh(), 800)
       return
     }
 

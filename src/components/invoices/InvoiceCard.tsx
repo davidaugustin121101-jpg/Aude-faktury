@@ -1,5 +1,3 @@
-'use client'
-
 import Link from 'next/link'
 import { AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -37,7 +35,7 @@ export function InvoiceCard({ invoice, compact }: InvoiceCardProps) {
     <Link href={`/faktury/${invoice.id}`}>
       <div
         className={cn(
-          'group flex items-center gap-4 px-4 bg-white rounded-xl border transition-all hover:shadow-md hover:border-blue-200',
+          'group flex items-center gap-4 px-4 bg-white rounded-xl border transition-colors hover:shadow-sm hover:border-blue-200',
           needsAction ? 'border-gray-200' : 'border-gray-100 opacity-90',
           compact ? 'py-3' : 'py-4'
         )}

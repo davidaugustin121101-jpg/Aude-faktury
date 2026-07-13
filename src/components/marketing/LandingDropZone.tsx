@@ -73,7 +73,6 @@ export function LandingDropZone({ isAuthenticated }: Props) {
 
         toast.success('Faktura zpracována')
         router.push(`/faktury/${result.invoiceId}`)
-        router.refresh()
       } catch {
         toast.error('Chyba při nahrávání')
       } finally {

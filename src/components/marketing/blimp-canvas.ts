@@ -41,7 +41,7 @@ const FONT5X7: Record<string, number[]> = {
   '!': [4, 4, 4, 4, 4, 0, 4],
 }
 
-const MESSAGES = ['AUDEFLOW', 'MENE RUTINY.', 'VICE ZAKAZEK.']
+const MESSAGES = ['AUDEFLOW', 'MENE RUTINY - VICE CASU']
 const CHAR_W = 5
 const CHAR_GAP = 1
 const CHAR_H = 7

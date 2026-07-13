@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -72,6 +73,11 @@ export function Sidebar({
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    router.prefetch('/settings')
+    router.prefetch('/settings/predplatne')
+  }, [router])
 
   async function handleSignOut() {
     await supabase.auth.signOut({ scope: 'global' })

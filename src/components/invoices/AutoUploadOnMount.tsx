@@ -8,16 +8,27 @@ import { createClient } from '@/lib/supabase/client'
 import { uploadInvoicePdf } from '@/lib/invoice-upload'
 import { hasPendingPdf, takePendingPdf } from '@/lib/pending-upload'
 
-async function waitForSession(maxAttempts = 20): Promise<boolean> {
+async function waitForSession(timeoutMs = 5000): Promise<boolean> {
   const supabase = createClient()
-  for (let i = 0; i < maxAttempts; i++) {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-    if (session) return true
-    await new Promise((resolve) => setTimeout(resolve, 150))
-  }
-  return false
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (session) return true
+
+  return new Promise((resolve) => {
+    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (nextSession) {
+        clearTimeout(timer)
+        data.subscription.unsubscribe()
+        resolve(true)
+      }
+    })
+
+    const timer = setTimeout(() => {
+      data.subscription.unsubscribe()
+      resolve(false)
+    }, timeoutMs)
+  })
 }
 
 export function AutoUploadOnMount() {
@@ -62,7 +73,6 @@ export function AutoUploadOnMount() {
 
         toast.success('Faktura zpracována')
         router.replace(`/faktury/${result.invoiceId}`)
-        router.refresh()
       } catch {
         toast.error('Nahrání se nezdařilo. Zkuste PDF nahrát znovu.')
       } finally {

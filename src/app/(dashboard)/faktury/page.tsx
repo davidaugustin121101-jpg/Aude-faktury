@@ -62,27 +62,37 @@ export default async function FakturyPage({ searchParams }: Props) {
     listQuery = listQuery.in('status', statusValues)
   }
 
-  const { data: invoiceRows, count: filteredCount } = await listQuery.range(from, to)
-
-  const { data: monthRows } = await supabase
+  const monthQuery = supabase
     .from('processed_invoices')
     .select('castka_celkem, castka_dph, status')
     .eq('user_id', user.id)
     .eq('workspace_id', workspace.id)
     .gte('created_at', firstOfMonth)
 
-  const { count: extractedThisMonth } = await supabase
+  const ledgerQuery = supabase
     .from('invoice_usage_ledger')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', user.id)
     .gte('created_at', firstOfMonth)
 
-  const { count: attentionCount } = await supabase
+  const attentionQuery = supabase
     .from('processed_invoices')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', user.id)
     .eq('workspace_id', workspace.id)
     .in('status', ['needs_manual_check', 'error'])
+
+  const [
+    { data: invoiceRows, count: filteredCount },
+    { data: monthRows },
+    { count: extractedThisMonth },
+    { count: attentionCount },
+  ] = await Promise.all([
+    listQuery.range(from, to),
+    monthQuery,
+    ledgerQuery,
+    attentionQuery,
+  ])
 
   const invoices = (invoiceRows ?? []) as ProcessedInvoice[]
   const thisMonthRows = monthRows ?? []
