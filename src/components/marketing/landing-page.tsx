@@ -23,7 +23,6 @@ import { SupportedSystemsSection } from '@/components/marketing/SupportedSystems
 import { LandingDemoVideoSection } from '@/components/marketing/LandingDemoVideoSection'
 import { LandingReviewsSection } from '@/components/marketing/LandingReviewsSection'
 import { LandingAboutSection } from '@/components/marketing/LandingAboutSection'
-import { AudeflowLogo } from '@/components/brand/AudeflowLogo'
 import { SeoRichContentSection } from '@/components/marketing/SeoRichContentSection'
 import { MARKETING_FAQ } from '@/content/marketing/faq'
 import { getExtractionSpeedClaim } from '@/content/marketing/metrics'
@@ -62,12 +61,6 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
       <main className="pt-14 sm:pt-16">
         <section id="uvod" className="max-w-6xl mx-auto px-4 py-12 sm:py-20 lg:py-28 grid lg:grid-cols-2 gap-10 lg:gap-12 items-center scroll-mt-16 sm:scroll-mt-20">
           <div>
-            <div className="flex items-center gap-3 mb-6">
-              <AudeflowLogo height={30} className="h-[30px] sm:h-8" />
-              <span className="text-lg sm:text-xl font-semibold tracking-[0.06em] text-gray-900">
-                AUDE <span className="text-blue-600">FLOW</span>
-              </span>
-            </div>
             <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-blue-600 bg-blue-50 border border-blue-100 rounded-full px-3 py-1 mb-6">
               <Sparkles className="h-3.5 w-3.5" />
               Automatické zpracování faktur · Česko

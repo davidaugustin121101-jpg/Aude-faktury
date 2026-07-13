@@ -4,8 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { AudeflowLogo } from '@/components/brand/AudeflowLogo'
-import { APP_NAME } from '@/lib/brand'
+import { AudeflowBrand } from '@/components/brand/AudeflowBrand'
 
 const NAV_LINKS = [
   { href: '#uvod', label: 'Úvod' },
@@ -77,9 +76,8 @@ export function LandingHeader({ isAuthenticated = false }: Props) {
   return (
     <header className="fixed top-0 inset-x-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100 safe-top">
       <div className="max-w-6xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between gap-3">
-        <Link href="/" className="flex items-center gap-2 min-w-0">
-          <AudeflowLogo />
-          <span className="font-bold text-gray-900 truncate text-sm sm:text-base">{APP_NAME}</span>
+        <Link href="/" className="min-w-0">
+          <AudeflowBrand />
         </Link>
 
         <nav className="hidden sm:flex items-center gap-2">
