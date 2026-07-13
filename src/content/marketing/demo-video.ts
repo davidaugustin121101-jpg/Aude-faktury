@@ -17,8 +17,9 @@ const DEFAULT_TITLE = 'Jak funguje Faktury Audeflow'
 const DEFAULT_DESCRIPTION =
   'Od nahrání PDF přes vytěžení a předkontaci až po odeslání do iDokladu, Fakturoidu nebo export do Pohody.'
 
-/** Výchozí ukázka na landingu — /public/videos/demo.mov */
-export const DEFAULT_LANDING_DEMO_VIDEO_SRC = '/videos/demo.mov'
+/** Výchozí ukázka na landingu — /public/videos/demo.mp4 (H.264, kompatibilní s Windows/Chrome) */
+export const DEFAULT_LANDING_DEMO_VIDEO_SRC = '/videos/demo.mp4'
+export const DEFAULT_LANDING_DEMO_VIDEO_POSTER = '/videos/demo-poster.jpg'
 
 /** Nastavte NEXT_PUBLIC_LANDING_DEMO_VIDEO_URL pro override (YouTube/Vimeo/MP4). */
 export function getLandingDemoVideo(): LandingDemoVideo | null {
@@ -53,7 +54,9 @@ export function getLandingDemoVideo(): LandingDemoVideo | null {
       mimeType: mimeTypeForPath(src),
       title: DEFAULT_TITLE,
       description: DEFAULT_DESCRIPTION,
-      poster: process.env.NEXT_PUBLIC_LANDING_DEMO_VIDEO_POSTER?.trim() || undefined,
+      poster:
+        process.env.NEXT_PUBLIC_LANDING_DEMO_VIDEO_POSTER?.trim() ||
+        DEFAULT_LANDING_DEMO_VIDEO_POSTER,
       loop: true,
     }
   }

@@ -39,8 +39,9 @@ function Embed({ video }: { video: LandingDemoVideo }) {
       muted
       loop={video.loop ?? true}
       playsInline
-      preload="auto"
+      preload="metadata"
       poster={video.poster}
+      controls
       className="absolute inset-0 h-full w-full object-contain bg-gray-900 transition-opacity duration-500"
       aria-label={video.title}
     >
