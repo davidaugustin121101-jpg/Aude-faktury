@@ -3,6 +3,9 @@ import { APP_NAME } from '@/lib/brand'
 import { LEGAL_EMAIL, LEGAL_WEB } from '@/lib/legal'
 import { soloFreeMonthlyLabel } from '@/lib/account-mode'
 import { MARKETING_FAQ } from '@/content/marketing/faq'
+import { LANDING_DEMO_CHAPTERS, getLandingDemoVideo } from '@/content/marketing/demo-video'
+import { SEO_LANDING_PAGES } from '@/content/marketing/seo-landing-pages'
+import type { SeoLandingPage } from '@/content/marketing/seo-landing-pages'
 import {
   API_ACCOUNTING_SYSTEMS,
   ERP_EXPORT_SYSTEMS,
@@ -11,13 +14,40 @@ import {
 } from '@/content/marketing/seo-systems'
 
 export const SITE_URL =
-  process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ?? 'https://faktury.audeflow.cz'
+  process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ?? 'https://audeflow.cz'
 
 export const SITE_DESCRIPTION =
   `Nejlevnější vytěžení PDF faktur v ČR — od 2,99 Kč/faktura, ${soloFreeMonthlyLabel()}. Automatické OCR, návrh předkontace 504/343/321 a odeslání do iDokladu, Fakturoidu, SuperFaktury, BitFaktury a Súčta. Export Pohoda XML, Money S3, Helios. E-mail @in.audeflow.cz.`
 
+const COMPETITOR_AND_MARKET_KEYWORDS = [
+  'alternativa čtení faktur',
+  'ctenifaktur alternativa',
+  'digitoo alternativa',
+  'flowis alternativa',
+  'vytěžení faktur srovnání',
+  'nejlepší vytěžení faktur ČR',
+  'software na faktury',
+  'program na faktury',
+  'čtení faktur online',
+  'extrakce dat z faktury',
+  'parsování faktury',
+  'ISDOC faktura',
+  'stormware pohoda faktura',
+  'money s3 přijaté faktury',
+  'helios přijaté faktury',
+  'idoklad přijaté faktury',
+  'fakturoid výdaje',
+  'superfaktura náklady',
+  'bitfaktura výdaje',
+  'súčto doklady',
+  'audeflow.cz',
+  'faktury audeflow cz',
+] as const
+
 export const SITE_KEYWORDS = [
   ...allSeoKeywords(),
+  ...SEO_LANDING_PAGES.flatMap((p) => p.keywords),
+  ...COMPETITOR_AND_MARKET_KEYWORDS,
   'vytěžení faktury',
   'vytěžení PDF faktury',
   'OCR faktura',
@@ -40,6 +70,31 @@ export const SITE_KEYWORDS = [
   'kontrola duplicit faktura',
   'ARES IČO faktura',
 ]
+
+/** Obrázky pro image sitemap */
+export const SITEMAP_IMAGES = [
+  { url: '/og-image.svg', title: `${APP_NAME} — vytěžení PDF faktur od 2,99 Kč`, caption: SITE_DESCRIPTION },
+  { url: '/icon.svg', title: `${APP_NAME} logo`, caption: APP_NAME },
+] as const
+
+/** Kotvy na hlavním landingu — interní odkazy a sitemap */
+export const HOME_SECTION_ANCHORS = [
+  { hash: '#uvod', priority: 0.85 },
+  { hash: '#video', priority: 0.75 },
+  { hash: '#jak-funguje', priority: 0.8 },
+  { hash: '#pricing', priority: 0.85 },
+  { hash: '#recenze', priority: 0.7 },
+  { hash: '#faq', priority: 0.8 },
+  { hash: '#o-nas', priority: 0.65 },
+  { hash: '#integrace-idoklad', priority: 0.78 },
+  { hash: '#integrace-fakturoid', priority: 0.78 },
+  { hash: '#integrace-superfaktura', priority: 0.75 },
+  { hash: '#integrace-bitfaktura', priority: 0.75 },
+  { hash: '#integrace-sucto', priority: 0.75 },
+  { hash: '#export-pohoda', priority: 0.78 },
+  { hash: '#export-money-s3', priority: 0.75 },
+  { hash: '#export-helios', priority: 0.75 },
+] as const
 
 /** Veřejné trasy pro sitemap a interní odkazy */
 export const PUBLIC_SEO_ROUTES = [
@@ -66,7 +121,7 @@ export const viewport: Viewport = {
 export const rootMetadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${APP_NAME} – Vytěžení faktur od 2,99 Kč | iDoklad, Pohoda, Fakturoid`,
+    default: `${APP_NAME} – Vytěžení faktur od 2,99 Kč | iDoklad, Pohoda, Fakturoid, OCR`,
     template: `%s | ${APP_NAME}`,
   },
   description: SITE_DESCRIPTION,
@@ -191,79 +246,197 @@ function supportedSystemsItemList() {
   }
 }
 
-export function landingJsonLd() {
+function howToExtractInvoiceJsonLd() {
+  return {
+    '@type': 'HowTo',
+    name: 'Jak vytěžit PDF fakturu v Audeflow',
+    description: 'Postup od nahrání PDF přes vytěžení a audit až po export do účetnictví.',
+    inLanguage: 'cs-CZ',
+    step: LANDING_DEMO_CHAPTERS.map((text, i) => ({
+      '@type': 'HowToStep',
+      position: i + 1,
+      name: text,
+      text,
+    })),
+  }
+}
+
+function demoVideoJsonLd() {
+  const video = getLandingDemoVideo()
+  if (!video) return null
+
+  const contentUrl =
+    video.provider === 'youtube'
+      ? `https://www.youtube.com/watch?v=${video.src}`
+      : video.provider === 'vimeo'
+        ? `https://vimeo.com/${video.src}`
+        : `${SITE_URL}${video.src}`
+
+  const thumbnailUrl =
+    video.poster
+      ? `${SITE_URL}${video.poster}`
+      : video.provider === 'youtube'
+        ? `https://i.ytimg.com/vi/${video.src}/hqdefault.jpg`
+        : `${SITE_URL}/og-image.svg`
+
+  return {
+    '@type': 'VideoObject',
+    name: video.title,
+    description: video.description,
+    contentUrl,
+    thumbnailUrl,
+    uploadDate: '2026-01-01',
+    inLanguage: 'cs-CZ',
+  }
+}
+
+export function seoLandingJsonLd(page: SeoLandingPage) {
+  const pageUrl = `${SITE_URL}/${page.slug}`
   return {
     '@context': 'https://schema.org',
     '@graph': [
       {
-        '@type': 'WebSite',
-        '@id': `${SITE_URL}/#website`,
-        url: SITE_URL,
-        name: APP_NAME,
-        description: SITE_DESCRIPTION,
+        '@type': 'WebPage',
+        '@id': `${pageUrl}/#webpage`,
+        url: pageUrl,
+        name: page.title,
+        description: page.description,
         inLanguage: 'cs-CZ',
-        publisher: { '@id': `${SITE_URL}/#organization` },
+        isPartOf: { '@id': `${SITE_URL}/#website` },
+        about: { '@id': `${SITE_URL}/#software` },
       },
       {
-        '@type': 'Organization',
-        '@id': `${SITE_URL}/#organization`,
-        name: 'AUDEFLOW',
-        url: LEGAL_WEB,
-        email: LEGAL_EMAIL,
-        logo: `${SITE_URL}/icon.svg`,
-        sameAs: [LEGAL_WEB],
-      },
-      {
-        '@type': 'SoftwareApplication',
-        name: APP_NAME,
-        applicationCategory: 'BusinessApplication',
-        operatingSystem: 'Web',
-        offers: [
-          {
-            '@type': 'Offer',
-            price: '0',
-            priceCurrency: 'CZK',
-            description: PRICING_SEO.free,
-          },
-          {
-            '@type': 'Offer',
-            price: '299',
-            priceCurrency: 'CZK',
-            description: PRICING_SEO.pack,
-          },
-          {
-            '@type': 'Offer',
-            price: '2.99',
-            priceCurrency: 'CZK',
-            description: `Cena za fakturu od ${PRICING_SEO.perInvoice}`,
-          },
-        ],
-        description: SITE_DESCRIPTION,
-        url: SITE_URL,
-        inLanguage: ['cs-CZ'],
-        featureList: [
-          'Automatické vytěžení PDF faktur (OCR/AI)',
-          'E-mailový vstup @in.audeflow.cz',
-          'Návrh českého účetního kódu a předkontace MD/DAL',
-          'Odeslání do iDoklad, Fakturoid, SuperFaktura, BitFaktura, Súčto',
-          'Export Pohoda XML, Money S3, Helios CSV/XML',
-          'Kontrola duplicit, ARES, audit DPH',
-          'Položková extrakce a split předkontace',
-          'Zálohové faktury a daňové doklady',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Domů', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: page.h1, item: pageUrl },
         ],
       },
-      supportedSystemsItemList(),
       {
         '@type': 'FAQPage',
-        mainEntity: MARKETING_FAQ.map((item) => ({
+        mainEntity: page.sections.map((s) => ({
           '@type': 'Question',
-          name: item.q,
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: item.a,
-          },
+          name: s.heading,
+          acceptedAnswer: { '@type': 'Answer', text: s.body },
         })),
       },
     ],
+  }
+}
+
+export function landingJsonLd() {
+  const videoLd = demoVideoJsonLd()
+  const graph: Record<string, unknown>[] = [
+    {
+      '@type': 'WebSite',
+      '@id': `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: APP_NAME,
+      description: SITE_DESCRIPTION,
+      inLanguage: 'cs-CZ',
+      publisher: { '@id': `${SITE_URL}/#organization` },
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: {
+          '@type': 'EntryPoint',
+          urlTemplate: `${SITE_URL}/vytezeni-faktur`,
+        },
+        'query-input': 'required name=search_term_string',
+      },
+    },
+    {
+      '@type': 'Organization',
+      '@id': `${SITE_URL}/#organization`,
+      name: 'AUDEFLOW',
+      url: LEGAL_WEB,
+      email: LEGAL_EMAIL,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${SITE_URL}/og-image.svg`,
+        width: 1200,
+        height: 630,
+      },
+      sameAs: [LEGAL_WEB, SITE_URL],
+    },
+    {
+      '@type': 'SoftwareApplication',
+      '@id': `${SITE_URL}/#software`,
+      name: APP_NAME,
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      offers: [
+        {
+          '@type': 'Offer',
+          price: '0',
+          priceCurrency: 'CZK',
+          description: PRICING_SEO.free,
+          availability: 'https://schema.org/InStock',
+          url: `${SITE_URL}/register`,
+        },
+        {
+          '@type': 'Offer',
+          price: '299',
+          priceCurrency: 'CZK',
+          description: PRICING_SEO.pack,
+          availability: 'https://schema.org/InStock',
+          url: `${SITE_URL}/#pricing`,
+        },
+        {
+          '@type': 'Offer',
+          price: '2.99',
+          priceCurrency: 'CZK',
+          description: `Cena za fakturu od ${PRICING_SEO.perInvoice}`,
+          availability: 'https://schema.org/InStock',
+          url: `${SITE_URL}/nejlevnejsi-vytezeni-faktur`,
+        },
+      ],
+      description: SITE_DESCRIPTION,
+      url: SITE_URL,
+      inLanguage: ['cs-CZ'],
+      featureList: [
+        'Automatické vytěžení PDF faktur (OCR/AI)',
+        'E-mailový vstup @in.audeflow.cz',
+        'Návrh českého účetního kódu a předkontace MD/DAL',
+        'Odeslání do iDoklad, Fakturoid, SuperFaktura, BitFaktura, Súčto',
+        'Export Pohoda XML, Money S3, Helios CSV/XML',
+        'Kontrola duplicit, ARES, audit DPH',
+        'Položková extrakce a split předkontace',
+        'Zálohové faktury a daňové doklady',
+      ],
+    },
+    supportedSystemsItemList(),
+    howToExtractInvoiceJsonLd(),
+    {
+      '@type': 'FAQPage',
+      mainEntity: MARKETING_FAQ.map((item) => ({
+        '@type': 'Question',
+        name: item.q,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: item.a,
+        },
+      })),
+    },
+    {
+      '@type': 'ItemList',
+      name: 'SEO průvodce vytěžením faktur',
+      itemListElement: SEO_LANDING_PAGES.map((p, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        item: {
+          '@type': 'WebPage',
+          name: p.h1,
+          url: `${SITE_URL}/${p.slug}`,
+          description: p.description,
+        },
+      })),
+    },
+  ]
+
+  if (videoLd) graph.push(videoLd)
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': graph,
   }
 }

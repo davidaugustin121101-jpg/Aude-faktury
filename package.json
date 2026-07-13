@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "node --import tsx --test tests/export/*.test.ts tests/predkontace/*.test.ts tests/invoice-pdf/*.test.ts tests/idoklad/*.test.ts tests/polozky/*.test.ts tests/invoice-amounts/*.test.ts tests/bank-account/*.test.ts tests/invoice-output/*.test.ts tests/bitfaktura-sucto/*.test.ts tests/invoice-allowance/*.test.ts tests/pdf-preprocess/*.test.ts tests/invoice-upload/*.test.ts",
     "export:samples": "node --import tsx scripts/export-samples.mjs",
+    "supabase:auth-urls": "node scripts/update-supabase-auth-urls.mjs",
     "stripe:setup": "node scripts/stripe-setup.mjs",
     "verify:prod": "node scripts/verify-prod.mjs",
     "migrate:vault": "node scripts/migrate-secrets-to-vault.mjs"

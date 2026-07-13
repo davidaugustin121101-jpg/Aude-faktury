@@ -19,7 +19,7 @@ export async function sendNewInvoiceNotification(params: {
   if (!resend) return
 
   const from = process.env.RESEND_FROM_EMAIL ?? 'Faktury Audeflow <noreply@audeflow.cz>'
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://faktury.audeflow.cz'
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://audeflow.cz'
   const amountStr =
     params.amount != null
       ? new Intl.NumberFormat('cs-CZ', {

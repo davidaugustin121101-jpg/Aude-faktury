@@ -4,7 +4,9 @@ import {
   EXTRACTION_FEATURES,
   PRICING_SEO,
 } from '@/content/marketing/seo-systems'
+import { SEO_LANDING_PAGES } from '@/content/marketing/seo-landing-pages'
 import { APP_NAME } from '@/lib/brand'
+import Link from 'next/link'
 
 export function SeoRichContentSection() {
   return (
@@ -68,6 +70,40 @@ export function SeoRichContentSection() {
           {PRICING_SEO.free}. Balíček Standard {PRICING_SEO.pack} — jedna z nejnižších cen automatického
           vytěžení a exportu faktur na českém trhu. Bez skrytých poplatků, kredit neexpiruje.
         </p>
+
+        <h3 className="text-xl font-bold text-gray-900 not-prose mt-12 mb-4">
+          Srovnání s dalšími řešeními na českém trhu
+        </h3>
+        <p className="text-gray-600 not-prose mb-4">
+          Na trhu existují služby jako Čtení faktur (ctenifaktur.cz), Digitoo, Flowis nebo vestavěné
+          OCR ve Fakturoidu. {APP_NAME} se odlišuje kombinací nejnižší ceny za doklad (od 2,99 Kč),
+          napojením na více cloudových systémů najednou a exportem do desktopových ERP — Pohoda, Money
+          S3 a Helios. Pro účetní kanceláře nabízíme modul více klientů s přepínáním workspaces.
+        </p>
+        <p className="text-gray-600 not-prose mb-4">
+          Na rozdíl od čistého OCR vracíme strukturovaná data včetně návrhu předkontace MD/DAL,
+          kontroly duplicit a ověření IČO v ARES — ne jen text z PDF. Podrobné srovnání najdete na
+          stránce{' '}
+          <Link href="/alternativa-ctenifaktur" className="text-blue-600 hover:underline">
+            alternativa pro vytěžení faktur
+          </Link>
+          .
+        </p>
+
+        <h3 className="text-xl font-bold text-gray-900 not-prose mt-12 mb-4">
+          Průvodce vytěžením faktur — podrobné stránky
+        </h3>
+        <nav aria-label="SEO průvodce" className="not-prose">
+          <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+            {SEO_LANDING_PAGES.map((page) => (
+              <li key={page.slug}>
+                <Link href={`/${page.slug}`} className="text-blue-600 hover:text-blue-800 hover:underline">
+                  {page.h1}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </div>
     </section>
   )

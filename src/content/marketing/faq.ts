@@ -65,4 +65,16 @@ export const MARKETING_FAQ = [
     q: 'Proč je Audeflow levnější než konkurence?',
     a: `Platíte jen za zpracované faktury — od 2,99 Kč kus, bez drahého měsíčního předplatného u Standard tarifu. ${soloFreeMonthlyLabel()} pro Solo. Žádné skryté poplatky za API napojení.`,
   },
+  {
+    q: 'Jak se Audeflow liší od Čtení faktur (ctenifaktur.cz)?',
+    a: 'Audeflow nabízí nižší cenu za doklad (od 2,99 Kč), přímé API napojení na iDoklad, Fakturoid, SuperFakturu, BitFakturu a Súčto, export do Pohody, Money S3 a Helios a modul více klientů pro účetní firmy. Navíc navrhujeme českou předkontaci MD/DAL, ne jen surová OCR data.',
+  },
+  {
+    q: 'Je Audeflow vhodná alternativa k Digitoo nebo Flowis?',
+    a: 'Pro firmy a účetní kanceláře, které chtějí platit za zpracované faktury bez drahého ročního předplatného a potřebují napojení na české systémy (iDoklad, Pohoda, Fakturoid, Helios), je Audeflow cenově dostupná alternativa s důrazem na předkontaci a export do ERP.',
+  },
+  {
+    q: 'Podporujete ISDOC a české formáty exportu?',
+    a: 'Ano. Pro Money S3 nabízíme export XML i ISDOC. Pro Pohodu generujeme XML pro Datovou komunikaci. Pro Helios CSV (Red) a XML (iNuvio). Vše s návrhem předkontace.',
+  },
 ] as const
