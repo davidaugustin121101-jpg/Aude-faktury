@@ -73,8 +73,8 @@ export const SITE_KEYWORDS = [
 
 /** Obrázky pro image sitemap */
 export const SITEMAP_IMAGES = [
-  { url: '/og-image.svg', title: `${APP_NAME} — vytěžení PDF faktur od 2,99 Kč`, caption: SITE_DESCRIPTION },
-  { url: '/icon.svg', title: `${APP_NAME} logo`, caption: APP_NAME },
+  { url: '/og-image.png', title: `${APP_NAME} — AF logo`, caption: APP_NAME },
+  { url: '/icon-512.png', title: `${APP_NAME} logo`, caption: APP_NAME },
 ] as const
 
 /** Kotvy na hlavním landingu — interní odkazy a sitemap */
@@ -152,10 +152,11 @@ export const rootMetadata: Metadata = {
     description: SITE_DESCRIPTION,
     images: [
       {
-        url: '/og-image.svg',
+        url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: `${APP_NAME} – automatické vytěžení faktur od 2,99 Kč`,
+        alt: 'Audeflow — logo AF',
+        type: 'image/png',
       },
     ],
   },
@@ -163,7 +164,7 @@ export const rootMetadata: Metadata = {
     card: 'summary_large_image',
     title: `${APP_NAME} – Vytěžení faktur od 2,99 Kč`,
     description: SITE_DESCRIPTION,
-    images: ['/og-image.svg'],
+    images: ['/og-image.png'],
   },
   robots: {
     index: true,
@@ -184,10 +185,25 @@ export const rootMetadata: Metadata = {
       }
     : {}),
   icons: {
-    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
-    apple: [{ url: '/apple-icon.svg', type: 'image/svg+xml' }],
+    icon: [
+      { url: '/favicon.ico', sizes: '32x32' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+    other: [
+      { rel: 'mask-icon', url: '/icon.svg', color: '#2563eb' },
+    ],
   },
   manifest: '/manifest.webmanifest',
+  other: {
+    'msapplication-config': '/browserconfig.xml',
+    'msapplication-TileColor': '#2563eb',
+    'msapplication-TileImage': '/icon-192.png',
+  },
 }
 
 export function pageMetadata(title: string, description: string, path = ''): Metadata {
@@ -203,13 +219,13 @@ export function pageMetadata(title: string, description: string, path = ''): Met
       type: 'website',
       locale: 'cs_CZ',
       siteName: APP_NAME,
-      images: [{ url: '/og-image.svg', width: 1200, height: 630, alt: APP_NAME }],
+      images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Audeflow', type: 'image/png' }],
     },
     twitter: {
       card: 'summary_large_image',
       title: `${title} | ${APP_NAME}`,
       description,
-      images: ['/og-image.svg'],
+      images: ['/og-image.png'],
     },
   }
 }
@@ -277,7 +293,7 @@ function demoVideoJsonLd() {
       ? `${SITE_URL}${video.poster}`
       : video.provider === 'youtube'
         ? `https://i.ytimg.com/vi/${video.src}/hqdefault.jpg`
-        : `${SITE_URL}/og-image.svg`
+        : `${SITE_URL}/og-image.png`
 
   return {
     '@type': 'VideoObject',
@@ -352,7 +368,7 @@ export function landingJsonLd() {
       email: LEGAL_EMAIL,
       logo: {
         '@type': 'ImageObject',
-        url: `${SITE_URL}/og-image.svg`,
+        url: `${SITE_URL}/og-image.png`,
         width: 1200,
         height: 630,
       },

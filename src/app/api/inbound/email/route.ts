@@ -181,6 +181,13 @@ export async function POST(req: NextRequest) {
     : null
 
   if (svixId && !resendEvent) {
+    const hasSecret = !!process.env.RESEND_WEBHOOK_SECRET?.trim()
+    console.error('[inbound/email] Invalid Resend webhook', {
+      hasSecret,
+      svixId,
+      hasTimestamp: !!req.headers.get('svix-timestamp'),
+      hasSignature: !!req.headers.get('svix-signature'),
+    })
     return NextResponse.json({ error: 'Invalid Resend webhook' }, { status: 401 })
   }
 

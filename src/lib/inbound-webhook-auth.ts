@@ -33,7 +33,11 @@ export function verifyResendWebhook(
       'svix-timestamp': headers.timestamp,
       'svix-signature': headers.signature,
     })
-  } catch {
+  } catch (err) {
+    console.error(
+      '[resend-webhook] signature verification failed:',
+      err instanceof Error ? err.message : err
+    )
     return null
   }
 }

@@ -69,4 +69,4 @@ for (const tier of tiers) {
 }
 
 console.log('Poznámka: STRIPE_PRICE_ACCOUNTANT je zastaralé — použijte STRIPE_PRICE_MULTI_CLIENT')
-console.log('\nWebhook: https://faktury.audeflow.cz/api/stripe/webhook')
+console.log('\nWebhook: https://audeflow.cz/api/stripe/webhook')
