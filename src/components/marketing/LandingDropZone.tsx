@@ -12,6 +12,7 @@ import { uploadInvoicePdf, type UploadProgressHandler } from '@/lib/invoice-uplo
 import { PDF_MAX_BYTES } from '@/lib/pdf-limits'
 import { savePendingPdf } from '@/lib/pending-upload'
 import { InvoiceExtractionProgress } from '@/components/invoices/InvoiceExtractionProgress'
+import { BlimpCanvas } from '@/components/marketing/BlimpCanvas'
 import { EXTRACTION_PROGRESS } from '@/lib/extraction-progress'
 
 interface Props {
@@ -96,6 +97,9 @@ export function LandingDropZone({ isAuthenticated }: Props) {
 
   return (
     <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 rounded-3xl p-6 sm:p-8 shadow-sm">
+      <div className="relative h-[180px] sm:h-[220px] mb-4 -mt-2">
+        <BlimpCanvas className="block w-full h-full" />
+      </div>
       <div
         {...getRootProps()}
         className={cn(

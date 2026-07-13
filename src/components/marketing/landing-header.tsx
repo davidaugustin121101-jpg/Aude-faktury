@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { href: '#video', label: 'Ukázka' },
   { href: '#jak-funguje', label: 'Jak to funguje' },
   { href: '#pricing', label: 'Ceník' },
+  { href: '#o-nas', label: 'O nás' },
 ]
 
 interface Props {

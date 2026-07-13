@@ -22,6 +22,7 @@ import {
 import { SupportedSystemsSection } from '@/components/marketing/SupportedSystemsSection'
 import { LandingDemoVideoSection } from '@/components/marketing/LandingDemoVideoSection'
 import { LandingReviewsSection } from '@/components/marketing/LandingReviewsSection'
+import { LandingAboutSection } from '@/components/marketing/LandingAboutSection'
 import { SeoRichContentSection } from '@/components/marketing/SeoRichContentSection'
 import { MARKETING_FAQ } from '@/content/marketing/faq'
 import { getExtractionSpeedClaim } from '@/content/marketing/metrics'
@@ -334,7 +335,9 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
           </div>
         </section>
 
-        <section className="bg-gray-50 py-16 sm:py-20">
+        <LandingAboutSection />
+
+        <section className="bg-white py-16 sm:py-20">
           <div className="max-w-2xl mx-auto px-4 text-center">
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
               Zpracujte první fakturu dnes
