@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --import tsx --test tests/export/*.test.ts tests/predkontace/*.test.ts tests/invoice-pdf/*.test.ts tests/idoklad/*.test.ts tests/polozky/*.test.ts tests/invoice-amounts/*.test.ts tests/bank-account/*.test.ts tests/invoice-output/*.test.ts tests/bitfaktura-sucto/*.test.ts tests/invoice-allowance/*.test.ts tests/pdf-preprocess/*.test.ts tests/invoice-upload/*.test.ts",
+    "export:samples": "node --import tsx scripts/export-samples.mjs",
     "stripe:setup": "node scripts/stripe-setup.mjs",
     "verify:prod": "node scripts/verify-prod.mjs",
     "migrate:vault": "node scripts/migrate-secrets-to-vault.mjs"
@@ -50,6 +51,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "fast-xml-parser": "^4.5.3",
     "tailwindcss": "^4",
     "tsx": "^4.19.4",
     "typescript": "^5"

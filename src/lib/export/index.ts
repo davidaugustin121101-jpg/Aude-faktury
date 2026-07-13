@@ -25,7 +25,10 @@ export async function generateExport(
   input: ExportInput
 ): Promise<{ result: ExportResult; validation: ReturnType<typeof validateForExport> }> {
   const inv = normalizeInvoice(input.invoice, input.profile)
-  const validation = validateForExport(inv, format, { forceExport: input.forceExport })
+  const validation = validateForExport(inv, format, {
+    forceExport: input.forceExport,
+    profile: input.profile,
+  })
 
   if (!validation.ok) {
     return {

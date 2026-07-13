@@ -21,7 +21,9 @@ function invoiceItemsXml(inv: NormalizedInvoice): string {
             <typ:priceVAT>${formatMoney(vat)}</typ:priceVAT>
             <typ:priceSum>${formatMoney(total)}</typ:priceSum>
           </inv:homeCurrency>
-          <inv:code>${escapeXml(accountingCode)}</inv:code>
+          <inv:accounting>
+            <typ:ids>${escapeXml(accountingCode)}</typ:ids>
+          </inv:accounting>
         </inv:invoiceItem>`
     })
     .join('\n')
@@ -69,6 +71,9 @@ export function generatePohodaXml(inv: NormalizedInvoice, profile?: ExportProfil
         <inv:accounting>
           <typ:ids>${escapeXml(inv.ucetniKod)}</typ:ids>
         </inv:accounting>
+        <inv:classificationVAT>
+          <typ:classificationVATType>inland</typ:classificationVATType>
+        </inv:classificationVAT>
         <inv:text>${escapeXml(inv.popisPlneni)}</inv:text>
         <inv:partnerIdentity>
           <typ:address>

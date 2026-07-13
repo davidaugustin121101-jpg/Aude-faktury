@@ -20,6 +20,10 @@ export type HeliosRedCsvFiles = {
   pripol: string
 }
 
+/**
+ * Helios Red CSV — kompatibilní s běžným importem přijatých faktur (PRIFAK + PRIPOL).
+ * PRIPOL obsahuje jeden souhrnný řádek dokladu (21 % sazba v položce).
+ */
 export function generateHeliosRedCsv(
   inv: NormalizedInvoice,
   profile?: ExportProfile
@@ -54,8 +58,8 @@ export function generateHeliosRedCsv(
 
   const prifakRow = [
     1,
-    formatDateHelios(inv.datumDuzp ?? inv.datumVystaveni),
     formatDateHelios(inv.datumVystaveni),
+    formatDateHelios(inv.datumDuzp ?? inv.datumVystaveni),
     inv.cisloFaktury,
     inv.variabilniSymbol ?? inv.cisloFaktury,
     0,
@@ -111,25 +115,30 @@ export function generateHeliosRedCsv(
     'P_MAJETEK',
   ]
 
-  const pripolRows = inv.polozky.map((line, index) => {
-    const vat = (line.castkaBezDph * line.sazbaDph) / 100
-    const total = line.castkaBezDph + vat
-    return [
-      index + 1,
-      formatDateHelios(inv.datumDuzp ?? inv.datumVystaveni),
-      'FP',
-      line.nazev.slice(0, 200),
-      formatMoney(total),
-      0,
-      formatMoney(line.castkaBezDph),
-      line.sazbaDph,
-      formatMoney(vat),
-      '.F.',
-    ]
-  })
+  const dominantVat =
+    recap.find((r) => r.sazbaDph === 21)?.sazbaDph ??
+    recap.find((r) => r.sazbaDph !== 0)?.sazbaDph ??
+    21
+  const dominantBase =
+    recap.find((r) => r.sazbaDph === dominantVat)?.zaklad ?? base21
+  const dominantVatAmount =
+    recap.find((r) => r.sazbaDph === dominantVat)?.dph ?? vat21
+
+  const pripolRow = [
+    1,
+    formatDateHelios(inv.datumVystaveni),
+    'FP',
+    inv.dodavatelNazev.slice(0, 200),
+    formatMoney(inv.castkaCelkem),
+    0,
+    formatMoney(dominantBase),
+    dominantVat,
+    formatMoney(dominantVatAmount),
+    '.F.',
+  ]
 
   const prifak = [csvRow(prifakHeader), csvRow(prifakRow)].join('\r\n')
-  const pripol = [csvRow(pripolHeader), ...pripolRows.map((row) => csvRow(row))].join('\r\n')
+  const pripol = [csvRow(pripolHeader), csvRow(pripolRow)].join('\r\n')
 
   return { prifak, pripol }
 }

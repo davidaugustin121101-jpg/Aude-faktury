@@ -21,6 +21,7 @@ import {
 } from '@/lib/landing-links'
 import { SupportedSystemsSection } from '@/components/marketing/SupportedSystemsSection'
 import { LandingDemoVideoSection } from '@/components/marketing/LandingDemoVideoSection'
+import { LandingReviewsSection } from '@/components/marketing/LandingReviewsSection'
 import { SeoRichContentSection } from '@/components/marketing/SeoRichContentSection'
 import { MARKETING_FAQ } from '@/content/marketing/faq'
 import { getExtractionSpeedClaim } from '@/content/marketing/metrics'
@@ -161,6 +162,8 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
             </div>
           </div>
         </section>
+
+        <LandingReviewsSection />
 
         <section className="py-20">
           <div className="max-w-3xl mx-auto px-4">

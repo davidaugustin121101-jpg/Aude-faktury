@@ -1,4 +1,4 @@
-import type { ExportFormat, ExportValidationResult, NormalizedInvoice } from './types'
+import type { ExportFormat, ExportProfile, ExportValidationResult, NormalizedInvoice } from './types'
 
 const MATH_TOLERANCE = 0.02
 
@@ -46,9 +46,22 @@ function commonValidation(
   return { ok: errors.length === 0, errors, warnings }
 }
 
-function pohodaValidation(inv: NormalizedInvoice, result: ExportValidationResult): ExportValidationResult {
+function pohodaValidation(
+  inv: NormalizedInvoice,
+  result: ExportValidationResult,
+  profile?: ExportProfile
+): ExportValidationResult {
   const errors = [...result.errors]
   const warnings = [...result.warnings]
+
+  const companyIco = (profile?.companyIco ?? '').replace(/\D/g, '')
+  if (companyIco.length < 8) {
+    errors.push({
+      code: 'missing_company_ico',
+      message:
+        'Pro import do Pohody vyplňte IČO vaší firmy v Nastavení → Export profil (atribut dataPack ico).',
+    })
+  }
 
   if (!inv.ucetniKod) {
     warnings.push({ code: 'missing_account_code', message: 'Chybí účetní kód — bude použito 518' })
@@ -93,13 +106,13 @@ function moneyNativeValidation(inv: NormalizedInvoice, result: ExportValidationR
 export function validateForExport(
   inv: NormalizedInvoice,
   format: ExportFormat,
-  options: { forceExport?: boolean } = {}
+  options: { forceExport?: boolean; profile?: ExportProfile } = {}
 ): ExportValidationResult {
   let result = commonValidation(inv, options.forceExport ?? false)
 
   switch (format) {
     case 'pohoda':
-      result = pohodaValidation(inv, result)
+      result = pohodaValidation(inv, result, options.profile)
       break
     case 'isdoc':
     case 'money_isdoc':
@@ -112,7 +125,7 @@ export function validateForExport(
       result = moneyNativeValidation(inv, result)
       break
     case 'helios_inuvio':
-      result = pohodaValidation(inv, result)
+      result = pohodaValidation(inv, result, options.profile)
       break
   }
 

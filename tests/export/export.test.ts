@@ -101,19 +101,20 @@ describe('export generators golden snippets', () => {
   })
 
   it('generates Pohoda XML with receivedInvoice and rateVAT high', () => {
-    const xml = generatePohodaXml(inv)
+    const xml = generatePohodaXml(inv, { companyIco: '87654321' })
     assert.ok(xml.includes('receivedInvoice'))
     assert.ok(xml.includes('<inv:rateVAT>high</inv:rateVAT>'))
     assert.ok(xml.includes('<typ:ico>12345678</typ:ico>'))
     assert.ok(xml.includes('Předkontace:'))
+    assert.ok(xml.includes('classificationVATType'))
   })
 
   it('generates Helios Red CSV headers', () => {
-    const { prifak, pripol } = generateHeliosRedCsv(inv)
+    const { prifak, pripol } = generateHeliosRedCsv(inv, { costCenter: '100' })
     assert.ok(prifak.startsWith('CISLO,DATUM,DATUM2'))
     assert.ok(prifak.includes('FV2024/001'))
     assert.ok(pripol.startsWith('P_CISLO,P_TYP'))
-    assert.ok(pripol.includes('FP'))
+    assert.equal(pripol.split('\r\n').length, 2)
   })
 
   it('generates Money native XML', () => {

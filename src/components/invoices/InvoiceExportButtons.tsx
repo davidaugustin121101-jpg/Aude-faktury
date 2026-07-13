@@ -47,6 +47,26 @@ export function InvoiceExportButtons({ invoiceId }: Props) {
         <code className="bg-gray-100 px-1 rounded">?force=1</code> k URL, nebo nejdřív opravte
         fakturu.
       </p>
+      <details className="text-xs text-gray-500">
+        <summary className="cursor-pointer font-medium text-gray-600">Jak importovat stažený soubor</summary>
+        <ul className="mt-2 space-y-1.5 list-disc pl-4">
+          <li>
+            <strong>Pohoda XML</strong> — nejdřív vyplňte IČO firmy v Nastavení → Export profil.
+            V Pohodě: Datová komunikace → Import XML → vyberte stažený soubor.
+          </li>
+          <li>
+            <strong>Money S3 — ISDOC</strong> (doporučeno) — Agenda Doklady → Import → ISDOC.
+          </li>
+          <li>
+            <strong>Helios Red</strong> — rozbalte ZIP, importujte nejdřív PRIFAK.csv, poté PRIPOL.csv
+            (Import z CSV).
+          </li>
+          <li>
+            <strong>ISDOC</strong> — univerzální formát; import podle menu vašeho ERP (Pohoda, Money,
+            Helios iNuvio).
+          </li>
+        </ul>
+      </details>
     </div>
   )
 }
