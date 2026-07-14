@@ -14,6 +14,7 @@ const SITE_URL = 'https://audeflow.cz'
 const REDIRECT_URLS = [
   'https://audeflow.cz/**',
   'https://www.audeflow.cz/**',
+  // Zpětná kompatibilita po migraci — staré záložky / OAuth callback
   'https://faktury.audeflow.cz/**',
   'http://localhost:3000/**',
   'https://*.vercel.app/**',

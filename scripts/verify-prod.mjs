@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
  * Ověření produkčního deploye — spusťte: node scripts/verify-prod.mjs
- * Volitelně: APP_URL=https://faktury.audeflow.cz node scripts/verify-prod.mjs
+ * Volitelně: APP_URL=https://audeflow.cz node scripts/verify-prod.mjs
  */
-const APP_URL = process.env.APP_URL ?? 'https://faktury.audeflow.cz'
+const APP_URL = process.env.APP_URL ?? 'https://audeflow.cz'
 
 async function check(name, url, expectOk = true) {
   try {

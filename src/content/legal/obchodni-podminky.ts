@@ -1,4 +1,4 @@
-import { LEGAL_EMAIL, LEGAL_ENTITY_FULL, LEGAL_LAST_UPDATED } from '@/lib/legal'
+import { LEGAL_APP_URL, LEGAL_EMAIL, LEGAL_ENTITY_FULL, LEGAL_LAST_UPDATED } from '@/lib/legal'
 
 export type LegalSection = {
   title: string
@@ -9,7 +9,7 @@ export const OBCHODNI_PODMINKY: LegalSection[] = [
   {
     title: '1. Úvodní ustanovení a poskytovatel',
     paragraphs: [
-      `Tyto obchodní podmínky (dále jen „Podmínky“) upravují smluvní vztah mezi ${LEGAL_ENTITY_FULL} (dále jen „Poskytovatel“) a fyzickou nebo právnickou osobou využívající online službu Faktury Audeflow (dále jen „Služba“), dostupnou na adrese faktury.audeflow.cz.`,
+      `Tyto obchodní podmínky (dále jen „Podmínky“) upravují smluvní vztah mezi ${LEGAL_ENTITY_FULL} (dále jen „Poskytovatel“) a fyzickou nebo právnickou osobou využívající online službu Faktury Audeflow (dále jen „Služba“), dostupnou na adrese ${LEGAL_APP_URL.replace(/^https?:\/\//, '')}.`,
       'Služba je určena podnikatelům, OSVČ a účetním pracujícím v České republice. Poskytovatel není účetní firmou, daňovým poradcem ani advokátní kanceláří.',
       `Kontakt: ${LEGAL_EMAIL}. Poslední aktualizace Podmínek: ${LEGAL_LAST_UPDATED}.`,
     ],
